@@ -1011,85 +1011,158 @@ export default function SimpleGame() {
         }
       }
       
-      // Draw kit inventory and progress (top-right corner) - BIGGER for 8 kits + zone tip!
-      const kitX = canvas.width - 280
-      const kitY = 120
+      // Draw kit inventory and progress (RESPONSIVE for mobile!)
+      const isMobile = canvas.width < 768
       
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
-      ctx.fillRect(kitX, kitY, 260, 380) // Taller to fit 8 kits + zone info
-      ctx.strokeStyle = '#00ffff'
-      ctx.lineWidth = 2
-      ctx.strokeRect(kitX, kitY, 260, 380)
-      
-      // Level and rank header
-      ctx.font = 'bold 16px monospace'
-      ctx.fillStyle = '#ffd700'
-      ctx.textAlign = 'left'
-      const rank = getRank()
-      ctx.fillText(`Level ${currentLevel} | ${rank}`, kitX + 10, kitY + 25)
-      
-      // Kit progress bar
-      const kitsNeeded = calculateKitsNeededForNextLevel(currentLevel)
-      const progressPercent = Math.min(totalKitsCollected / kitsNeeded, 1)
-      ctx.font = '14px monospace'
-      ctx.fillStyle = '#ffffff'
-      ctx.fillText(`Progress: ${totalKitsCollected}/${kitsNeeded} kits`, kitX + 10, kitY + 50)
-      
-      // Progress bar
-      const barWidth = 240
-      const barHeight = 12
-      ctx.fillStyle = '#333333'
-      ctx.fillRect(kitX + 10, kitY + 60, barWidth, barHeight)
-      ctx.fillStyle = '#00ff00'
-      ctx.fillRect(kitX + 10, kitY + 60, barWidth * progressPercent, barHeight)
-      ctx.strokeStyle = '#00ffff'
-      ctx.lineWidth = 1
-      ctx.strokeRect(kitX + 10, kitY + 60, barWidth, barHeight)
-      
-      // Kit inventory section - ALL 8 KITS!
-      ctx.font = 'bold 16px monospace'
-      ctx.fillStyle = '#00ffff'
-      ctx.fillText('PROTECTION KITS', kitX + 10, kitY + 95)
-      
-      ctx.font = '11px monospace' // Even smaller font to fit 8 kits
-      ctx.fillStyle = '#ffffff'
-      ctx.fillText(`🔐 Password: ${kitInventory['password-manager']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 120)
-      ctx.fillText(`🔗 Link: ${kitInventory['link-analyzer']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 138)
-      ctx.fillText(`🛡️ Patch: ${kitInventory['patch-manager']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 156)
-      ctx.fillText(`🕵️ Privacy: ${kitInventory['privacy-optimizer']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 174)
-      ctx.fillText(`🔒 VPN: ${kitInventory['vpn-shield']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 192)
-      ctx.fillText(`🔑 MFA: ${kitInventory['mfa-authenticator']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 210)
-      ctx.fillText(`💾 Backup: ${kitInventory['backup-system']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 228)
-      ctx.fillText(`🎭 Social: ${kitInventory['social-engineering-defense']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 246)
-      
-      // Zone indicator and contextual tip
-      const currentZone = getCurrentZone(currentLevel)
-      ctx.font = 'bold 14px monospace'
-      ctx.fillStyle = currentZone.colorScheme.accent
-      ctx.fillText(`ZONE: ${currentZone.icon}`, kitX + 10, kitY + 275)
-      
-      // Rotating zone tip (changes every 5 seconds)
-      const tipIndex = Math.floor(Date.now() / 5000) % currentZone.contextualTips.length
-      const zoneTip = currentZone.contextualTips[tipIndex]
-      ctx.font = '10px monospace'
-      ctx.fillStyle = '#ffff00'
-      // Word wrap the tip
-      const maxWidth = 240
-      const words = zoneTip.split(' ')
-      let line = ''
-      let y = kitY + 293
-      words.forEach(word => {
-        const testLine = line + word + ' '
-        const metrics = ctx.measureText(testLine)
-        if (metrics.width > maxWidth && line !== '') {
-          ctx.fillText(line, kitX + 10, y)
-          line = word + ' '
-          y += 12
-        } else {
-          line = testLine
+      if (isMobile) {
+        // MOBILE: Compact HUD (top-right, minimal)
+        const kitX = canvas.width - 140
+        const kitY = 80
+        const hudWidth = 130
+        const hudHeight = 200
+        
+        // Semi-transparent background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+        ctx.fillRect(kitX, kitY, hudWidth, hudHeight)
+        ctx.strokeStyle = '#00ffff'
+        ctx.lineWidth = 1
+        ctx.strokeRect(kitX, kitY, hudWidth, hudHeight)
+        
+        // Level and rank (smaller)
+        ctx.font = 'bold 11px monospace'
+        ctx.fillStyle = '#ffd700'
+        ctx.textAlign = 'left'
+        const rank = getRank()
+        ctx.fillText(`L${currentLevel} ${rank}`, kitX + 5, kitY + 15)
+        
+        // Kit progress (compact)
+        const kitsNeeded = calculateKitsNeededForNextLevel(currentLevel)
+        const progressPercent = Math.min(totalKitsCollected / kitsNeeded, 1)
+        ctx.font = '9px monospace'
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText(`${totalKitsCollected}/${kitsNeeded}`, kitX + 5, kitY + 30)
+        
+        // Tiny progress bar
+        const barWidth = 120
+        const barHeight = 6
+        ctx.fillStyle = '#333333'
+        ctx.fillRect(kitX + 5, kitY + 35, barWidth, barHeight)
+        ctx.fillStyle = '#00ff00'
+        ctx.fillRect(kitX + 5, kitY + 35, barWidth * progressPercent, barHeight)
+        
+        // Kits - ICONS ONLY (no labels)
+        ctx.font = '16px monospace'
+        const kits = [
+          { emoji: '🔐', count: kitInventory['password-manager'] },
+          { emoji: '🔗', count: kitInventory['link-analyzer'] },
+          { emoji: '🛡️', count: kitInventory['patch-manager'] },
+          { emoji: '🕵️', count: kitInventory['privacy-optimizer'] },
+          { emoji: '🔒', count: kitInventory['vpn-shield'] },
+          { emoji: '🔑', count: kitInventory['mfa-authenticator'] },
+          { emoji: '💾', count: kitInventory['backup-system'] },
+          { emoji: '🎭', count: kitInventory['social-engineering-defense'] }
+        ]
+        
+        // Draw in compact grid
+        for (let i = 0; i < kits.length; i++) {
+          const col = i % 2
+          const row = Math.floor(i / 2)
+          const x = kitX + 10 + (col * 60)
+          const y = kitY + 60 + (row * 18)
+          
+          const kit = kits[i]
+          const count = kit.count || 0
+          ctx.fillStyle = count > 0 ? '#ffffff' : '#555555'
+          ctx.fillText(`${kit.emoji}${count}`, x, y)
         }
-      })
-      ctx.fillText(line, kitX + 10, y)
+        
+        // Zone icon only (no tip on mobile)
+        const currentZone = getCurrentZone(currentLevel)
+        ctx.font = '20px monospace'
+        ctx.fillStyle = currentZone.colorScheme.accent
+        ctx.fillText(currentZone.icon, kitX + 52, kitY + 190)
+        
+      } else {
+        // DESKTOP: Full detailed HUD
+        const kitX = canvas.width - 280
+        const kitY = 120
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+        ctx.fillRect(kitX, kitY, 260, 380)
+        ctx.strokeStyle = '#00ffff'
+        ctx.lineWidth = 2
+        ctx.strokeRect(kitX, kitY, 260, 380)
+        
+        // Level and rank header
+        ctx.font = 'bold 16px monospace'
+        ctx.fillStyle = '#ffd700'
+        ctx.textAlign = 'left'
+        const rank = getRank()
+        ctx.fillText(`Level ${currentLevel} | ${rank}`, kitX + 10, kitY + 25)
+        
+        // Kit progress bar
+        const kitsNeeded = calculateKitsNeededForNextLevel(currentLevel)
+        const progressPercent = Math.min(totalKitsCollected / kitsNeeded, 1)
+        ctx.font = '14px monospace'
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText(`Progress: ${totalKitsCollected}/${kitsNeeded} kits`, kitX + 10, kitY + 50)
+        
+        // Progress bar
+        const barWidth = 240
+        const barHeight = 12
+        ctx.fillStyle = '#333333'
+        ctx.fillRect(kitX + 10, kitY + 60, barWidth, barHeight)
+        ctx.fillStyle = '#00ff00'
+        ctx.fillRect(kitX + 10, kitY + 60, barWidth * progressPercent, barHeight)
+        ctx.strokeStyle = '#00ffff'
+        ctx.lineWidth = 1
+        ctx.strokeRect(kitX + 10, kitY + 60, barWidth, barHeight)
+        
+        // Kit inventory section - ALL 8 KITS!
+        ctx.font = 'bold 16px monospace'
+        ctx.fillStyle = '#00ffff'
+        ctx.fillText('PROTECTION KITS', kitX + 10, kitY + 95)
+        
+        ctx.font = '11px monospace'
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText(`🔐 Password: ${kitInventory['password-manager']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 120)
+        ctx.fillText(`🔗 Link: ${kitInventory['link-analyzer']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 138)
+        ctx.fillText(`🛡️ Patch: ${kitInventory['patch-manager']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 156)
+        ctx.fillText(`🕵️ Privacy: ${kitInventory['privacy-optimizer']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 174)
+        ctx.fillText(`🔒 VPN: ${kitInventory['vpn-shield']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 192)
+        ctx.fillText(`🔑 MFA: ${kitInventory['mfa-authenticator']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 210)
+        ctx.fillText(`💾 Backup: ${kitInventory['backup-system']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 228)
+        ctx.fillText(`🎭 Social: ${kitInventory['social-engineering-defense']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 246)
+        
+        // Zone indicator and contextual tip
+        const currentZone = getCurrentZone(currentLevel)
+        ctx.font = 'bold 14px monospace'
+        ctx.fillStyle = currentZone.colorScheme.accent
+        ctx.fillText(`ZONE: ${currentZone.icon}`, kitX + 10, kitY + 275)
+        
+        // Rotating zone tip (changes every 5 seconds)
+        const tipIndex = Math.floor(Date.now() / 5000) % currentZone.contextualTips.length
+        const zoneTip = currentZone.contextualTips[tipIndex]
+        ctx.font = '10px monospace'
+        ctx.fillStyle = '#ffff00'
+        // Word wrap the tip
+        const maxWidth = 240
+        const words = zoneTip.split(' ')
+        let line = ''
+        let y = kitY + 293
+        words.forEach(word => {
+          const testLine = line + word + ' '
+          const metrics = ctx.measureText(testLine)
+          if (metrics.width > maxWidth && line !== '') {
+            ctx.fillText(line, kitX + 10, y)
+            line = word + ' '
+            y += 12
+          } else {
+            line = testLine
+          }
+        })
+        ctx.fillText(line, kitX + 10, y)
+      }
       
       // Spawn obstacles continuously (frequency increases with level)
       if (timestamp - lastSpawn > spawnFrequency) {
@@ -1722,19 +1795,19 @@ export default function SimpleGame() {
   
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black">
-      {/* HUD */}
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-start text-white font-mono text-xl z-10 pointer-events-none">
-        <div className="space-y-2">
-          <div className="bg-black/70 border-2 border-cyan-600 rounded-lg px-6 py-3">
-            LEVEL: <span className="text-cyan-400 font-bold">{level}</span>
+      {/* HUD - RESPONSIVE FOR MOBILE */}
+      <div className="absolute top-2 md:top-4 left-2 md:left-4 right-2 md:right-4 flex justify-between items-start text-white font-mono text-sm md:text-xl z-10 pointer-events-none">
+        <div className="space-y-1 md:space-y-2">
+          <div className="bg-black/80 border border-cyan-600 md:border-2 rounded px-2 py-1 md:px-6 md:py-3">
+            <span className="text-[10px] md:text-base">L:</span> <span className="text-cyan-400 font-bold text-sm md:text-xl">{level}</span>
           </div>
-          <div className="bg-black/70 border-2 border-yellow-600 rounded-lg px-6 py-3">
-            SCORE: <span className="text-yellow-400 font-bold">{score}</span>
+          <div className="bg-black/80 border border-yellow-600 md:border-2 rounded px-2 py-1 md:px-6 md:py-3">
+            <span className="text-[10px] md:text-base">S:</span> <span className="text-yellow-400 font-bold text-sm md:text-xl">{score}</span>
           </div>
         </div>
         
-        {/* Threat Direction Indicator */}
-        <div className="bg-black/70 border-2 border-red-600 rounded-lg px-4 py-2 text-center">
+        {/* Threat Direction Indicator - Hide on mobile to save space */}
+        <div className="hidden md:block bg-black/70 border-2 border-red-600 rounded-lg px-4 py-2 text-center">
           <p className="text-red-400 text-sm font-bold mb-1">THREATS FROM:</p>
           <div className="flex gap-2 text-lg justify-center">
             <span className="text-green-400">⬇️</span>
@@ -1993,12 +2066,6 @@ export default function SimpleGame() {
           onClose={() => setShowQuiz(false)}
         />
       )}
-      
-      {/* Controls reminder */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-cyan-300 font-mono bg-black/80 border border-cyan-600 rounded-lg px-6 py-2 pointer-events-none text-center">
-        <p className="text-lg">WASD or Arrow Keys to Move</p>
-        {level >= 2 && <p className="text-sm text-green-400 mt-1">Collect ⚡ green powerups!</p>}
-      </div>
     </div>
   )
 }
