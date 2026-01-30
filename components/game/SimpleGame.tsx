@@ -33,6 +33,9 @@ export default function SimpleGame() {
   const [showBonusNotification, setShowBonusNotification] = useState(false)
   const [showQuiz, setShowQuiz] = useState(false)
   const [savedGameState, setSavedGameState] = useState<{level: number, kits: {[key:string]:number}, score: number} | null>(null)
+  const [showEducationDetails, setShowEducationDetails] = useState(false)
+  const [isFirstDeath, setIsFirstDeath] = useState(true)
+  const [deathAction, setDeathAction] = useState<'restart' | 'quiz'>('restart')
   const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame } = useGameStore()
   
   useEffect(() => {
@@ -1347,6 +1350,10 @@ export default function SimpleGame() {
               setLastAttacker(obstacle.sentBy, obstacle.threatId)
               setGameOver(true)
               setRunning(false)
+              // Track first death for tutorial tooltip
+              if (isFirstDeath) {
+                setIsFirstDeath(false)
+              }
               return false
             }
           }
@@ -1753,12 +1760,12 @@ export default function SimpleGame() {
   
   if (!gameStarted) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-blue-900 to-black overflow-y-auto py-4">
+      <div className="relative flex items-center justify-center min-h-screen overflow-y-auto py-4" style={{ zIndex: 10 }}>
         <div className="text-center space-y-4 max-w-2xl px-4 my-auto">
-          <h1 className="text-5xl md:text-6xl font-bold text-cyan-400 font-mono animate-pulse">BYTE RUNNER</h1>
-          <p className="text-cyan-300 text-lg md:text-xl">Collect protection kits & survive cyber threats!</p>
+          <h1 className="text-5xl md:text-6xl font-bold text-cyan-400 font-mono animate-pulse drop-shadow-[0_0_20px_rgba(0,255,255,0.5)]">BYTE RUNNER</h1>
+          <p className="text-cyan-300 text-lg md:text-xl drop-shadow-[0_0_10px_rgba(0,255,255,0.3)]">The cyber storm is here - fortify or fall!</p>
           
-          <div className="bg-black/50 border-2 border-cyan-600 rounded-lg p-4 md:p-6 text-white space-y-2">
+          <div className="bg-black/80 border-2 border-cyan-600 rounded-lg p-4 md:p-6 text-white space-y-2 backdrop-blur-sm">
             <h3 className="text-cyan-400 font-bold text-lg md:text-xl mb-2">HOW TO PLAY:</h3>
             
             <div className="text-left space-y-1 text-sm md:text-base">
@@ -1784,7 +1791,8 @@ export default function SimpleGame() {
           
           <button
             onClick={handleStart}
-            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white text-xl md:text-2xl font-bold py-4 md:py-5 px-12 md:px-14 rounded-xl transition-transform transform hover:scale-105 shadow-2xl animate-pulse mt-2"
+            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white text-xl md:text-2xl font-bold py-4 md:py-5 px-12 md:px-14 rounded-xl transition-transform transform hover:scale-105 shadow-2xl animate-pulse mt-2 cursor-pointer relative"
+            style={{ zIndex: 100 }}
           >
             🎮 START GAME
           </button>
@@ -1794,7 +1802,7 @@ export default function SimpleGame() {
   }
   
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-black">
+    <div className="relative w-screen h-screen overflow-hidden">
       {/* HUD - RESPONSIVE FOR MOBILE */}
       <div className="absolute top-2 md:top-4 left-2 md:left-4 right-2 md:right-4 flex justify-between items-start text-white font-mono text-sm md:text-xl z-10 pointer-events-none">
         <div className="space-y-1 md:space-y-2">
@@ -1829,135 +1837,221 @@ export default function SimpleGame() {
       
       {/* Game Over Overlay */}
       {isGameOver && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20 overflow-y-auto p-4">
-          <div className="text-center space-y-6 bg-gray-900 border-4 border-red-600 rounded-2xl p-8 max-w-2xl w-full mx-auto my-auto max-h-[95vh] overflow-y-auto [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-red-500">
-            <h2 className="text-6xl font-bold text-red-500 font-mono animate-pulse">ELIMINATED</h2>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20 overflow-y-auto p-2 md:p-4">
+          <div className="text-center space-y-4 bg-gray-900 border-4 border-red-600 rounded-2xl p-4 md:p-6 max-w-2xl w-full mx-auto my-auto max-h-[95vh] overflow-y-auto [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-red-500">
+            <h2 className="text-4xl md:text-6xl font-bold text-red-500 font-mono animate-pulse">ELIMINATED</h2>
             
-            {/* Killer Info */}
+            {/* Killer Info - COMPACT */}
             {lastAttacker && lastThreatType && (
-              <div className="border-2 border-red-500 p-6 rounded-lg bg-red-950/30">
-                <p className="text-red-400 text-2xl mb-2">💀 KILLED BY</p>
-                <p className="text-white text-4xl font-bold mb-2">
-                  {lastAttacker.emoji && <span className="mr-2">{lastAttacker.emoji}</span>}
-                  {lastAttacker.level >= 100 && <span className="text-red-500">⭐</span>}
-                  {lastAttacker.level >= 71 && lastAttacker.level < 100 && <span className="text-yellow-400">◆</span>}
-                  {' '}{lastAttacker.name}
+              <div className="border-2 border-red-500 px-3 py-2 rounded-lg bg-red-950/30">
+                <p className="text-white text-base md:text-lg">
+                  💀 Killed by {lastAttacker.emoji} 
+                  <span className="font-bold mx-1">{lastAttacker.name}</span>
+                  <span className={`text-sm ${
+                    lastAttacker.level >= 100 ? 'text-red-500' : 
+                    lastAttacker.level >= 71 ? 'text-yellow-400' : 
+                    'text-cyan-400'
+                  }`}>
+                    (Lv{lastAttacker.level} {lastAttacker.level >= 71 ? 'HIGH' : 'MID'})
+                  </span>
                 </p>
-                <p className={`text-xl font-bold ${
-                  lastAttacker.level >= 100 ? 'text-red-500' : 
-                  lastAttacker.level >= 71 ? 'text-yellow-400' : 
-                  lastAttacker.level >= 31 ? 'text-cyan-400' : 
-                  'text-gray-400'
-                }`}>
-                  Level {lastAttacker.level} {
-                    lastAttacker.level >= 100 ? '(ELITE)' : 
-                    lastAttacker.level >= 71 ? '(HIGH)' : 
-                    lastAttacker.level >= 31 ? '(MID)' : 
-                    '(LOW)'
-                  }
+                <p className="text-yellow-400 text-sm md:text-base">
+                  Using: {getThreatName(lastThreatType)}
                 </p>
-                <p className="text-purple-400 text-sm mt-2 italic">{lastAttacker.speciality}</p>
-                <p className="text-yellow-400 text-xl mt-4">Using: {getThreatName(lastThreatType)}</p>
               </div>
             )}
             
-            {/* Stats */}
-            <div className="text-white space-y-2 text-xl border-t-2 border-gray-700 pt-4">
-              <p>Level Reached: <span className="text-cyan-400 font-bold">{level}</span></p>
-              <p>Final Score: <span className="text-yellow-400 font-bold">{score}</span></p>
+            {/* Stats - COMPACT */}
+            <div className="text-white space-y-1 text-base md:text-lg border-t border-gray-700 pt-2">
+              <p>Level: <span className="text-cyan-400 font-bold">{level}</span> • Score: <span className="text-yellow-400 font-bold">{score}</span></p>
             </div>
             
-            {/* Educational moment - Enhanced */}
+            {/* Educational moment - COLLAPSIBLE ACCORDION */}
             {lastThreatType && (() => {
               const protectionKit = getProtectionKitForThreat(lastThreatType)
               return protectionKit ? (
-                <div className="bg-gradient-to-br from-blue-900/80 to-purple-900/80 border-2 border-blue-400 p-6 rounded-lg space-y-3">
-                  <p className="text-blue-300 text-lg font-bold">💡 WHY YOU DIED</p>
-                  <p className="text-red-300 text-base">
-                    You were hit by <span className="font-bold text-red-400">{getThreatName(lastThreatType)}</span> and didn't have the right protection kit in your inventory.
-                  </p>
-                  
-                  <div className="border-t border-blue-400 pt-3 mt-3">
-                    <p className="text-cyan-300 text-sm font-bold mb-2">WHAT IS {protectionKit.name.toUpperCase()}?</p>
-                    <p className="text-white text-sm leading-relaxed mb-3">
-                      {protectionKit.whatItIs}
-                    </p>
-                    
-                    <p className="text-yellow-300 text-sm font-bold mb-2">WHY IT MATTERS:</p>
-                    <p className="text-gray-200 text-sm leading-relaxed mb-3">
-                      {protectionKit.whyItMatters}
-                    </p>
-                    
-                    <p className="text-green-300 text-sm font-bold mb-2">HOW TO GET IT:</p>
-                    <ul className="text-gray-200 text-sm space-y-1 list-disc list-inside">
-                      {protectionKit.howToGetIt.slice(0, 2).map((item, idx) => (
-                        <li key={idx}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  
+                <div className="bg-gradient-to-br from-blue-900/80 to-purple-900/80 border-2 border-blue-400 rounded-lg overflow-hidden">
+                  {/* Collapsed Header - Always Visible */}
                   <button
-                    onClick={() => setShowLearnMore(true)}
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105 mt-4"
+                    onClick={() => {
+                      const newState = !showEducationDetails
+                      setShowEducationDetails(newState)
+                      // Auto-award bonus kit when expanded for first time!
+                      if (newState && !bonusKitType) {
+                        setBonusKitType(protectionKit.id)
+                        setShowBonusNotification(true)
+                        setTimeout(() => setShowBonusNotification(false), 3000)
+                      }
+                    }}
+                    className="w-full p-3 md:p-4 text-left flex items-center justify-between hover:bg-blue-900/30 transition-colors"
                   >
-                    🎓 LEARN MORE FOR +1 {protectionKit.emoji} BONUS KIT
+                    <div className="flex-1">
+                      <p className="text-blue-300 text-sm md:text-base font-bold flex items-center gap-2">
+                        💡 WHY YOU DIED 
+                        {isFirstDeath && !showEducationDetails && (
+                          <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded animate-pulse">
+                            👇 Tap to learn
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-red-300 text-xs md:text-sm mt-1">
+                        Missing {protectionKit.name}
+                      </p>
+                    </div>
+                    <span className="text-xl md:text-2xl text-cyan-400 transition-transform duration-300" style={{ transform: showEducationDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                      ▼
+                    </span>
                   </button>
+                  
+                  {/* Expandable Content */}
+                  {showEducationDetails && (
+                    <div className="px-3 md:px-4 pb-4 space-y-2 border-t border-blue-400 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <p className="text-red-300 text-xs md:text-sm pt-3">
+                        You were hit by <span className="font-bold text-red-400">{getThreatName(lastThreatType)}</span> without protection.
+                      </p>
+                      
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-cyan-300 text-xs font-bold mb-1">WHAT IS {protectionKit.name.toUpperCase()}?</p>
+                          <p className="text-white text-xs leading-relaxed">
+                            {protectionKit.whatItIs}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-yellow-300 text-xs font-bold mb-1">WHY IT MATTERS:</p>
+                          <p className="text-gray-200 text-xs leading-relaxed">
+                            {protectionKit.whyItMatters}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-green-300 text-xs font-bold mb-1">HOW TO GET IT:</p>
+                          <ul className="text-gray-200 text-xs space-y-0.5 list-disc list-inside">
+                            {protectionKit.howToGetIt.slice(0, 2).map((item, idx) => (
+                              <li key={idx}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                      
+                      {/* Learn More Button - Inside Accordion */}
+                      <button
+                        onClick={() => setShowLearnMore(true)}
+                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 mt-3 text-sm"
+                      >
+                        🎓 LEARN MORE (Deep Dive)
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Bonus Kit Notification */}
+                  {showBonusNotification && bonusKitType === protectionKit.id && (
+                    <div className="bg-green-600 text-white px-3 py-2 text-xs md:text-sm font-bold text-center border-t border-green-400">
+                      ✓ +1 {protectionKit.emoji} {protectionKit.name} awarded for learning!
+                    </div>
+                  )}
                 </div>
               ) : null
             })()}
             
-            {/* DUAL CHOICE: Restart or Take Quiz */}
-            <div className="space-y-4 pt-6">
-              <p className="text-center text-cyan-300 font-bold text-2xl font-mono mb-4">
+            {/* COMBINED ACTION CHOICE - Radio Buttons */}
+            <div className="space-y-3 pt-3 border-t border-gray-700">
+              <p className="text-center text-cyan-300 font-bold text-lg md:text-xl font-mono">
                 ⚡ CHOOSE YOUR FATE ⚡
               </p>
               
-              {/* Option 1: Restart from Level 1 (Free) */}
-              <div className="bg-gradient-to-r from-cyan-900/50 to-blue-900/50 border-2 border-cyan-500 rounded-xl p-6">
-                <h3 className="text-cyan-400 font-bold text-xl mb-2 font-mono">🔄 RESTART FROM LEVEL 1</h3>
-                <p className="text-gray-300 text-sm mb-4">
-                  Start fresh • Instant restart • Optional bonus kit if you learned
-                </p>
-                <button
-                  onClick={handleRestart}
-                  className="w-full bg-cyan-600 hover:bg-cyan-700 text-white text-xl font-bold py-4 px-8 rounded-lg transition-transform transform hover:scale-105"
+              {/* Combined Options Card */}
+              <div className="bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-cyan-500 rounded-xl p-4">
+                {/* Option 1: Restart */}
+                <label 
+                  className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                    deathAction === 'restart' 
+                      ? 'bg-cyan-900/50 border-2 border-cyan-400' 
+                      : 'bg-gray-800/30 border-2 border-transparent hover:border-gray-600'
+                  }`}
                 >
-                  {bonusKitType ? `✓ RESTART WITH +1 BONUS KIT! 🎁` : '✓ RESTART NOW'}
+                  <input
+                    type="radio"
+                    name="deathAction"
+                    value="restart"
+                    checked={deathAction === 'restart'}
+                    onChange={(e) => setDeathAction(e.target.value as 'restart' | 'quiz')}
+                    className="mt-1 w-4 h-4 accent-cyan-500"
+                  />
+                  <div className="flex-1">
+                    <h3 className="text-cyan-400 font-bold text-sm md:text-base">🔄 RESTART FROM LEVEL 1</h3>
+                    <p className="text-gray-300 text-xs mt-1">
+                      Start fresh • Instant restart{bonusKitType && ' • +1 BONUS KIT! 🎁'}
+                    </p>
+                  </div>
+                </label>
+                
+                {/* Option 2: Quiz */}
+                <label 
+                  className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all mt-2 ${
+                    deathAction === 'quiz' 
+                      ? 'bg-purple-900/50 border-2 border-purple-400' 
+                      : 'bg-gray-800/30 border-2 border-transparent hover:border-gray-600'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="deathAction"
+                    value="quiz"
+                    checked={deathAction === 'quiz'}
+                    onChange={(e) => setDeathAction(e.target.value as 'restart' | 'quiz')}
+                    className="mt-1 w-4 h-4 accent-purple-500"
+                  />
+                  <div className="flex-1">
+                    <h3 className="text-purple-400 font-bold text-sm md:text-base">🧠 ANSWER QUIZ TO CONTINUE</h3>
+                    <p className="text-gray-300 text-xs mt-1">
+                      <span className="text-green-400">✓ Pass:</span> Continue Level {level} • 
+                      <span className="text-red-400"> ✗ Fail:</span> Restart w/ 50% kits
+                    </p>
+                    <p className="text-yellow-300 text-xs mt-1">⏱️ 30s quiz • Multiple choice</p>
+                  </div>
+                </label>
+                
+                {/* Action Button */}
+                <button
+                  onClick={() => {
+                    if (deathAction === 'restart') {
+                      handleRestart()
+                    } else {
+                      setShowQuiz(true)
+                    }
+                  }}
+                  className={`w-full mt-3 font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105 text-base md:text-lg ${
+                    deathAction === 'restart'
+                      ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                      : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white animate-pulse'
+                  }`}
+                >
+                  {deathAction === 'restart' 
+                    ? (bonusKitType ? '✓ RESTART WITH BONUS!' : '✓ RESTART NOW')
+                    : '🎯 TAKE THE QUIZ'
+                  }
                 </button>
               </div>
               
-              {/* Option 2: Answer Quiz to Continue */}
-              <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 border-2 border-purple-500 rounded-xl p-6">
-                <h3 className="text-purple-400 font-bold text-xl mb-2 font-mono">🧠 ANSWER QUIZ TO CONTINUE</h3>
-                <p className="text-gray-300 text-sm mb-2">
-                  <span className="text-green-400">✓ Pass:</span> Continue from Level {level} with all {Object.values(savedGameState?.kits || {}).reduce((a,b)=>a+b,0)} kits
-                </p>
-                <p className="text-gray-300 text-sm mb-4">
-                  <span className="text-red-400">✗ Fail:</span> Restart from Level 1 with 50% of kits
-                </p>
-                <p className="text-yellow-300 text-xs mb-4 font-mono">⏱️ 30-second quiz • Multiple choice</p>
+              {/* Small Twitter Share Button */}
+              <div className="flex justify-center">
                 <button
-                  onClick={() => setShowQuiz(true)}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xl font-bold py-4 px-8 rounded-lg transition-transform transform hover:scale-105 animate-pulse"
+                  onClick={() => {
+                    const attackerName = lastAttacker?.name || 'a cyber threat'
+                    const threatName = lastThreatType ? getThreatName(lastThreatType) : 'an attack'
+                    const protectionName = lastThreatType ? getProtectionKitName(lastThreatType) : 'better protection'
+                    const text = `Just got eliminated by ${attackerName} using ${threatName} in #ByteRunner! 💀 Next time I'll have the ${protectionName} ready... Level ${level}, Score: ${score}`
+                    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
+                    window.open(twitterUrl, '_blank')
+                  }}
+                  className="bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white text-xs md:text-sm font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
+                  title="Share on Twitter"
                 >
-                  🎯 TAKE THE QUIZ
+                  🐦 Share
                 </button>
               </div>
-              
-              {/* Twitter Share */}
-              <button
-                onClick={() => {
-                  const attackerName = lastAttacker?.name || 'a cyber threat'
-                  const threatName = lastThreatType ? getThreatName(lastThreatType) : 'an attack'
-                  const protectionName = lastThreatType ? getProtectionKitName(lastThreatType) : 'better protection'
-                  const text = `Just got eliminated by ${attackerName} using ${threatName} in #ByteRunner! 💀 Next time I'll have the ${protectionName} ready... Level ${level}, Score: ${score}`
-                  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
-                  window.open(twitterUrl, '_blank')
-                }}
-                className="bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white text-lg font-bold py-3 px-8 rounded-lg transition-all w-full"
-              >
-                🐦 SHARE REVENGE ON TWITTER
-              </button>
             </div>
           </div>
         </div>

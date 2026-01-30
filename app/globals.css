@@ -13,7 +13,7 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: linear-gradient(180deg, #000033 0%, #000011 100%);
+  background: #000011;
   font-family: 'Courier New', monospace;
   /* Prevent pull-to-refresh and overscroll on mobile */
   overscroll-behavior: none;
@@ -25,6 +25,10 @@ body {
   -webkit-touch-callout: none;
   /* Improve tap performance */
   -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  background: #000011;
 }
 
 * {
