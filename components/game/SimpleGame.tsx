@@ -1,0 +1,2004 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { useGameStore } from '@/lib/store/gameStore'
+import { getRandomThreat, getThreatName, getQuickTip, type ThreatType, type ThreatCategory } from '@/lib/game/threatData'
+import { getRandomGhostPlayer, type GhostPlayer } from '@/lib/game/ghostPlayers'
+import { getProtectionKitName, getProtectionKitForThreat, getProtectionKitById, type ProtectionKit } from '@/lib/game/protectionKits'
+import { getCurrentZone, isZoneTransition, getZoneTip, getThreatSpawnWeight } from '@/lib/game/zones'
+import QuizModal from './QuizModal'
+
+interface GameObject {
+  x: number
+  y: number
+  width: number
+  height: number
+  vx: number
+  vy: number
+  type: string
+  color: string
+  threatId: string
+  sentBy: GhostPlayer
+  category: string
+  spawnTime?: number
+  active?: boolean
+}
+
+export default function SimpleGame() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [gameStarted, setGameStarted] = useState(false)
+  const [level, setLevel] = useState(1)
+  const [showLearnMore, setShowLearnMore] = useState(false)
+  const [bonusKitType, setBonusKitType] = useState<string | null>(null)
+  const [showBonusNotification, setShowBonusNotification] = useState(false)
+  const [showQuiz, setShowQuiz] = useState(false)
+  const [savedGameState, setSavedGameState] = useState<{level: number, kits: {[key:string]:number}, score: number} | null>(null)
+  const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame } = useGameStore()
+  
+  useEffect(() => {
+    if (!gameStarted || !canvasRef.current) return
+    
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')!
+    
+    // Disable image smoothing for crisp pixel art
+    ctx.imageSmoothingEnabled = false
+    
+    // Make fullscreen
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    resizeCanvas()
+    window.addEventListener('resize', resizeCanvas)
+    
+    // Load sprite images (player is now animated stick figure, no sprite needed)
+    const images = {
+      virus: new Image(),
+      firewall: new Image(),
+      malware: new Image(),
+      dataBreach: new Image(),
+      spamWave: new Image(),
+      dataPacket: new Image()
+    }
+    
+    images.virus.src = '/assets/sprites/virus.png'
+    images.firewall.src = '/assets/sprites/firewall.png'
+    images.malware.src = '/assets/sprites/malware.png'
+    images.dataBreach.src = '/assets/sprites/data-breach.png'
+    images.spamWave.src = '/assets/sprites/spam-wave.png'
+    images.dataPacket.src = '/assets/sprites/data-packet.png'
+    
+    // Map threat types to sprites
+    const threatToSprite: { [key: string]: HTMLImageElement } = {
+      'weak-password': images.firewall,
+      'password-reuse': images.firewall,
+      'phishing-email': images.spamWave,
+      'spear-phishing': images.spamWave,
+      'zero-day': images.malware,
+      'unpatched-vuln': images.malware,
+      'doxing-attack': images.dataBreach,
+      'data-harvester': images.dataBreach,
+      'evil-twin': images.virus
+    }
+    
+    // Game state
+    let animationId: number
+    let gameTime = 0 // Track game time for spawn timestamps
+    let playerX = 100 // Start on left
+    let playerY = canvas.height / 2
+    let playerSize = 45 // Bigger player for better visibility
+    let playerSpeed = 5
+    
+    // Level state
+    let currentLevel = 1
+    let obstacleSpeed = 3
+    let powerupsNeeded = 0
+    let powerupsCollected = 0
+    let isAdvancingLevel = false // Prevent multiple level advances
+    let spawnFrequency = 800 // ms between obstacle spawns
+    
+    // Animation state for running character
+    let animationTime = 0
+    let playerTilt = 0 // Character tilt angle (-15 to 15 degrees)
+    let previousPlayerX = playerX // Track previous position for movement detection
+    let previousPlayerY = playerY
+    
+    // Celebration state
+    let celebrationTimer = 0
+    const CELEBRATION_DURATION = 300 // ms
+    
+    let obstacles: GameObject[] = []
+    let powerups: GameObject[] = []
+    let keys: { [key: string]: boolean } = {}
+    let lastSpawn = 0
+    
+    // Object pooling: pre-create 50 obstacle objects to reuse
+    const obstaclePool: GameObject[] = Array(50).fill(null).map(() => ({
+      x: 0,
+      y: -1000,
+      width: 50,
+      height: 50,
+      vx: 0,
+      vy: 0,
+      type: '',
+      color: '#ffffff',
+      threatId: '',
+      sentBy: { id: '', name: '', level: 0, speciality: '', category: 'password' },
+      category: '',
+      spawnTime: 0,
+      active: false
+    }))
+    
+    function getObstacleFromPool(): GameObject | null {
+      return obstaclePool.find(obj => !obj.active) || null
+    }
+    
+    function returnObstacleToPool(obstacle: GameObject) {
+      obstacle.active = false
+      obstacle.y = -1000 // Move off screen
+    }
+    
+    // Kit inventory system - ALL 8 REAL protection kits!
+    // Restore from saved state if continuing from quiz pass
+    let kitInventory = savedGameState ? {
+      ...savedGameState.kits
+    } : {
+      'password-manager': bonusKitType === 'password-manager' ? 1 : 0,
+      'link-analyzer': bonusKitType === 'link-analyzer' ? 1 : 0,
+      'patch-manager': bonusKitType === 'patch-manager' ? 1 : 0,
+      'privacy-optimizer': bonusKitType === 'privacy-optimizer' ? 1 : 0,
+      'vpn-shield': bonusKitType === 'vpn-shield' ? 1 : 0,
+      'mfa-authenticator': bonusKitType === 'mfa-authenticator' ? 1 : 0,
+      'backup-system': bonusKitType === 'backup-system' ? 1 : 0,
+      'social-engineering-defense': bonusKitType === 'social-engineering-defense' ? 1 : 0
+    }
+    const MAX_KIT_CAPACITY = 3
+    
+    // Show bonus notification and clear bonus after applying it
+    if (bonusKitType) {
+      setShowBonusNotification(true)
+      setTimeout(() => setShowBonusNotification(false), 5000) // Show for 5 seconds
+      setTimeout(() => setBonusKitType(null), 100) // Clear after a brief delay
+    }
+    
+    // Tutorial overlay state
+    let showingTutorial = false
+    let tutorialKit = ''
+    let tutorialTimer = 0
+    const TUTORIAL_DURATION = 7000 // 7 seconds - longer for reading
+    
+    // Healing state - player frozen during tutorial
+    let isHealing = false
+    
+    // Backup restoration state (extra life mechanic)
+    let isRestoring = false
+    let restorationTimer = 0
+    const RESTORATION_DURATION = 3000 // 3 seconds
+    
+    // Total kits collected for rank progression
+    let totalKitsCollected = 0
+    
+    // Level-up overlay state
+    let showingLevelUp = false
+    let levelUpTimer = 0
+    const LEVEL_UP_DURATION = 2000 // 2 seconds
+    
+    // Background animation
+    let bgOffset = 0
+    let particles: Array<{ x: number; y: number; size: number; speed: number }> = []
+    
+    // Matrix rain for high levels
+    let matrixColumns: Array<{ x: number; y: number; speed: number; chars: string[] }> = []
+    
+    // Sector transition state
+    let showingSectorChange = false
+    let sectorChangeTimer = 0
+    let sectorChangeName = ''
+    const SECTOR_CHANGE_DURATION = 2000 // 2 seconds
+    
+    // Create background particles
+    for (let i = 0; i < 100; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2 + 1,
+        speed: Math.random() * 1 + 0.5
+      })
+    }
+    
+    // Create matrix columns (for level 10+)
+    for (let i = 0; i < 50; i++) {
+      matrixColumns.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        speed: Math.random() * 3 + 1,
+        chars: '01アイウエオカキクケコサシスセソタチツテト'.split('')
+      })
+    }
+    
+    // Input handling
+    const handleKeyDown = (e: KeyboardEvent) => {
+      keys[e.key] = true
+    }
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keys[e.key] = false
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    
+    // ===== MOBILE TOUCH CONTROLS =====
+    let touchStartX = 0
+    let touchStartY = 0
+    let isTouching = false
+    
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault()
+      const touch = e.touches[0]
+      touchStartX = touch.clientX
+      touchStartY = touch.clientY
+      isTouching = true
+    }
+    
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isTouching) return
+      e.preventDefault()
+      
+      const touch = e.touches[0]
+      const deltaX = touch.clientX - touchStartX
+      const deltaY = touch.clientY - touchStartY
+      
+      // Update player position based on touch movement (drag to move)
+      playerX += deltaX * 0.8 // Smooth, responsive movement
+      playerY += deltaY * 0.8
+      
+      // Update touch start position for continuous movement
+      touchStartX = touch.clientX
+      touchStartY = touch.clientY
+    }
+    
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault()
+      isTouching = false
+    }
+    
+    // Add touch listeners to canvas
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false })
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false })
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false })
+    canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false })
+    
+    // ===== BOSS BATTLE FUNCTIONS =====
+    
+    // Kit spawning function - ALL 8 TYPES
+    function spawnKit() {
+      const kitTypes = [
+        'password-manager', 
+        'link-analyzer', 
+        'patch-manager', 
+        'privacy-optimizer', 
+        'vpn-shield',
+        'mfa-authenticator',
+        'backup-system',
+        'social-engineering-defense'
+      ] as const
+      const kitType = kitTypes[Math.floor(Math.random() * kitTypes.length)]
+      
+      // Get kit data for accurate colors
+      const kitData = getProtectionKitById(kitType)
+      
+      // Spawn kit at random position
+      const kit: GameObject = {
+        x: Math.random() * (canvas.width - 200) + 100,
+        y: Math.random() * (canvas.height - 200) + 100,
+        width: 35,
+        height: 35,
+        vx: 0,
+        vy: 0,
+        type: `kit-${kitType}`,
+        color: kitData?.color || '#00ffff',
+        threatId: kitType,
+        sentBy: { id: '', name: '', level: 0, speciality: '', category: 'password' },
+        category: kitData?.protectsAgainst || ''
+      }
+      
+      powerups.push(kit)
+    }
+    
+    // Map threats to their required protection kit - ALL 8 KITS
+    function getRequiredKit(threatId: string): keyof typeof kitInventory {
+      const kitMap: { [key: string]: keyof typeof kitInventory } = {
+        'weak-password': 'password-manager',
+        'password-reuse': 'password-manager',
+        'phishing-email': 'link-analyzer',
+        'spear-phishing': 'link-analyzer',
+        'zero-day': 'patch-manager',
+        'unpatched-vuln': 'patch-manager',
+        'doxing-attack': 'privacy-optimizer',
+        'data-harvester': 'privacy-optimizer',
+        'evil-twin': 'vpn-shield',
+        'credential-stuffing': 'mfa-authenticator',
+        'session-hijacking': 'mfa-authenticator',
+        'ransomware': 'backup-system',
+        'hardware-failure': 'backup-system',
+        'pretexting': 'social-engineering-defense',
+        'baiting-attack': 'social-engineering-defense'
+      }
+      
+      return kitMap[threatId] || 'password-manager'
+    }
+    
+    // Show tutorial overlay when kit is used (healing process)
+    function showTutorial(kitType: string) {
+      showingTutorial = true
+      tutorialKit = kitType
+      tutorialTimer = TUTORIAL_DURATION
+      isHealing = true // Freeze player during healing
+    }
+    
+    // Calculate kits needed for next level (based on 8 kit types)
+    // Level 1→2: 8 kits (1 of each type)
+    // Level 2→3: 16 kits total (2 of each type)
+    // Level 3→4: 24 kits total (3 of each type)
+    function calculateKitsNeededForNextLevel(level: number): number {
+      return level * 8
+    }
+    
+    // Draw tutorial overlay (healing process - freezes player)
+    function drawTutorialOverlay() {
+      if (!showingTutorial || tutorialTimer <= 0) {
+        showingTutorial = false
+        isHealing = false // End healing - player can move again
+        return
+      }
+      
+      let title = ''
+      let subtitle = ''
+      let blocks = ''
+      let tool = ''
+      let tip = ''
+      
+      if (tutorialKit === 'password-manager') {
+        title = '🔐 HEALING IN PROGRESS...'
+        subtitle = 'PASSWORD MANAGER DEPLOYED'
+        blocks = 'Weak passwords, credential stuffing, brute force attacks'
+        tool = 'Real tools: Bitwarden, 1Password, Dashlane, KeePass'
+        tip = 'Use unique passwords (16+ characters) for every account'
+      } else if (tutorialKit === 'link-analyzer') {
+        title = '🔗 HEALING IN PROGRESS...'
+        subtitle = 'LINK ANALYZER ACTIVATED'
+        blocks = 'Phishing emails, spear phishing, malicious URLs, typosquatting'
+        tool = 'Real tools: VirusTotal, URLScan.io, Malwarebytes Browser Guard'
+        tip = 'Always hover over links to preview URLs before clicking'
+      } else if (tutorialKit === 'patch-manager') {
+        title = '🛡️ HEALING IN PROGRESS...'
+        subtitle = 'PATCH MANAGER DEPLOYED'
+        blocks = 'Zero-day exploits, unpatched vulnerabilities, outdated software'
+        tool = 'Real tools: Windows Update, WSUS, SCCM, unattended-upgrades'
+        tip = 'Enable automatic updates for all software and OS'
+      } else if (tutorialKit === 'privacy-optimizer') {
+        title = '🕵️ HEALING IN PROGRESS...'
+        subtitle = 'PRIVACY OPTIMIZER ACTIVATED'
+        blocks = 'Doxing attacks, data harvesting, personal info leakage'
+        tool = 'Real tools: ExifTool, Jumbo Privacy, DeleteMe'
+        tip = 'Remove photo metadata and lock down social media privacy settings'
+      } else if (tutorialKit === 'vpn-shield') {
+        title = '🔒 HEALING IN PROGRESS...'
+        subtitle = 'VPN SHIELD DEPLOYED'
+        blocks = 'Evil twin WiFi, man-in-the-middle, public network snooping'
+        tool = 'Real tools: Mullvad VPN, ProtonVPN, Cloudflare WARP'
+        tip = 'Always use VPN on public WiFi networks'
+      } else if (tutorialKit === 'mfa-authenticator') {
+        title = '🔑 HEALING IN PROGRESS...'
+        subtitle = 'MFA AUTHENTICATOR ACTIVATED'
+        blocks = 'Credential stuffing, session hijacking, automated takeovers'
+        tool = 'Real tools: Authy, Google Authenticator, Microsoft Authenticator'
+        tip = 'Enable MFA on all important accounts - blocks 99% of attacks'
+      } else if (tutorialKit === 'backup-system') {
+        title = '💾 HEALING IN PROGRESS...'
+        subtitle = 'BACKUP SYSTEM DEPLOYED'
+        blocks = 'Ransomware, hardware failure, accidental deletion'
+        tool = 'Real tools: Backblaze, iDrive, Time Machine, File History'
+        tip = 'Follow 3-2-1 rule: 3 copies, 2 media types, 1 offsite'
+      } else if (tutorialKit === 'social-engineering-defense') {
+        title = '🎭 HEALING IN PROGRESS...'
+        subtitle = 'SOCIAL ENGINEERING DEFENSE ACTIVE'
+        blocks = 'Pretexting, baiting, impersonation, manipulation'
+        tool = 'Real training: KnowBe4, SANS Security Awareness'
+        tip = 'Verify unexpected requests through a different channel'
+      }
+      
+      // Full screen semi-transparent overlay
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Center panel - larger for reading
+      const panelWidth = 800
+      const panelHeight = 350
+      const panelX = canvas.width / 2 - panelWidth / 2
+      const panelY = canvas.height / 2 - panelHeight / 2
+      
+      ctx.fillStyle = 'rgba(0, 20, 40, 0.95)'
+      ctx.fillRect(panelX, panelY, panelWidth, panelHeight)
+      
+      // Pulsing border for healing effect
+      const pulse = Math.sin(Date.now() / 300) * 0.5 + 0.5
+      ctx.strokeStyle = `rgba(0, 255, 255, ${0.5 + pulse * 0.5})`
+      ctx.lineWidth = 4
+      ctx.shadowBlur = 20
+      ctx.shadowColor = '#00ffff'
+      ctx.strokeRect(panelX, panelY, panelWidth, panelHeight)
+      ctx.shadowBlur = 0
+      
+      // Warning message
+      ctx.font = 'bold 20px monospace'
+      ctx.fillStyle = '#ff6600'
+      ctx.textAlign = 'center'
+      ctx.fillText('⚠️ PLAYER FROZEN - READING REQUIRED ⚠️', canvas.width / 2, panelY + 40)
+      
+      // Title
+      ctx.font = 'bold 32px monospace'
+      ctx.fillStyle = '#00ff00'
+      ctx.fillText(title, canvas.width / 2, panelY + 85)
+      
+      // Subtitle
+      ctx.font = 'bold 22px monospace'
+      ctx.fillStyle = '#00ffff'
+      ctx.fillText(subtitle, canvas.width / 2, panelY + 120)
+      
+      // Content - larger font for readability
+      ctx.font = '18px monospace'
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(`What it blocks: ${blocks}`, canvas.width / 2, panelY + 165)
+      
+      ctx.font = '18px monospace'
+      ctx.fillStyle = '#aaffaa'
+      ctx.fillText(tool, canvas.width / 2, panelY + 200)
+      
+      ctx.font = 'bold 20px monospace'
+      ctx.fillStyle = '#ffff00'
+      ctx.fillText(`💡 ${tip}`, canvas.width / 2, panelY + 245)
+      
+      // Progress/timer bar with countdown
+      const timePercent = tutorialTimer / TUTORIAL_DURATION
+      const barWidth = 700
+      const barHeight = 20
+      const barX = canvas.width / 2 - barWidth / 2
+      const barY = panelY + 285
+      
+      ctx.fillStyle = '#222222'
+      ctx.fillRect(barX, barY, barWidth, barHeight)
+      ctx.fillStyle = `rgba(0, 255, 255, ${0.7 + pulse * 0.3})`
+      ctx.fillRect(barX, barY, barWidth * timePercent, barHeight)
+      ctx.strokeStyle = '#00ffff'
+      ctx.lineWidth = 2
+      ctx.strokeRect(barX, barY, barWidth, barHeight)
+      
+      // Countdown text
+      const secondsLeft = Math.ceil(tutorialTimer / 1000)
+      ctx.font = 'bold 16px monospace'
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(`Reading time: ${secondsLeft}s`, canvas.width / 2, barY + 40)
+      
+      ctx.textAlign = 'left'
+      
+      tutorialTimer -= 16 // Decrease by frame time
+    }
+    
+    // Draw level-up overlay
+    function drawLevelUpOverlay() {
+      if (!showingLevelUp || levelUpTimer <= 0) {
+        showingLevelUp = false
+        return
+      }
+      
+      // Pulsing effect
+      const pulse = Math.sin(Date.now() / 100) * 0.2 + 0.8
+      
+      // Full screen flash effect
+      ctx.fillStyle = `rgba(255, 215, 0, ${0.3 * (levelUpTimer / LEVEL_UP_DURATION)})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Center overlay
+      const overlayWidth = 500
+      const overlayHeight = 200
+      const overlayX = canvas.width / 2 - overlayWidth / 2
+      const overlayY = canvas.height / 2 - overlayHeight / 2
+      
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
+      ctx.fillRect(overlayX, overlayY, overlayWidth, overlayHeight)
+      
+      // Glowing border
+      ctx.strokeStyle = '#ffd700'
+      ctx.lineWidth = 4
+      ctx.shadowBlur = 20
+      ctx.shadowColor = '#ffd700'
+      ctx.strokeRect(overlayX, overlayY, overlayWidth, overlayHeight)
+      ctx.shadowBlur = 0
+      
+      // Title with pulse effect
+      ctx.font = `bold ${Math.floor(48 * pulse)}px monospace`
+      ctx.fillStyle = '#ffd700'
+      ctx.textAlign = 'center'
+      ctx.fillText('LEVEL UP!', canvas.width / 2, canvas.height / 2 - 40)
+      
+      // Level number
+      ctx.font = 'bold 36px monospace'
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(`Level ${currentLevel}`, canvas.width / 2, canvas.height / 2 + 10)
+      
+      // Rank
+      const rank = getRank()
+      ctx.font = 'bold 24px monospace'
+      ctx.fillStyle = '#00ffff'
+      ctx.fillText(`Rank: ${rank}`, canvas.width / 2, canvas.height / 2 + 50)
+      
+      // New direction indicator
+      let directionInfo = ''
+      if (currentLevel === 2) {
+        directionInfo = '⬇️ NEW: Obstacles from BOTTOM!'
+      } else if (currentLevel === 3) {
+        directionInfo = '➡️ NEW: Obstacles from RIGHT!'
+      } else if (currentLevel === 4) {
+        directionInfo = '⬅️ NEW: Obstacles from LEFT!'
+      } else if (currentLevel > 4) {
+        directionInfo = '🔥 All directions active!'
+      }
+      
+      ctx.font = '18px monospace'
+      ctx.fillStyle = '#ff6600'
+      ctx.fillText(directionInfo || 'Difficulty Increased!', canvas.width / 2, canvas.height / 2 + 85)
+      
+      ctx.textAlign = 'left'
+      
+      // Decrement timer
+      levelUpTimer -= 16
+    }
+    
+    // Draw sector/zone change overlay (ENTERING NEW ZONE!)
+    function drawSectorChangeOverlay() {
+      if (!showingSectorChange || sectorChangeTimer <= 0) {
+        showingSectorChange = false
+        return
+      }
+      
+      // Get current zone
+      const zone = getCurrentZone(currentLevel)
+      const isZoneChange = isZoneTransition(currentLevel)
+      
+      // Dramatic flash effect for zone transitions
+      const flashOpacity = sectorChangeTimer / SECTOR_CHANGE_DURATION
+      const flashIntensity = isZoneChange ? 0.4 : 0.2
+      ctx.fillStyle = `rgba(255, 255, 255, ${flashIntensity * flashOpacity})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Pulsing effect
+      const pulse = Math.sin(Date.now() / 80) * 0.3 + 0.7
+      
+      // Giant zone name with zone color
+      ctx.font = `bold ${Math.floor(isZoneChange ? 84 : 72) * pulse}px monospace`
+      ctx.fillStyle = zone.colorScheme.accent
+      ctx.textAlign = 'center'
+      ctx.shadowBlur = isZoneChange ? 50 : 30
+      ctx.shadowColor = zone.colorScheme.accent
+      ctx.fillText(sectorChangeName, canvas.width / 2, canvas.height / 2)
+      ctx.shadowBlur = 0
+      
+      // Warning text for zone transitions
+      if (isZoneChange) {
+        ctx.font = 'bold 32px monospace'
+        ctx.fillStyle = '#ffaa00'
+        ctx.fillText('⚠️ ZONE TRANSITION ⚠️', canvas.width / 2, canvas.height / 2 - 100)
+        
+        // Zone description
+        ctx.font = 'bold 20px monospace'
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText(zone.description, canvas.width / 2, canvas.height / 2 + 80)
+        
+        // New threats warning
+        ctx.font = '16px monospace'
+        ctx.fillStyle = '#ff6666'
+        const primaryThreats = zone.primaryThreats.map(t => t.toUpperCase()).join(', ')
+        ctx.fillText(`Primary Threats: ${primaryThreats}`, canvas.width / 2, canvas.height / 2 + 110)
+      } else {
+        // Regular level-up message
+        ctx.font = 'bold 24px monospace'
+        ctx.fillStyle = '#ffaa00'
+        ctx.fillText('⚠️ ENVIRONMENT CHANGE ⚠️', canvas.width / 2, canvas.height / 2 - 80)
+      }
+      
+      ctx.textAlign = 'left'
+    }
+    
+    // Draw backup restoration overlay (EXTRA LIFE MECHANIC!)
+    function drawRestorationOverlay() {
+      if (!isRestoring || restorationTimer <= 0) {
+        isRestoring = false
+        return
+      }
+      
+      // Pulse effect
+      const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7
+      
+      // Blue flash (restoration happening)
+      const flashOpacity = restorationTimer / RESTORATION_DURATION
+      ctx.fillStyle = `rgba(0, 200, 255, ${0.4 * flashOpacity})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Center message
+      ctx.font = `bold ${Math.floor(64 * pulse)}px monospace`
+      ctx.fillStyle = '#00ccff'
+      ctx.textAlign = 'center'
+      ctx.shadowBlur = 40
+      ctx.shadowColor = '#00ccff'
+      ctx.fillText('💾 RESTORING FROM BACKUP!', canvas.width / 2, canvas.height / 2 - 40)
+      
+      // Sub text
+      ctx.font = 'bold 32px monospace'
+      ctx.fillStyle = '#00ff00'
+      ctx.fillText('DATA RECOVERED', canvas.width / 2, canvas.height / 2 + 20)
+      
+      // Extra life indicator
+      ctx.font = 'bold 24px monospace'
+      ctx.fillStyle = '#ffff00'
+      ctx.fillText('+100 BONUS POINTS', canvas.width / 2, canvas.height / 2 + 60)
+      
+      ctx.shadowBlur = 0
+      ctx.textAlign = 'left'
+      
+      // Decrement timer
+      restorationTimer -= 16
+    }
+    
+    // Get rank based on total kits collected
+    function getRank() {
+      if (totalKitsCollected < 10) return 'Newbie'
+      if (totalKitsCollected < 30) return 'Analyst'
+      if (totalKitsCollected < 60) return 'Expert'
+      return 'Commando'
+    }
+    
+    function advanceLevel() {
+      // Prevent multiple simultaneous level advances
+      if (isAdvancingLevel) return
+      isAdvancingLevel = true
+      
+      currentLevel++
+      setLevel(currentLevel)
+      
+      // Spawn at random safe position (not too close to edges)
+      playerX = 200 + Math.random() * (canvas.width - 400)
+      playerY = 200 + Math.random() * (canvas.height - 400)
+      
+      // Zone-based difficulty progression (bigger jumps at zone transitions!)
+      if (isZoneTransition(currentLevel)) {
+        // Zone transition = major difficulty spike
+        obstacleSpeed += 1.0
+        spawnFrequency = Math.max(200, spawnFrequency - 100)
+      } else {
+        // Within zone = gradual increase
+        obstacleSpeed += 0.3
+        spawnFrequency = Math.max(300, spawnFrequency - 30)
+      }
+      
+      // Show level-up overlay
+      showingLevelUp = true
+      levelUpTimer = LEVEL_UP_DURATION
+      
+      // Trigger ZONE TRANSITION at levels 4, 7, 10 (zone boundaries!)
+      if (isZoneTransition(currentLevel)) {
+        const zone = getCurrentZone(currentLevel)
+        sectorChangeName = zone.name
+        showingSectorChange = true
+        sectorChangeTimer = SECTOR_CHANGE_DURATION * 1.5 // Longer for zone transitions
+      }
+      
+      // Reset flag after a short delay
+      setTimeout(() => {
+        isAdvancingLevel = false
+      }, 1000)
+    }
+    
+    function spawnPowerups() {
+      for (let i = 0; i < powerupsNeeded; i++) {
+        powerups.push({
+          x: Math.random() * (canvas.width - 200) + 100,
+          y: Math.random() * (canvas.height - 200) + 100,
+          width: 25,
+          height: 25,
+          vx: 0,
+          vy: 0,
+          type: 'powerup',
+          color: '#00ff00',
+          threatId: '',
+          sentBy: { id: '', name: '', level: 0, speciality: '', category: 'password' },
+          category: ''
+        })
+      }
+    }
+    
+    // Educational overlay removed - using tutorial overlay instead
+    
+    // Get weighted random threat based on current zone
+    function getZoneWeightedThreat(): ThreatType {
+      // Import all threats
+      const { threatTypes } = require('@/lib/game/threatData')
+      
+      // Create weighted array based on zone relevance
+      const weightedThreats: ThreatType[] = []
+      
+      threatTypes.forEach((threat: ThreatType) => {
+        const weight = getThreatSpawnWeight(threat.category, currentLevel)
+        // Add threat multiple times based on weight
+        for (let i = 0; i < Math.floor(weight * 2); i++) {
+          weightedThreats.push(threat)
+        }
+      })
+      
+      // Return random threat from weighted array
+      return weightedThreats[Math.floor(Math.random() * weightedThreats.length)]
+    }
+    
+    // Spawn obstacles from different directions based on level
+    function spawnObstacle() {
+      // Try to get object from pool
+      const obstacle = getObstacleFromPool()
+      if (!obstacle) return // Pool exhausted, skip this spawn
+      
+      // Calculate speed based on level
+      const speedMultiplier = 1 + (currentLevel * 0.1) // Gradual increase
+      
+      // Select zone-weighted threat type and matching ghost player
+      const threat = getZoneWeightedThreat()
+      const ghostPlayer = getRandomGhostPlayer(threat.category)
+      
+      // Determine spawn direction based on level
+      let spawnDirection = 'top' // Default: Level 1 - top only
+      const availableDirections = ['top']
+      
+      if (currentLevel >= 2) {
+        availableDirections.push('bottom') // Level 2: top + bottom
+      }
+      if (currentLevel >= 3) {
+        availableDirections.push('right') // Level 3: top + bottom + right
+      }
+      if (currentLevel >= 4) {
+        availableDirections.push('left') // Level 4+: all sides
+      }
+      
+      // Randomly select from available directions
+      spawnDirection = availableDirections[Math.floor(Math.random() * availableDirections.length)]
+      
+      // Reuse the pooled object instead of creating new one
+      obstacle.active = true
+      obstacle.width = 40 + Math.random() * 20
+      obstacle.height = 40 + Math.random() * 20
+      
+      // Set position and velocity based on spawn direction
+      switch (spawnDirection) {
+        case 'top':
+          obstacle.x = Math.random() * canvas.width
+          obstacle.y = -50
+          obstacle.vx = (Math.random() - 0.5) * 2 // Slight horizontal drift
+          obstacle.vy = obstacleSpeed * speedMultiplier
+          break
+        case 'bottom':
+          obstacle.x = Math.random() * canvas.width
+          obstacle.y = canvas.height + 50
+          obstacle.vx = (Math.random() - 0.5) * 2
+          obstacle.vy = -obstacleSpeed * speedMultiplier // Move upward
+          break
+        case 'right':
+          obstacle.x = canvas.width + 50
+          obstacle.y = Math.random() * canvas.height
+          obstacle.vx = -obstacleSpeed * speedMultiplier // Move leftward
+          obstacle.vy = (Math.random() - 0.5) * 2
+          break
+        case 'left':
+          obstacle.x = -50
+          obstacle.y = Math.random() * canvas.height
+          obstacle.vx = obstacleSpeed * speedMultiplier // Move rightward
+          obstacle.vy = (Math.random() - 0.5) * 2
+          break
+      }
+      
+      obstacle.type = threat.id
+      obstacle.color = threat.color
+      obstacle.threatId = threat.id
+      obstacle.sentBy = ghostPlayer
+      obstacle.category = threat.category
+      obstacle.spawnTime = gameTime
+      
+      obstacles.push(obstacle)
+    }
+    
+    // Collision detection
+    function checkCollision(obj1: { x: number; y: number; width: number; height: number }, 
+                           obj2: { x: number; y: number; width: number; height: number }): boolean {
+      return (
+        obj1.x < obj2.x + obj2.width &&
+        obj1.x + obj1.width > obj2.x &&
+        obj1.y < obj2.y + obj2.height &&
+        obj1.y + obj1.height > obj2.y
+      )
+    }
+    
+    // Get color scheme based on zone/level
+    function getBackgroundColorScheme(level: number) {
+      const zone = getCurrentZone(level)
+      
+      // Special Matrix Mode for Cloud Zone level 15+
+      if (level >= 15) {
+        const cycle = (Date.now() / 3000) % 4
+        const baseScheme = zone.colorScheme
+        return {
+          gradient1: baseScheme.primary,
+          gradient2: baseScheme.secondary,
+          gridColor: baseScheme.gridColor,
+          particleColor: baseScheme.particleColor,
+          name: '☁️ MATRIX MODE'
+        }
+      }
+      
+      return {
+        gradient1: zone.colorScheme.primary,
+        gradient2: zone.colorScheme.secondary,
+        gridColor: zone.colorScheme.gridColor,
+        particleColor: zone.colorScheme.particleColor,
+        name: zone.colorScheme.name
+      }
+    }
+    
+    // Draw animated cyber background with color progression
+    function drawBackground() {
+      const colorScheme = getBackgroundColorScheme(currentLevel)
+      
+      // Dark gradient background
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0)
+      gradient.addColorStop(0, colorScheme.gradient1)
+      gradient.addColorStop(0.5, colorScheme.gradient2)
+      gradient.addColorStop(1, colorScheme.gradient1)
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Animated grid lines
+      ctx.strokeStyle = colorScheme.gridColor
+      ctx.lineWidth = 1
+      
+      // Horizontal lines
+      for (let i = 0; i < 30; i++) {
+        const y = i * 50
+        ctx.beginPath()
+        ctx.moveTo(0, y)
+        ctx.lineTo(canvas.width, y)
+        ctx.stroke()
+      }
+      
+      // Vertical lines (animated)
+      for (let i = 0; i < 50; i++) {
+        const x = ((i * 50 + bgOffset) % (canvas.width + 100)) - 100
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, canvas.height)
+        ctx.stroke()
+      }
+      
+      // Moving particles
+      particles.forEach(particle => {
+        particle.y += particle.speed
+        if (particle.y > canvas.height) {
+          particle.y = 0
+          particle.x = Math.random() * canvas.width
+        }
+        
+        ctx.fillStyle = colorScheme.particleColor
+        ctx.beginPath()
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
+        ctx.fill()
+      })
+      
+      // MATRIX RAIN for level 15+ (advanced cloud zone)
+      if (currentLevel >= 15) {
+        matrixColumns.forEach(col => {
+          col.y += col.speed
+          if (col.y > canvas.height) {
+            col.y = -20
+            col.x = Math.random() * canvas.width
+          }
+          
+          const char = col.chars[Math.floor(Math.random() * col.chars.length)]
+          ctx.fillStyle = '#00ff0088' // Green matrix text
+          ctx.font = '14px monospace'
+          ctx.fillText(char, col.x, col.y)
+        })
+      }
+      
+      // ZONE-SPECIFIC ENVIRONMENTAL ELEMENTS (ambient icons)
+      const zone = getCurrentZone(currentLevel)
+      const iconOpacity = Math.sin(Date.now() / 2000) * 0.1 + 0.15
+      ctx.globalAlpha = iconOpacity
+      ctx.font = '24px monospace'
+      
+      // Spawn zone icons in grid pattern
+      for (let i = 0; i < 8; i++) {
+        const element = zone.environmentalElements[Math.floor(Math.random() * zone.environmentalElements.length)]
+        if (Math.random() < element.frequency) {
+          const x = (i % 4) * (canvas.width / 4) + Math.random() * 100
+          const y = Math.floor(i / 4) * (canvas.height / 2) + Math.random() * 100
+          ctx.fillStyle = colorScheme.particleColor
+          ctx.fillText(element.content, x, y)
+        }
+      }
+      
+      ctx.globalAlpha = 1.0
+      
+      // Update offset for animation
+      bgOffset += obstacleSpeed
+      if (bgOffset > 50) bgOffset = 0
+    }
+    
+    // Game loop
+    function gameLoop(timestamp: number) {
+      if (!ctx) return
+      
+      // Draw animated background
+      drawBackground()
+      
+      // Handle player movement (WASD) - frozen during healing OR restoration
+      if (!isHealing && !isRestoring) {
+        if (keys['w'] || keys['W'] || keys['ArrowUp']) {
+          playerY -= playerSpeed
+        }
+        if (keys['s'] || keys['S'] || keys['ArrowDown']) {
+          playerY += playerSpeed
+        }
+        if (keys['a'] || keys['A'] || keys['ArrowLeft']) {
+          playerX -= playerSpeed
+        }
+        if (keys['d'] || keys['D'] || keys['ArrowRight']) {
+          playerX += playerSpeed
+        }
+      }
+      
+      // Keep player in bounds
+      playerX = Math.max(playerSize, Math.min(canvas.width - playerSize, playerX))
+      playerY = Math.max(playerSize, Math.min(canvas.height - playerSize, playerY))
+      
+      // ===== ANIMATION ENHANCEMENTS =====
+      
+      // 1. Calculate if player is moving
+      const deltaX = playerX - previousPlayerX
+      const deltaY = playerY - previousPlayerY
+      const isMoving = Math.abs(deltaX) > 0.1 || Math.abs(deltaY) > 0.1
+      
+      // 2. Update tilt based on horizontal movement direction
+      const targetTilt = deltaX > 0 ? 10 : deltaX < 0 ? -10 : 0 // Lean into movement
+      playerTilt += (targetTilt - playerTilt) * 0.2 // Smooth interpolation
+      
+      // 3. Speed up animation when actually moving
+      const animationSpeed = isMoving ? 0.25 : 0.1 // Faster limb swing when moving
+      
+      // 4. Update celebration timer
+      if (celebrationTimer > 0) {
+        celebrationTimer -= 16 // Decrease by frame time
+      }
+      
+      // Update previous position for next frame
+      previousPlayerX = playerX
+      previousPlayerY = playerY
+      
+      // Draw overlays
+      drawTutorialOverlay()
+      drawLevelUpOverlay()
+      drawSectorChangeOverlay()
+      drawRestorationOverlay()
+      
+      // Update sector change timer
+      if (showingSectorChange && sectorChangeTimer > 0) {
+        sectorChangeTimer -= 16
+        if (sectorChangeTimer <= 0) {
+          showingSectorChange = false
+        }
+      }
+      
+      // Update restoration timer
+      if (isRestoring && restorationTimer > 0) {
+        restorationTimer -= 16
+        if (restorationTimer <= 0) {
+          isRestoring = false
+        }
+      }
+      
+      // Draw kit inventory and progress (top-right corner) - BIGGER for 8 kits + zone tip!
+      const kitX = canvas.width - 280
+      const kitY = 120
+      
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+      ctx.fillRect(kitX, kitY, 260, 380) // Taller to fit 8 kits + zone info
+      ctx.strokeStyle = '#00ffff'
+      ctx.lineWidth = 2
+      ctx.strokeRect(kitX, kitY, 260, 380)
+      
+      // Level and rank header
+      ctx.font = 'bold 16px monospace'
+      ctx.fillStyle = '#ffd700'
+      ctx.textAlign = 'left'
+      const rank = getRank()
+      ctx.fillText(`Level ${currentLevel} | ${rank}`, kitX + 10, kitY + 25)
+      
+      // Kit progress bar
+      const kitsNeeded = calculateKitsNeededForNextLevel(currentLevel)
+      const progressPercent = Math.min(totalKitsCollected / kitsNeeded, 1)
+      ctx.font = '14px monospace'
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(`Progress: ${totalKitsCollected}/${kitsNeeded} kits`, kitX + 10, kitY + 50)
+      
+      // Progress bar
+      const barWidth = 240
+      const barHeight = 12
+      ctx.fillStyle = '#333333'
+      ctx.fillRect(kitX + 10, kitY + 60, barWidth, barHeight)
+      ctx.fillStyle = '#00ff00'
+      ctx.fillRect(kitX + 10, kitY + 60, barWidth * progressPercent, barHeight)
+      ctx.strokeStyle = '#00ffff'
+      ctx.lineWidth = 1
+      ctx.strokeRect(kitX + 10, kitY + 60, barWidth, barHeight)
+      
+      // Kit inventory section - ALL 8 KITS!
+      ctx.font = 'bold 16px monospace'
+      ctx.fillStyle = '#00ffff'
+      ctx.fillText('PROTECTION KITS', kitX + 10, kitY + 95)
+      
+      ctx.font = '11px monospace' // Even smaller font to fit 8 kits
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(`🔐 Password: ${kitInventory['password-manager']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 120)
+      ctx.fillText(`🔗 Link: ${kitInventory['link-analyzer']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 138)
+      ctx.fillText(`🛡️ Patch: ${kitInventory['patch-manager']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 156)
+      ctx.fillText(`🕵️ Privacy: ${kitInventory['privacy-optimizer']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 174)
+      ctx.fillText(`🔒 VPN: ${kitInventory['vpn-shield']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 192)
+      ctx.fillText(`🔑 MFA: ${kitInventory['mfa-authenticator']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 210)
+      ctx.fillText(`💾 Backup: ${kitInventory['backup-system']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 228)
+      ctx.fillText(`🎭 Social: ${kitInventory['social-engineering-defense']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 246)
+      
+      // Zone indicator and contextual tip
+      const currentZone = getCurrentZone(currentLevel)
+      ctx.font = 'bold 14px monospace'
+      ctx.fillStyle = currentZone.colorScheme.accent
+      ctx.fillText(`ZONE: ${currentZone.icon}`, kitX + 10, kitY + 275)
+      
+      // Rotating zone tip (changes every 5 seconds)
+      const tipIndex = Math.floor(Date.now() / 5000) % currentZone.contextualTips.length
+      const zoneTip = currentZone.contextualTips[tipIndex]
+      ctx.font = '10px monospace'
+      ctx.fillStyle = '#ffff00'
+      // Word wrap the tip
+      const maxWidth = 240
+      const words = zoneTip.split(' ')
+      let line = ''
+      let y = kitY + 293
+      words.forEach(word => {
+        const testLine = line + word + ' '
+        const metrics = ctx.measureText(testLine)
+        if (metrics.width > maxWidth && line !== '') {
+          ctx.fillText(line, kitX + 10, y)
+          line = word + ' '
+          y += 12
+        } else {
+          line = testLine
+        }
+      })
+      ctx.fillText(line, kitX + 10, y)
+      
+      // Spawn obstacles continuously (frequency increases with level)
+      if (timestamp - lastSpawn > spawnFrequency) {
+        spawnObstacle()
+        lastSpawn = timestamp
+      }
+      
+      // Spawn kits periodically
+      if (timestamp % 5000 < 50) { // Approximately every 5 seconds
+        spawnKit()
+      }
+      
+      // Update game time
+      gameTime += 16 // Approximately 16ms per frame at 60fps
+      
+      // Update and draw obstacles
+      obstacles = obstacles.filter(obstacle => {
+        obstacle.y += obstacle.vy
+        obstacle.x += obstacle.vx
+        
+        // Bounce off edges for boss attacks (creates zigzag pattern)
+        if (obstacle.type === 'boss-attack') {
+          if (obstacle.x < 50 || obstacle.x > canvas.width - 50) {
+            obstacle.vx = -obstacle.vx // Reverse horizontal direction
+          }
+        }
+        
+        // Culling: only draw if visible on screen
+        const isVisible = obstacle.y > -100 && obstacle.y < canvas.height + 100
+        
+        if (isVisible) {
+          ctx.shadowBlur = 15
+          ctx.shadowColor = obstacle.color
+          
+          if (obstacle.type === 'boss-attack') {
+            // Boss attacks are circles with motion trails
+            // Draw trail effect
+            const trailLength = 3
+            for (let t = 0; t < trailLength; t++) {
+              const alpha = (trailLength - t) / trailLength * 0.4
+              const trailX = obstacle.x - obstacle.vx * t * 2
+              const trailY = obstacle.y - obstacle.vy * t * 2
+              
+              ctx.fillStyle = obstacle.color + Math.floor(alpha * 255).toString(16).padStart(2, '0')
+              ctx.beginPath()
+              ctx.arc(trailX, trailY, (obstacle.width / 2) * (1 - t / trailLength * 0.3), 0, Math.PI * 2)
+              ctx.fill()
+            }
+            
+            // Draw main attack
+            ctx.fillStyle = obstacle.color
+            ctx.beginPath()
+            ctx.arc(obstacle.x, obstacle.y, obstacle.width / 2, 0, Math.PI * 2)
+            ctx.fill()
+            
+            // Add direction indicator (arrow)
+            if (Math.abs(obstacle.vx) > 0.5) {
+              ctx.fillStyle = '#ffffff'
+              ctx.font = 'bold 20px monospace'
+              ctx.textAlign = 'center'
+              ctx.fillText(obstacle.vx > 0 ? '→' : '←', obstacle.x, obstacle.y + 6)
+              ctx.textAlign = 'left'
+            }
+          } else {
+            // Draw sprite if available, otherwise fallback to colored square
+            const sprite = threatToSprite[obstacle.threatId]
+            if (sprite && sprite.complete) {
+              ctx.drawImage(
+                sprite,
+                Math.floor(obstacle.x - obstacle.width / 2),
+                Math.floor(obstacle.y - obstacle.height / 2),
+                obstacle.width,
+                obstacle.height
+              )
+            } else {
+              // Fallback to colored square
+              ctx.fillStyle = obstacle.color
+              ctx.fillRect(
+                obstacle.x - obstacle.width / 2,
+                obstacle.y - obstacle.height / 2,
+                obstacle.width,
+                obstacle.height
+              )
+            }
+          }
+          ctx.shadowBlur = 0
+        }
+        
+        // Show ghost player name for first 2 seconds (2000ms)
+        const timeSinceSpawn = gameTime - (obstacle.spawnTime || 0)
+        if (timeSinceSpawn < 2000 && obstacle.sentBy && obstacle.type !== 'boss-attack') {
+          const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
+          
+          // Color based on level (low=gray, mid=cyan, high=yellow, elite=red)
+          let nameColor = '#ffffff'
+          let fontSize = 12
+          let prefix = ''
+          
+          if (obstacle.sentBy.level >= 100) {
+            nameColor = '#ff0000' // Elite - Red
+            fontSize = 13
+            prefix = '⭐'
+          } else if (obstacle.sentBy.level >= 71) {
+            nameColor = '#ffff00' // High - Yellow
+            fontSize = 12
+            prefix = '◆'
+          } else if (obstacle.sentBy.level >= 31) {
+            nameColor = '#00ffff' // Mid - Cyan
+            fontSize = 12
+          } else {
+            nameColor = '#aaaaaa' // Low - Gray
+            fontSize = 11
+          }
+          
+          ctx.font = `bold ${fontSize}px monospace`
+          ctx.fillStyle = `rgba(${parseInt(nameColor.slice(1, 3), 16)}, ${parseInt(nameColor.slice(3, 5), 16)}, ${parseInt(nameColor.slice(5, 7), 16)}, ${opacity})`
+          ctx.textAlign = 'center'
+          ctx.shadowBlur = 8
+          ctx.shadowColor = `rgba(${parseInt(nameColor.slice(1, 3), 16)}, ${parseInt(nameColor.slice(3, 5), 16)}, ${parseInt(nameColor.slice(5, 7), 16)}, ${opacity * 0.8})`
+          
+          // Draw name with level (and emoji if available)
+          const displayName = obstacle.sentBy.emoji 
+            ? `${obstacle.sentBy.emoji} ${prefix}${obstacle.sentBy.name} [${obstacle.sentBy.level}]`
+            : `${prefix}${obstacle.sentBy.name} [${obstacle.sentBy.level}]`
+          
+          ctx.fillText(
+            displayName,
+            obstacle.x,
+            obstacle.y - obstacle.height / 2 - 10
+          )
+          
+          ctx.shadowBlur = 0
+          ctx.textAlign = 'left'
+        }
+        
+        // Check collision with obstacles
+        if (checkCollision(
+          { x: playerX - playerSize / 2, y: playerY - playerSize / 2, width: playerSize, height: playerSize },
+          { x: obstacle.x - obstacle.width / 2, y: obstacle.y - obstacle.height / 2, width: obstacle.width, height: obstacle.height }
+        )) {
+          // Determine required kit based on threat ID
+          const requiredKit = getRequiredKit(obstacle.threatId)
+          
+          // Check if player has the required kit
+          if (requiredKit && kitInventory[requiredKit] !== undefined && kitInventory[requiredKit] > 0) {
+            // Use the kit - player survives but needs to recollect!
+            kitInventory[requiredKit]--
+            totalKitsCollected = Math.max(0, totalKitsCollected - 1) // Deduct from progress - must recollect to advance
+            showTutorial(requiredKit)
+            addScore(25) // Bonus for surviving with kit
+            returnObstacleToPool(obstacle)
+            return false
+          } else {
+            // No required kit - check for BACKUP KIT (extra life!)
+            if (kitInventory['backup-system'] !== undefined && kitInventory['backup-system'] > 0) {
+              // USE BACKUP KIT - RESTORE FROM BACKUP! 💾
+              kitInventory['backup-system']--
+              totalKitsCollected = Math.max(0, totalKitsCollected - 1)
+              
+              // Trigger restoration animation
+              isRestoring = true
+              restorationTimer = RESTORATION_DURATION
+              
+              // Clear all threats during restoration (fresh start)
+              obstacles.forEach(obs => returnObstacleToPool(obs))
+              obstacles = []
+              
+              // Bonus score for survival via backup
+              addScore(100) // Higher reward for having backup!
+              
+              // Remove the threat
+              returnObstacleToPool(obstacle)
+              return false
+            } else {
+              // No kit AND no backup - game over
+              // Save game state for quiz continuation option
+              setSavedGameState({
+                level: currentLevel,
+                kits: { ...kitInventory },
+                score: score
+              })
+              setLastAttacker(obstacle.sentBy, obstacle.threatId)
+              setGameOver(true)
+              setRunning(false)
+              return false
+            }
+          }
+        }
+        
+        // Remove obstacles that are off screen from any direction and return to pool
+        const isOffScreen = 
+          obstacle.y > canvas.height + 100 || // Below screen
+          obstacle.y < -100 || // Above screen
+          obstacle.x > canvas.width + 100 || // Right of screen
+          obstacle.x < -100 // Left of screen
+        
+        if (isOffScreen) {
+          returnObstacleToPool(obstacle)
+          return false
+        }
+        
+        return true
+      })
+      
+      // Update and draw kits (protection kits)
+      powerups = powerups.filter(kit => {
+        // Draw kit with pulsing glow
+        const pulse = Math.sin(timestamp * 0.005) * 0.3 + 0.7
+        const size = 35 * pulse
+        
+        ctx.shadowBlur = 30 * pulse
+        ctx.shadowColor = kit.color
+        
+        // Kit icon based on type - ALL 8 KITS
+        let icon = '🔐' // password-manager
+        if (kit.type.includes('link-analyzer')) icon = '🔗'
+        else if (kit.type.includes('patch-manager')) icon = '🛡️'
+        else if (kit.type.includes('privacy-optimizer')) icon = '🕵️'
+        else if (kit.type.includes('vpn-shield')) icon = '🔒'
+        else if (kit.type.includes('mfa-authenticator')) icon = '🔑'
+        else if (kit.type.includes('backup-system')) icon = '💾'
+        else if (kit.type.includes('social-engineering-defense')) icon = '🎭'
+        
+        // Draw kit box
+        ctx.fillStyle = kit.color + '88'
+        ctx.fillRect(kit.x - size / 2, kit.y - size / 2, size, size)
+        
+        ctx.strokeStyle = kit.color
+        ctx.lineWidth = 3
+        ctx.strokeRect(kit.x - size / 2, kit.y - size / 2, size, size)
+        
+        // Draw icon
+        ctx.font = 'bold 24px monospace'
+        ctx.fillStyle = '#ffffff'
+        ctx.textAlign = 'center'
+        ctx.fillText(icon, kit.x, kit.y + 8)
+        ctx.textAlign = 'left'
+        
+        ctx.shadowBlur = 0
+        
+        // Check collision
+        if (checkCollision(
+          { x: playerX - playerSize / 2, y: playerY - playerSize / 2, width: playerSize, height: playerSize },
+          { x: kit.x - size / 2, y: kit.y - size / 2, width: size, height: size }
+        )) {
+          // Determine kit type
+          const kitType = kit.type.replace('kit-', '') as keyof typeof kitInventory
+          
+          // Add to inventory if not full
+          if (kitType && kitInventory[kitType] !== undefined && kitInventory[kitType] < MAX_KIT_CAPACITY) {
+            kitInventory[kitType]++
+            totalKitsCollected++
+            addScore(50)
+            
+            // ⭐ TRIGGER CELEBRATION ANIMATION! ⭐
+            celebrationTimer = CELEBRATION_DURATION
+            
+            // Check if player should level up
+            const kitsForNextLevel = calculateKitsNeededForNextLevel(currentLevel)
+            if (totalKitsCollected >= kitsForNextLevel) {
+              advanceLevel()
+            }
+            
+            // Show collection feedback with particle burst!
+            ctx.font = 'bold 20px monospace'
+            ctx.fillStyle = '#00ff00'
+            ctx.textAlign = 'center'
+            ctx.fillText(`+1 ${kitType.toUpperCase()} KIT!`, kit.x, kit.y - 40)
+            
+            // Celebration particles burst
+            for (let i = 0; i < 8; i++) {
+              const angle = (i / 8) * Math.PI * 2
+              const speed = 3 + Math.random() * 2
+              const particleX = kit.x + Math.cos(angle) * 30
+              const particleY = kit.y + Math.sin(angle) * 30
+              
+              ctx.fillStyle = kit.color
+              ctx.beginPath()
+              ctx.arc(particleX, particleY, 4, 0, Math.PI * 2)
+              ctx.fill()
+            }
+            
+            // Celebration ring
+            ctx.strokeStyle = kit.color
+            ctx.lineWidth = 3
+            ctx.beginPath()
+            ctx.arc(kit.x, kit.y, 40, 0, Math.PI * 2)
+            ctx.stroke()
+            
+            ctx.textAlign = 'left'
+          }
+          
+          return false
+        }
+        
+        return true
+      })
+      
+      // No boss mode anymore - continuous gameplay!
+      
+      // Draw player LAST so it's always visible on top of everything
+      // Dynamic glow based on kits collected - ALL 8 KITS
+      const totalKitsInInventory = 
+        (kitInventory['password-manager'] || 0) + 
+        (kitInventory['link-analyzer'] || 0) + 
+        (kitInventory['patch-manager'] || 0) + 
+        (kitInventory['privacy-optimizer'] || 0) + 
+        (kitInventory['vpn-shield'] || 0) +
+        (kitInventory['mfa-authenticator'] || 0) +
+        (kitInventory['backup-system'] || 0) +
+        (kitInventory['social-engineering-defense'] || 0)
+      const glowIntensity = 20 + (totalKitsInInventory * 10) + (totalKitsCollected * 2)
+      const glowSize = 30 + (totalKitsInInventory * 5)
+      
+      // Color changes based on rank
+      let glowColor = '#00ffff' // Newbie - cyan
+      const currentRank = getRank()
+      if (currentRank === 'Analyst') {
+        glowColor = '#00ff00' // Green
+      } else if (currentRank === 'Expert') {
+        glowColor = '#ffaa00' // Orange
+      } else if (currentRank === 'Commando') {
+        glowColor = '#ffd700' // Gold
+      }
+      
+      // Multi-layered glow effect
+      ctx.shadowBlur = glowSize
+      ctx.shadowColor = glowColor
+      
+      // Add pulsing effect for higher ranks
+      if (totalKitsCollected > 10) {
+        const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7
+        ctx.globalAlpha = 0.3
+        ctx.fillStyle = glowColor
+        ctx.beginPath()
+        ctx.arc(playerX, playerY, playerSize * pulse, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.globalAlpha = 1
+      }
+      
+      // Healing visual effect - shield around player
+      if (isHealing) {
+        const healPulse = Math.sin(Date.now() / 150) * 0.4 + 0.6
+        
+        // Rotating shield rings
+        const rotation = (Date.now() / 30) % 360
+        ctx.save()
+        ctx.translate(playerX, playerY)
+        ctx.rotate((rotation * Math.PI) / 180)
+        
+        // Outer ring
+        ctx.strokeStyle = `rgba(0, 255, 255, ${0.6 * healPulse})`
+        ctx.lineWidth = 4
+        ctx.shadowBlur = 15
+        ctx.shadowColor = '#00ffff'
+        ctx.beginPath()
+        ctx.arc(0, 0, playerSize * 1.5, 0, Math.PI * 2)
+        ctx.stroke()
+        
+        // Inner ring (counter-rotating)
+        ctx.rotate(-((rotation * 2 * Math.PI) / 180))
+        ctx.strokeStyle = `rgba(0, 255, 100, ${0.5 * healPulse})`
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(0, 0, playerSize * 1.2, 0, Math.PI * 2)
+        ctx.stroke()
+        
+        ctx.restore()
+        ctx.shadowBlur = 0
+        
+        // Cross symbol above player
+        ctx.font = 'bold 24px monospace'
+        ctx.fillStyle = `rgba(0, 255, 0, ${healPulse})`
+        ctx.textAlign = 'center'
+        ctx.shadowBlur = 10
+        ctx.shadowColor = '#00ff00'
+        ctx.fillText('+', playerX, playerY - playerSize - 10)
+        ctx.shadowBlur = 0
+        ctx.textAlign = 'left'
+      }
+      
+      // Backup restoration effect - blue digital rain around player
+      if (isRestoring) {
+        const restorePulse = Math.sin(Date.now() / 100) * 0.4 + 0.6
+        
+        // Expanding blue circles (data being restored)
+        for (let i = 0; i < 3; i++) {
+          const radius = playerSize * (1 + i * 0.5) * restorePulse
+          ctx.strokeStyle = `rgba(0, 200, 255, ${0.8 - i * 0.25})`
+          ctx.lineWidth = 3
+          ctx.shadowBlur = 20
+          ctx.shadowColor = '#00ccff'
+          ctx.beginPath()
+          ctx.arc(playerX, playerY, radius, 0, Math.PI * 2)
+          ctx.stroke()
+        }
+        
+        ctx.shadowBlur = 0
+        
+        // Disk icon above player (rotating)
+        const diskRotation = (Date.now() / 50) % 360
+        ctx.save()
+        ctx.translate(playerX, playerY - playerSize - 30)
+        ctx.rotate((diskRotation * Math.PI) / 180)
+        ctx.font = 'bold 32px monospace'
+        ctx.fillStyle = `rgba(0, 200, 255, ${restorePulse})`
+        ctx.textAlign = 'center'
+        ctx.shadowBlur = 15
+        ctx.shadowColor = '#00ccff'
+        ctx.fillText('💾', 0, 0)
+        ctx.restore()
+        ctx.shadowBlur = 0
+        ctx.textAlign = 'left'
+      }
+      
+      // Draw animated stick figure with moving limbs
+      ctx.shadowBlur = 0
+      
+      // Update animation time (speed up when moving!)
+      animationTime += animationSpeed
+      
+      // Calculate limb angles (swinging back and forth)
+      // If celebrating, arms go up! Otherwise normal swing
+      let legSwing = Math.sin(animationTime) * 25 // Degrees
+      let armSwing = celebrationTimer > 0 ? -90 : Math.sin(animationTime) * 20 // Arms up when celebrating!
+      
+      // Character dimensions
+      const headRadius = playerSize * 0.25
+      const bodyHeight = playerSize * 0.4
+      const limbLength = playerSize * 0.3
+      const limbWidth = playerSize * 0.12
+      
+      // Draw character from center point with tilt
+      ctx.save()
+      ctx.translate(playerX, playerY)
+      ctx.rotate((playerTilt * Math.PI) / 180) // Tilt character when moving left/right
+      
+      // HEAD
+      ctx.fillStyle = glowColor
+      ctx.beginPath()
+      ctx.arc(0, -bodyHeight / 2 - headRadius, headRadius, 0, Math.PI * 2)
+      ctx.fill()
+      
+      // Eyes (simple dots)
+      ctx.fillStyle = '#000000'
+      ctx.beginPath()
+      ctx.arc(-headRadius * 0.3, -bodyHeight / 2 - headRadius - 2, headRadius * 0.15, 0, Math.PI * 2)
+      ctx.arc(headRadius * 0.3, -bodyHeight / 2 - headRadius - 2, headRadius * 0.15, 0, Math.PI * 2)
+      ctx.fill()
+      
+      // BODY
+      ctx.fillStyle = glowColor
+      ctx.fillRect(-playerSize * 0.15, -bodyHeight / 2, playerSize * 0.3, bodyHeight)
+      
+      // LEFT LEG (swinging)
+      ctx.save()
+      ctx.translate(-playerSize * 0.1, bodyHeight / 2)
+      ctx.rotate((legSwing * Math.PI) / 180)
+      ctx.fillStyle = glowColor
+      ctx.fillRect(-limbWidth / 2, 0, limbWidth, limbLength)
+      ctx.restore()
+      
+      // RIGHT LEG (opposite swing)
+      ctx.save()
+      ctx.translate(playerSize * 0.1, bodyHeight / 2)
+      ctx.rotate((-legSwing * Math.PI) / 180)
+      ctx.fillStyle = glowColor
+      ctx.fillRect(-limbWidth / 2, 0, limbWidth, limbLength)
+      ctx.restore()
+      
+      // LEFT ARM (opposite of left leg)
+      ctx.save()
+      ctx.translate(-playerSize * 0.25, -bodyHeight * 0.3)
+      ctx.rotate((-armSwing * Math.PI) / 180)
+      ctx.fillStyle = glowColor
+      ctx.fillRect(-limbWidth / 2, 0, limbWidth, limbLength)
+      ctx.restore()
+      
+      // RIGHT ARM (opposite of right leg)
+      ctx.save()
+      ctx.translate(playerSize * 0.25, -bodyHeight * 0.3)
+      ctx.rotate((armSwing * Math.PI) / 180)
+      ctx.fillStyle = glowColor
+      ctx.fillRect(-limbWidth / 2, 0, limbWidth, limbLength)
+      ctx.restore()
+      
+      ctx.restore()
+      
+      // Draw celebration effect above player
+      if (celebrationTimer > 0) {
+        const celebOpacity = celebrationTimer / CELEBRATION_DURATION
+        const celebSize = 1 + (1 - celebOpacity) * 0.5 // Grow as it fades
+        
+        ctx.font = `bold ${Math.floor(30 * celebSize)}px monospace`
+        ctx.fillStyle = `rgba(255, 215, 0, ${celebOpacity})`
+        ctx.textAlign = 'center'
+        ctx.shadowBlur = 20
+        ctx.shadowColor = '#ffd700'
+        ctx.fillText('⭐', playerX, playerY - playerSize - 20 - (1 - celebOpacity) * 20)
+        ctx.shadowBlur = 0
+        ctx.textAlign = 'left'
+      }
+      
+      // Update distance (based on kits collected)
+      setDistance(totalKitsCollected * 10 + currentLevel * 50)
+      
+      // Continue loop
+      if (!isGameOver) {
+        animationId = requestAnimationFrame(gameLoop)
+      }
+    }
+    
+    // Start game
+    setRunning(true)
+    animationId = requestAnimationFrame(gameLoop)
+    
+    return () => {
+      cancelAnimationFrame(animationId)
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('resize', resizeCanvas)
+      // Clean up touch listeners
+      canvas.removeEventListener('touchstart', handleTouchStart)
+      canvas.removeEventListener('touchmove', handleTouchMove)
+      canvas.removeEventListener('touchend', handleTouchEnd)
+      canvas.removeEventListener('touchcancel', handleTouchEnd)
+    }
+  }, [gameStarted, isGameOver, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, setLevel])
+  
+  const handleStart = () => {
+    resetGame()
+    setGameStarted(true)
+    setLevel(1)
+  }
+  
+  const handleRestart = () => {
+    resetGame()
+    setSavedGameState(null)
+    setShowQuiz(false)
+    setGameStarted(true)
+    setLevel(1)
+  }
+  
+  const handleQuizPass = () => {
+    // Continue from saved checkpoint!
+    setShowQuiz(false)
+    if (savedGameState) {
+      setLevel(savedGameState.level)
+      // Score and kits will be restored from savedGameState in useEffect
+    }
+    setGameOver(false)
+    setGameStarted(true)
+    // Clear saved state after a brief delay (after game loop starts)
+    setTimeout(() => setSavedGameState(null), 100)
+  }
+  
+  const handleQuizFail = () => {
+    // Restart but keep 50% of kits (rounded down) - ALL 8 TYPES
+    setShowQuiz(false)
+    
+    if (savedGameState) {
+      // Calculate 50% of each kit type
+      const partialKits = {
+        'password-manager': Math.floor(savedGameState.kits['password-manager'] / 2),
+        'link-analyzer': Math.floor(savedGameState.kits['link-analyzer'] / 2),
+        'patch-manager': Math.floor(savedGameState.kits['patch-manager'] / 2),
+        'privacy-optimizer': Math.floor(savedGameState.kits['privacy-optimizer'] / 2),
+        'vpn-shield': Math.floor(savedGameState.kits['vpn-shield'] / 2),
+        'mfa-authenticator': Math.floor(savedGameState.kits['mfa-authenticator'] / 2),
+        'backup-system': Math.floor(savedGameState.kits['backup-system'] / 2),
+        'social-engineering-defense': Math.floor(savedGameState.kits['social-engineering-defense'] / 2)
+      }
+      
+      // Save partial kits for initialization
+      setSavedGameState({
+        level: 1,
+        kits: partialKits,
+        score: 0
+      })
+    }
+    
+    resetGame()
+    setGameStarted(true)
+    setLevel(1)
+    // Clear saved state after game loop starts
+    setTimeout(() => setSavedGameState(null), 100)
+  }
+  
+  if (!gameStarted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-blue-900 to-black overflow-y-auto py-4">
+        <div className="text-center space-y-4 max-w-2xl px-4 my-auto">
+          <h1 className="text-5xl md:text-6xl font-bold text-cyan-400 font-mono animate-pulse">BYTE RUNNER</h1>
+          <p className="text-cyan-300 text-lg md:text-xl">Collect protection kits & survive cyber threats!</p>
+          
+          <div className="bg-black/50 border-2 border-cyan-600 rounded-lg p-4 md:p-6 text-white space-y-2">
+            <h3 className="text-cyan-400 font-bold text-lg md:text-xl mb-2">HOW TO PLAY:</h3>
+            
+            <div className="text-left space-y-1 text-sm md:text-base">
+              <p><strong className="text-yellow-400">COLLECT KITS:</strong> Grab protection kits (🔐 🛡️ 🦠)</p>
+              <p><strong className="text-green-400">SURVIVE:</strong> Use kits when hit by threats</p>
+              <p><strong className="text-red-400">NO KIT = GAME OVER:</strong> Stay stocked!</p>
+            </div>
+            
+            <div className="border-t-2 border-cyan-800 pt-2 mt-2">
+              <h4 className="text-cyan-400 font-bold mb-1">CONTROLS:</h4>
+              <div className="grid grid-cols-2 gap-1 text-left text-xs">
+                <p>💻 <strong>WASD/Arrows</strong></p>
+                <p>📱 <strong>Touch & Drag</strong></p>
+              </div>
+            </div>
+            
+            <div className="border-t-2 border-cyan-800 pt-2 mt-2">
+              <h4 className="text-green-400 font-bold mb-1 text-sm">8 KITS • 4 ZONES • 15 THREATS</h4>
+              <p className="text-yellow-400 text-xs">💡 Learn real cybersecurity while playing!</p>
+              <p className="text-green-400 text-xs">💾 Backup Kit = Extra Life!</p>
+            </div>
+          </div>
+          
+          <button
+            onClick={handleStart}
+            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white text-xl md:text-2xl font-bold py-4 md:py-5 px-12 md:px-14 rounded-xl transition-transform transform hover:scale-105 shadow-2xl animate-pulse mt-2"
+          >
+            🎮 START GAME
+          </button>
+        </div>
+      </div>
+    )
+  }
+  
+  return (
+    <div className="relative w-screen h-screen overflow-hidden bg-black">
+      {/* HUD */}
+      <div className="absolute top-4 left-4 right-4 flex justify-between items-start text-white font-mono text-xl z-10 pointer-events-none">
+        <div className="space-y-2">
+          <div className="bg-black/70 border-2 border-cyan-600 rounded-lg px-6 py-3">
+            LEVEL: <span className="text-cyan-400 font-bold">{level}</span>
+          </div>
+          <div className="bg-black/70 border-2 border-yellow-600 rounded-lg px-6 py-3">
+            SCORE: <span className="text-yellow-400 font-bold">{score}</span>
+          </div>
+        </div>
+        
+        {/* Threat Direction Indicator */}
+        <div className="bg-black/70 border-2 border-red-600 rounded-lg px-4 py-2 text-center">
+          <p className="text-red-400 text-sm font-bold mb-1">THREATS FROM:</p>
+          <div className="flex gap-2 text-lg justify-center">
+            <span className="text-green-400">⬇️</span>
+            {level >= 2 && <span className="text-green-400">⬆️</span>}
+            {level >= 3 && <span className="text-green-400">⬅️</span>}
+            {level >= 4 && <span className="text-green-400">➡️</span>}
+          </div>
+        </div>
+        
+        {/* Kit inventory displayed in canvas */}
+      </div>
+      
+      {/* Game Canvas */}
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full"
+        tabIndex={0}
+      />
+      
+      {/* Game Over Overlay */}
+      {isGameOver && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20 overflow-y-auto p-4">
+          <div className="text-center space-y-6 bg-gray-900 border-4 border-red-600 rounded-2xl p-8 max-w-2xl w-full mx-auto my-auto max-h-[95vh] overflow-y-auto [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-red-500">
+            <h2 className="text-6xl font-bold text-red-500 font-mono animate-pulse">ELIMINATED</h2>
+            
+            {/* Killer Info */}
+            {lastAttacker && lastThreatType && (
+              <div className="border-2 border-red-500 p-6 rounded-lg bg-red-950/30">
+                <p className="text-red-400 text-2xl mb-2">💀 KILLED BY</p>
+                <p className="text-white text-4xl font-bold mb-2">
+                  {lastAttacker.emoji && <span className="mr-2">{lastAttacker.emoji}</span>}
+                  {lastAttacker.level >= 100 && <span className="text-red-500">⭐</span>}
+                  {lastAttacker.level >= 71 && lastAttacker.level < 100 && <span className="text-yellow-400">◆</span>}
+                  {' '}{lastAttacker.name}
+                </p>
+                <p className={`text-xl font-bold ${
+                  lastAttacker.level >= 100 ? 'text-red-500' : 
+                  lastAttacker.level >= 71 ? 'text-yellow-400' : 
+                  lastAttacker.level >= 31 ? 'text-cyan-400' : 
+                  'text-gray-400'
+                }`}>
+                  Level {lastAttacker.level} {
+                    lastAttacker.level >= 100 ? '(ELITE)' : 
+                    lastAttacker.level >= 71 ? '(HIGH)' : 
+                    lastAttacker.level >= 31 ? '(MID)' : 
+                    '(LOW)'
+                  }
+                </p>
+                <p className="text-purple-400 text-sm mt-2 italic">{lastAttacker.speciality}</p>
+                <p className="text-yellow-400 text-xl mt-4">Using: {getThreatName(lastThreatType)}</p>
+              </div>
+            )}
+            
+            {/* Stats */}
+            <div className="text-white space-y-2 text-xl border-t-2 border-gray-700 pt-4">
+              <p>Level Reached: <span className="text-cyan-400 font-bold">{level}</span></p>
+              <p>Final Score: <span className="text-yellow-400 font-bold">{score}</span></p>
+            </div>
+            
+            {/* Educational moment - Enhanced */}
+            {lastThreatType && (() => {
+              const protectionKit = getProtectionKitForThreat(lastThreatType)
+              return protectionKit ? (
+                <div className="bg-gradient-to-br from-blue-900/80 to-purple-900/80 border-2 border-blue-400 p-6 rounded-lg space-y-3">
+                  <p className="text-blue-300 text-lg font-bold">💡 WHY YOU DIED</p>
+                  <p className="text-red-300 text-base">
+                    You were hit by <span className="font-bold text-red-400">{getThreatName(lastThreatType)}</span> and didn't have the right protection kit in your inventory.
+                  </p>
+                  
+                  <div className="border-t border-blue-400 pt-3 mt-3">
+                    <p className="text-cyan-300 text-sm font-bold mb-2">WHAT IS {protectionKit.name.toUpperCase()}?</p>
+                    <p className="text-white text-sm leading-relaxed mb-3">
+                      {protectionKit.whatItIs}
+                    </p>
+                    
+                    <p className="text-yellow-300 text-sm font-bold mb-2">WHY IT MATTERS:</p>
+                    <p className="text-gray-200 text-sm leading-relaxed mb-3">
+                      {protectionKit.whyItMatters}
+                    </p>
+                    
+                    <p className="text-green-300 text-sm font-bold mb-2">HOW TO GET IT:</p>
+                    <ul className="text-gray-200 text-sm space-y-1 list-disc list-inside">
+                      {protectionKit.howToGetIt.slice(0, 2).map((item, idx) => (
+                        <li key={idx}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <button
+                    onClick={() => setShowLearnMore(true)}
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105 mt-4"
+                  >
+                    🎓 LEARN MORE FOR +1 {protectionKit.emoji} BONUS KIT
+                  </button>
+                </div>
+              ) : null
+            })()}
+            
+            {/* DUAL CHOICE: Restart or Take Quiz */}
+            <div className="space-y-4 pt-6">
+              <p className="text-center text-cyan-300 font-bold text-2xl font-mono mb-4">
+                ⚡ CHOOSE YOUR FATE ⚡
+              </p>
+              
+              {/* Option 1: Restart from Level 1 (Free) */}
+              <div className="bg-gradient-to-r from-cyan-900/50 to-blue-900/50 border-2 border-cyan-500 rounded-xl p-6">
+                <h3 className="text-cyan-400 font-bold text-xl mb-2 font-mono">🔄 RESTART FROM LEVEL 1</h3>
+                <p className="text-gray-300 text-sm mb-4">
+                  Start fresh • Instant restart • Optional bonus kit if you learned
+                </p>
+                <button
+                  onClick={handleRestart}
+                  className="w-full bg-cyan-600 hover:bg-cyan-700 text-white text-xl font-bold py-4 px-8 rounded-lg transition-transform transform hover:scale-105"
+                >
+                  {bonusKitType ? `✓ RESTART WITH +1 BONUS KIT! 🎁` : '✓ RESTART NOW'}
+                </button>
+              </div>
+              
+              {/* Option 2: Answer Quiz to Continue */}
+              <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 border-2 border-purple-500 rounded-xl p-6">
+                <h3 className="text-purple-400 font-bold text-xl mb-2 font-mono">🧠 ANSWER QUIZ TO CONTINUE</h3>
+                <p className="text-gray-300 text-sm mb-2">
+                  <span className="text-green-400">✓ Pass:</span> Continue from Level {level} with all {Object.values(savedGameState?.kits || {}).reduce((a,b)=>a+b,0)} kits
+                </p>
+                <p className="text-gray-300 text-sm mb-4">
+                  <span className="text-red-400">✗ Fail:</span> Restart from Level 1 with 50% of kits
+                </p>
+                <p className="text-yellow-300 text-xs mb-4 font-mono">⏱️ 30-second quiz • Multiple choice</p>
+                <button
+                  onClick={() => setShowQuiz(true)}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xl font-bold py-4 px-8 rounded-lg transition-transform transform hover:scale-105 animate-pulse"
+                >
+                  🎯 TAKE THE QUIZ
+                </button>
+              </div>
+              
+              {/* Twitter Share */}
+              <button
+                onClick={() => {
+                  const attackerName = lastAttacker?.name || 'a cyber threat'
+                  const threatName = lastThreatType ? getThreatName(lastThreatType) : 'an attack'
+                  const protectionName = lastThreatType ? getProtectionKitName(lastThreatType) : 'better protection'
+                  const text = `Just got eliminated by ${attackerName} using ${threatName} in #ByteRunner! 💀 Next time I'll have the ${protectionName} ready... Level ${level}, Score: ${score}`
+                  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
+                  window.open(twitterUrl, '_blank')
+                }}
+                className="bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white text-lg font-bold py-3 px-8 rounded-lg transition-all w-full"
+              >
+                🐦 SHARE REVENGE ON TWITTER
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Knowledge Card Modal - Deep Learning */}
+      {showLearnMore && lastThreatType && (() => {
+        const protectionKit = getProtectionKitForThreat(lastThreatType)
+        return protectionKit ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/95 z-30 overflow-y-auto p-4">
+            <div className="bg-gradient-to-br from-gray-900 to-blue-900 border-4 border-purple-500 rounded-2xl p-8 max-w-4xl w-full mx-auto my-auto max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-purple-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-purple-500">
+              {/* Header */}
+              <div className="text-center mb-6 border-b border-purple-500 pb-4">
+                <h2 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-2">
+                  {protectionKit.emoji} {protectionKit.name}
+                </h2>
+                <p className="text-gray-300 text-lg italic">{protectionKit.description}</p>
+              </div>
+              
+              {/* How It Works */}
+              <div className="mb-6 bg-blue-950/50 border border-blue-500 rounded-lg p-5">
+                <h3 className="text-2xl font-bold text-cyan-400 mb-3">🔧 How It Works</h3>
+                <p className="text-white text-base leading-relaxed">{protectionKit.howItWorks}</p>
+              </div>
+              
+              {/* Real World Example */}
+              <div className="mb-6 bg-red-950/50 border border-red-500 rounded-lg p-5">
+                <h3 className="text-2xl font-bold text-red-400 mb-3">📰 Real World Breach</h3>
+                <p className="text-yellow-300 text-lg font-bold mb-2">{protectionKit.realWorldExample.title}</p>
+                <p className="text-white text-base leading-relaxed mb-3">{protectionKit.realWorldExample.description}</p>
+                <p className="text-red-300 text-base leading-relaxed">
+                  <span className="font-bold">Impact:</span> {protectionKit.realWorldExample.impact}
+                </p>
+              </div>
+              
+              {/* Step-by-Step Setup */}
+              <div className="mb-6 bg-green-950/50 border border-green-500 rounded-lg p-5">
+                <h3 className="text-2xl font-bold text-green-400 mb-4">📋 Step-by-Step Setup</h3>
+                {protectionKit.stepByStepSetup.map((setup, idx) => (
+                  <div key={idx} className="mb-4 last:mb-0">
+                    <p className="text-cyan-300 font-bold text-lg mb-2">{setup.platform}:</p>
+                    <ol className="list-decimal list-inside text-white text-sm space-y-1 ml-2">
+                      {setup.steps.map((step, stepIdx) => (
+                        <li key={stepIdx} className="leading-relaxed">{step}</li>
+                      ))}
+                    </ol>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Key Learning Points */}
+              <div className="mb-6 bg-yellow-950/50 border border-yellow-500 rounded-lg p-5">
+                <h3 className="text-2xl font-bold text-yellow-400 mb-3">💡 Key Takeaways</h3>
+                <ul className="text-white text-base space-y-2">
+                  {protectionKit.learningPoints.map((point, idx) => (
+                    <li key={idx} className="flex items-start">
+                      <span className="text-yellow-400 mr-2">✓</span>
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              {/* Reward Banner */}
+              <div className="bg-gradient-to-r from-purple-600 to-pink-600 border-2 border-yellow-400 rounded-lg p-4 mb-6 text-center animate-pulse">
+                <p className="text-yellow-300 text-2xl font-bold">🎁 REWARD UNLOCKED!</p>
+                <p className="text-white text-lg">You'll start your next game with +1 {protectionKit.name}!</p>
+              </div>
+              
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  // Award bonus kit matching the protection kit they learned about
+                  const protectionKit = getProtectionKitForThreat(lastThreatType)
+                  if (protectionKit) {
+                    setBonusKitType(protectionKit.id)
+                  }
+                  setShowLearnMore(false)
+                }}
+                className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white text-2xl font-bold py-4 px-8 rounded-lg transition-all transform hover:scale-105"
+              >
+                ✓ GOT IT! CLOSE & RESTART
+              </button>
+            </div>
+          </div>
+        ) : null
+      })()}
+      
+      {/* Bonus Kit Notification */}
+      {showBonusNotification && bonusKitType && (
+        <div className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 border-4 border-yellow-400 rounded-lg px-8 py-4 z-20 animate-bounce">
+          <p className="text-yellow-300 text-2xl font-bold text-center">🎁 BONUS REWARD ACTIVE!</p>
+          <p className="text-white text-lg text-center mt-2">
+            Starting with +1 {getProtectionKitById(bonusKitType)?.emoji} {getProtectionKitById(bonusKitType)?.name} Kit!
+          </p>
+          <p className="text-yellow-200 text-sm text-center mt-1 italic">You earned this by learning!</p>
+        </div>
+      )}
+      
+      {/* Quiz Modal */}
+      {showQuiz && lastThreatType && (
+        <QuizModal
+          kitType={getProtectionKitForThreat(lastThreatType)?.id || 'password-manager'}
+          onPass={handleQuizPass}
+          onFail={handleQuizFail}
+          onClose={() => setShowQuiz(false)}
+        />
+      )}
+      
+      {/* Controls reminder */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-cyan-300 font-mono bg-black/80 border border-cyan-600 rounded-lg px-6 py-2 pointer-events-none text-center">
+        <p className="text-lg">WASD or Arrow Keys to Move</p>
+        {level >= 2 && <p className="text-sm text-green-400 mt-1">Collect ⚡ green powerups!</p>}
+      </div>
+    </div>
+  )
+}

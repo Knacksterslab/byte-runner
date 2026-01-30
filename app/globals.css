@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cyber-cyan: #00ffff;
+  --cyber-magenta: #ff00ff;
+  --cyber-yellow: #ffff00;
+  --cyber-dark: #000011;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, #000033 0%, #000011 100%);
+  font-family: 'Courier New', monospace;
+  /* Prevent pull-to-refresh and overscroll on mobile */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  /* Prevent text selection on touch */
+  -webkit-user-select: none;
+  user-select: none;
+  /* Prevent touch callout on iOS */
+  -webkit-touch-callout: none;
+  /* Improve tap performance */
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  box-sizing: border-box;
+  /* Prevent touch scrolling everywhere */
+  touch-action: none;
+}
+
+/* Allow scrolling only on modal content */
+.modal-content {
+  touch-action: auto;
+  overflow-y: auto;
+}
+
+#game-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+#game-container canvas {
+  display: block;
+  margin: 0 auto;
+}
+
+@layer utilities {
+  .text-neon-cyan {
+    color: var(--cyber-cyan);
+    text-shadow: 0 0 10px var(--cyber-cyan);
+  }
+  
+  .text-neon-magenta {
+    color: var(--cyber-magenta);
+    text-shadow: 0 0 10px var(--cyber-magenta);
+  }
+  
+  .text-neon-yellow {
+    color: var(--cyber-yellow);
+    text-shadow: 0 0 10px var(--cyber-yellow);
+  }
+}
