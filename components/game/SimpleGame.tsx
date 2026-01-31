@@ -2191,7 +2191,7 @@ export default function SimpleGame() {
           </div>
         )}
 
-        {/* Help Button (top-left corner) */}
+        {/* Help Button (top-right corner for better mobile access) */}
         <button
           onClick={() => {
             setShowTutorial(true)
@@ -2199,10 +2199,10 @@ export default function SimpleGame() {
             setTutorialCountdown(5)
             trackTutorialViewed()
           }}
-          className="absolute top-4 left-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg z-20"
+          className="absolute top-4 right-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-xl z-20 text-xl md:text-2xl"
           title="Show tutorial"
         >
-          <span className="text-xl md:text-2xl">?</span>
+          ?
         </button>
 
         <div className="text-center space-y-4 max-w-2xl px-4 my-auto">
@@ -2248,15 +2248,16 @@ export default function SimpleGame() {
           </button>
         </div>
 
-        {/* Feedback Button - Floating */}
+        {/* Feedback Button - Floating (bottom-left for mobile thumb access) */}
         <button
           onClick={() => {
             window.open('mailto:connect@knacksters.co?subject=Byte Runner Feedback&body=Hi! Here\'s my feedback about Byte Runner:%0D%0A%0D%0A', '_blank')
           }}
-          className="absolute bottom-4 right-4 bg-purple-600 hover:bg-purple-700 text-white text-sm md:text-base font-semibold py-2 px-4 rounded-lg transition-all shadow-lg hover:scale-105 flex items-center gap-2 z-20"
+          className="absolute bottom-4 left-4 bg-purple-600 hover:bg-purple-700 text-white text-sm md:text-base font-semibold py-3 px-4 md:px-5 rounded-full md:rounded-lg transition-all shadow-xl hover:scale-105 flex items-center gap-2 z-20"
           title="Send feedback"
         >
-          📝 Feedback
+          <span className="text-lg md:text-base">📝</span>
+          <span className="hidden md:inline">Feedback</span>
         </button>
       </div>
     )
