@@ -54,6 +54,16 @@ html {
   margin: 0 auto;
 }
 
+/* Shimmer animation for loading bar */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 @layer utilities {
   .text-neon-cyan {
     color: var(--cyber-cyan);

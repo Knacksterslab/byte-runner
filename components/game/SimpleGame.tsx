@@ -6,6 +6,7 @@ import { getRandomThreat, getThreatName, getQuickTip, type ThreatType, type Thre
 import { getRandomGhostPlayer, type GhostPlayer } from '@/lib/game/ghostPlayers'
 import { getProtectionKitName, getProtectionKitForThreat, getProtectionKitById, type ProtectionKit } from '@/lib/game/protectionKits'
 import { getCurrentZone, isZoneTransition, getZoneTip, getThreatSpawnWeight } from '@/lib/game/zones'
+import { trackGameStart, trackGameOver, trackLevelUp, trackKitCollected, trackQuizAttempt, trackQuizPass, trackQuizFail, trackTutorialViewed, trackTutorialDismissed, trackSocialShare, trackEducationExpanded, trackDeepDiveViewed } from '@/lib/analytics'
 import QuizModal from './QuizModal'
 
 interface GameObject {
@@ -27,6 +28,9 @@ interface GameObject {
 export default function SimpleGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [gameStarted, setGameStarted] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadProgress, setLoadProgress] = useState(0)
+  const [isMounted, setIsMounted] = useState(false)
   const [level, setLevel] = useState(1)
   const [showLearnMore, setShowLearnMore] = useState(false)
   const [bonusKitType, setBonusKitType] = useState<string | null>(null)
@@ -36,7 +40,73 @@ export default function SimpleGame() {
   const [showEducationDetails, setShowEducationDetails] = useState(false)
   const [isFirstDeath, setIsFirstDeath] = useState(true)
   const [deathAction, setDeathAction] = useState<'restart' | 'quiz'>('restart')
+  const [mobileHudExpanded, setMobileHudExpanded] = useState(false)
+  const mobileHudCollapseTimer = useRef<number | null>(null)
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialCountdown, setTutorialCountdown] = useState(5)
+  const tutorialStartTime = useRef<number>(0)
   const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame } = useGameStore()
+  
+  // Countdown timer for tutorial (only when manually opened)
+  useEffect(() => {
+    if (showTutorial && tutorialCountdown > 0) {
+      const timer = setTimeout(() => {
+        setTutorialCountdown(tutorialCountdown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [showTutorial, tutorialCountdown])
+  
+  const closeTutorial = () => {
+    const timeSpent = Date.now() - tutorialStartTime.current
+    trackTutorialDismissed(timeSpent)
+    setShowTutorial(false)
+    setTutorialCountdown(5)
+  }
+  
+  // Ensure component is mounted (client-side only)
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+  
+  // Preload sprites and show loading screen
+  useEffect(() => {
+    if (!isMounted) return
+    
+    const images = {
+      virus: new Image(),
+      firewall: new Image(),
+      malware: new Image(),
+      dataBreach: new Image(),
+      spamWave: new Image(),
+      dataPacket: new Image()
+    }
+    
+    let loadedCount = 0
+    const totalImages = Object.keys(images).length
+    
+    const handleImageLoad = () => {
+      loadedCount++
+      setLoadProgress((loadedCount / totalImages) * 100)
+      if (loadedCount === totalImages) {
+        setTimeout(() => setIsLoading(false), 2000) // 2 second delay for dramatic effect
+      }
+    }
+    
+    // Set up load handlers and start loading
+    Object.values(images).forEach(img => {
+      img.onload = handleImageLoad
+      img.onerror = handleImageLoad // Count errors as loaded to prevent hanging
+    })
+    
+    // Load images
+    images.virus.src = '/assets/sprites/virus.png'
+    images.firewall.src = '/assets/sprites/firewall.png'
+    images.malware.src = '/assets/sprites/malware.png'
+    images.dataBreach.src = '/assets/sprites/data-breach.png'
+    images.spamWave.src = '/assets/sprites/spam-wave.png'
+    images.dataPacket.src = '/assets/sprites/data-packet.png'
+  }, [isMounted])
   
   useEffect(() => {
     if (!gameStarted || !canvasRef.current) return
@@ -242,11 +312,47 @@ export default function SimpleGame() {
       const touch = e.touches[0]
       touchStartX = touch.clientX
       touchStartY = touch.clientY
+      
+      // Check if tap is on mobile HUD (for toggling)
+      if (canvas.width < 768) { // Mobile
+        const hudX = canvas.width - (mobileHudExpanded ? 130 : 110)
+        const hudY = 80
+        const hudWidth = mobileHudExpanded ? 130 : 100
+        const hudHeight = mobileHudExpanded ? 210 : 80
+        
+        // Check if touch is within HUD bounds
+        if (
+          touch.clientX >= hudX && 
+          touch.clientX <= hudX + hudWidth &&
+          touch.clientY >= hudY && 
+          touch.clientY <= hudY + hudHeight
+        ) {
+          // Toggle HUD
+          setMobileHudExpanded(!mobileHudExpanded)
+          
+          // Clear existing timer
+          if (mobileHudCollapseTimer.current) {
+            clearTimeout(mobileHudCollapseTimer.current)
+          }
+          
+          // Auto-collapse after 3 seconds if expanded
+          if (!mobileHudExpanded) {
+            mobileHudCollapseTimer.current = window.setTimeout(() => {
+              setMobileHudExpanded(false)
+            }, 3000)
+          }
+          
+          return // Don't process as player movement
+        }
+      }
+      
       isTouching = true
     }
     
     const handleTouchMove = (e: TouchEvent) => {
       if (!isTouching) return
+      // Prevent movement when player is frozen (healing, tutorial, or restoring)
+      if (isHealing || showingTutorial || isRestoring) return
       e.preventDefault()
       
       const touch = e.touches[0]
@@ -267,11 +373,49 @@ export default function SimpleGame() {
       isTouching = false
     }
     
+    // Mouse click handler for HUD toggle (useful for testing on desktop)
+    const handleCanvasClick = (e: MouseEvent) => {
+      if (canvas.width < 768) { // Mobile viewport
+        const rect = canvas.getBoundingClientRect()
+        const clickX = e.clientX - rect.left
+        const clickY = e.clientY - rect.top
+        
+        const hudX = canvas.width - (mobileHudExpanded ? 130 : 110)
+        const hudY = 80
+        const hudWidth = mobileHudExpanded ? 130 : 100
+        const hudHeight = mobileHudExpanded ? 210 : 80
+        
+        // Check if click is within HUD bounds
+        if (
+          clickX >= hudX && 
+          clickX <= hudX + hudWidth &&
+          clickY >= hudY && 
+          clickY <= hudY + hudHeight
+        ) {
+          // Toggle HUD
+          setMobileHudExpanded(!mobileHudExpanded)
+          
+          // Clear existing timer
+          if (mobileHudCollapseTimer.current) {
+            clearTimeout(mobileHudCollapseTimer.current)
+          }
+          
+          // Auto-collapse after 3 seconds if expanded
+          if (!mobileHudExpanded) {
+            mobileHudCollapseTimer.current = window.setTimeout(() => {
+              setMobileHudExpanded(false)
+            }, 3000)
+          }
+        }
+      }
+    }
+    
     // Add touch listeners to canvas
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false })
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false })
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false })
     canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false })
+    canvas.addEventListener('click', handleCanvasClick)
     
     // ===== BOSS BATTLE FUNCTIONS =====
     
@@ -417,9 +561,10 @@ export default function SimpleGame() {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
-      // Center panel - larger for reading
-      const panelWidth = 800
-      const panelHeight = 350
+      // Center panel - responsive width for mobile
+      const isMobile = canvas.width < 768
+      const panelWidth = isMobile ? Math.min(canvas.width - 40, 350) : Math.min(canvas.width - 100, 800)
+      const panelHeight = isMobile ? 380 : 350
       const panelX = canvas.width / 2 - panelWidth / 2
       const panelY = canvas.height / 2 - panelHeight / 2
       
@@ -436,40 +581,99 @@ export default function SimpleGame() {
       ctx.shadowBlur = 0
       
       // Warning message
-      ctx.font = 'bold 20px monospace'
+      ctx.font = isMobile ? 'bold 14px monospace' : 'bold 20px monospace'
       ctx.fillStyle = '#ff6600'
       ctx.textAlign = 'center'
       ctx.fillText('⚠️ PLAYER FROZEN - READING REQUIRED ⚠️', canvas.width / 2, panelY + 40)
       
       // Title
-      ctx.font = 'bold 32px monospace'
+      ctx.font = isMobile ? 'bold 20px monospace' : 'bold 32px monospace'
       ctx.fillStyle = '#00ff00'
-      ctx.fillText(title, canvas.width / 2, panelY + 85)
+      ctx.fillText(title, canvas.width / 2, panelY + (isMobile ? 75 : 85))
       
       // Subtitle
-      ctx.font = 'bold 22px monospace'
+      ctx.font = isMobile ? 'bold 16px monospace' : 'bold 22px monospace'
       ctx.fillStyle = '#00ffff'
-      ctx.fillText(subtitle, canvas.width / 2, panelY + 120)
+      ctx.fillText(subtitle, canvas.width / 2, panelY + (isMobile ? 105 : 120))
       
-      // Content - larger font for readability
-      ctx.font = '18px monospace'
+      // Content - smaller font for mobile, with text wrapping
+      ctx.font = isMobile ? '13px monospace' : '18px monospace'
       ctx.fillStyle = '#ffffff'
-      ctx.fillText(`What it blocks: ${blocks}`, canvas.width / 2, panelY + 165)
       
-      ctx.font = '18px monospace'
+      // Wrap text for mobile
+      const blocksText = `What it blocks: ${blocks}`
+      if (isMobile && ctx.measureText(blocksText).width > panelWidth - 20) {
+        const words = blocksText.split(' ')
+        let line = ''
+        let yPos = panelY + 145
+        for (const word of words) {
+          const testLine = line + word + ' '
+          if (ctx.measureText(testLine).width > panelWidth - 20 && line !== '') {
+            ctx.fillText(line, canvas.width / 2, yPos)
+            line = word + ' '
+            yPos += 18
+          } else {
+            line = testLine
+          }
+        }
+        ctx.fillText(line, canvas.width / 2, yPos)
+      } else {
+        ctx.fillText(blocksText, canvas.width / 2, panelY + 165)
+      }
+      
+      ctx.font = isMobile ? '13px monospace' : '18px monospace'
       ctx.fillStyle = '#aaffaa'
-      ctx.fillText(tool, canvas.width / 2, panelY + 200)
       
-      ctx.font = 'bold 20px monospace'
+      // Wrap tool text for mobile
+      if (isMobile && ctx.measureText(tool).width > panelWidth - 20) {
+        const words = tool.split(' ')
+        let line = ''
+        let yPos = panelY + 185
+        for (const word of words) {
+          const testLine = line + word + ' '
+          if (ctx.measureText(testLine).width > panelWidth - 20 && line !== '') {
+            ctx.fillText(line, canvas.width / 2, yPos)
+            line = word + ' '
+            yPos += 18
+          } else {
+            line = testLine
+          }
+        }
+        ctx.fillText(line, canvas.width / 2, yPos)
+      } else {
+        ctx.fillText(tool, canvas.width / 2, panelY + 200)
+      }
+      
+      ctx.font = isMobile ? 'bold 14px monospace' : 'bold 20px monospace'
       ctx.fillStyle = '#ffff00'
-      ctx.fillText(`💡 ${tip}`, canvas.width / 2, panelY + 245)
       
-      // Progress/timer bar with countdown
+      // Wrap tip text for mobile
+      const tipText = `💡 ${tip}`
+      if (isMobile && ctx.measureText(tipText).width > panelWidth - 20) {
+        const words = tipText.split(' ')
+        let line = ''
+        let yPos = panelY + 235
+        for (const word of words) {
+          const testLine = line + word + ' '
+          if (ctx.measureText(testLine).width > panelWidth - 20 && line !== '') {
+            ctx.fillText(line, canvas.width / 2, yPos)
+            line = word + ' '
+            yPos += 18
+          } else {
+            line = testLine
+          }
+        }
+        ctx.fillText(line, canvas.width / 2, yPos)
+      } else {
+        ctx.fillText(tipText, canvas.width / 2, panelY + 245)
+      }
+      
+      // Progress/timer bar with countdown - responsive width
       const timePercent = tutorialTimer / TUTORIAL_DURATION
-      const barWidth = 700
+      const barWidth = isMobile ? panelWidth - 40 : Math.min(700, panelWidth - 100)
       const barHeight = 20
       const barX = canvas.width / 2 - barWidth / 2
-      const barY = panelY + 285
+      const barY = panelY + (isMobile ? 310 : 285)
       
       ctx.fillStyle = '#222222'
       ctx.fillRect(barX, barY, barWidth, barHeight)
@@ -1018,72 +1222,125 @@ export default function SimpleGame() {
       const isMobile = canvas.width < 768
       
       if (isMobile) {
-        // MOBILE: Compact HUD (top-right, minimal)
-        const kitX = canvas.width - 140
+        // MOBILE: Collapsible HUD (top-right)
+        const kitX = canvas.width - 110
         const kitY = 80
-        const hudWidth = 130
-        const hudHeight = 200
         
-        // Semi-transparent background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
-        ctx.fillRect(kitX, kitY, hudWidth, hudHeight)
-        ctx.strokeStyle = '#00ffff'
-        ctx.lineWidth = 1
-        ctx.strokeRect(kitX, kitY, hudWidth, hudHeight)
-        
-        // Level and rank (smaller)
-        ctx.font = 'bold 11px monospace'
-        ctx.fillStyle = '#ffd700'
-        ctx.textAlign = 'left'
-        const rank = getRank()
-        ctx.fillText(`L${currentLevel} ${rank}`, kitX + 5, kitY + 15)
-        
-        // Kit progress (compact)
-        const kitsNeeded = calculateKitsNeededForNextLevel(currentLevel)
-        const progressPercent = Math.min(totalKitsCollected / kitsNeeded, 1)
-        ctx.font = '9px monospace'
-        ctx.fillStyle = '#ffffff'
-        ctx.fillText(`${totalKitsCollected}/${kitsNeeded}`, kitX + 5, kitY + 30)
-        
-        // Tiny progress bar
-        const barWidth = 120
-        const barHeight = 6
-        ctx.fillStyle = '#333333'
-        ctx.fillRect(kitX + 5, kitY + 35, barWidth, barHeight)
-        ctx.fillStyle = '#00ff00'
-        ctx.fillRect(kitX + 5, kitY + 35, barWidth * progressPercent, barHeight)
-        
-        // Kits - ICONS ONLY (no labels)
-        ctx.font = '16px monospace'
-        const kits = [
-          { emoji: '🔐', count: kitInventory['password-manager'] },
-          { emoji: '🔗', count: kitInventory['link-analyzer'] },
-          { emoji: '🛡️', count: kitInventory['patch-manager'] },
-          { emoji: '🕵️', count: kitInventory['privacy-optimizer'] },
-          { emoji: '🔒', count: kitInventory['vpn-shield'] },
-          { emoji: '🔑', count: kitInventory['mfa-authenticator'] },
-          { emoji: '💾', count: kitInventory['backup-system'] },
-          { emoji: '🎭', count: kitInventory['social-engineering-defense'] }
-        ]
-        
-        // Draw in compact grid
-        for (let i = 0; i < kits.length; i++) {
-          const col = i % 2
-          const row = Math.floor(i / 2)
-          const x = kitX + 10 + (col * 60)
-          const y = kitY + 60 + (row * 18)
+        if (!mobileHudExpanded) {
+          // COLLAPSED STATE - Minimal HUD
+          const hudWidth = 100
+          const hudHeight = 80
           
-          const kit = kits[i]
-          const count = kit.count || 0
-          ctx.fillStyle = count > 0 ? '#ffffff' : '#555555'
-          ctx.fillText(`${kit.emoji}${count}`, x, y)
+          // Semi-transparent background with pulse effect
+          const pulse = Math.sin(Date.now() / 1000) * 0.1 + 0.85
+          ctx.fillStyle = `rgba(0, 0, 0, ${pulse})`
+          ctx.fillRect(kitX, kitY, hudWidth, hudHeight)
+          ctx.strokeStyle = '#00ffff'
+          ctx.lineWidth = 2
+          ctx.strokeRect(kitX, kitY, hudWidth, hudHeight)
+          
+          // Level and rank
+          ctx.font = 'bold 13px monospace'
+          ctx.fillStyle = '#ffd700'
+          ctx.textAlign = 'left'
+          const rank = getRank()
+          ctx.fillText(`L${currentLevel}`, kitX + 8, kitY + 20)
+          ctx.font = '9px monospace'
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText(rank, kitX + 8, kitY + 32)
+          
+          // Total kit count (non-zero)
+          const totalKitsInInventory = 
+            (kitInventory['password-manager'] || 0) + 
+            (kitInventory['link-analyzer'] || 0) + 
+            (kitInventory['patch-manager'] || 0) + 
+            (kitInventory['privacy-optimizer'] || 0) + 
+            (kitInventory['vpn-shield'] || 0) +
+            (kitInventory['mfa-authenticator'] || 0) +
+            (kitInventory['backup-system'] || 0) +
+            (kitInventory['social-engineering-defense'] || 0)
+          
+          ctx.font = 'bold 18px monospace'
+          ctx.fillStyle = totalKitsInInventory > 0 ? '#00ff00' : '#ff6666'
+          ctx.fillText(`🛡️${totalKitsInInventory}`, kitX + 8, kitY + 55)
+          
+          // Expand indicator (animated)
+          ctx.font = 'bold 10px monospace'
+          ctx.fillStyle = '#00ffff'
+          const expandY = kitY + 70 + Math.sin(Date.now() / 300) * 2
+          ctx.fillText('TAP ▼', kitX + 28, expandY)
+          
+        } else {
+          // EXPANDED STATE - Full HUD
+          const hudWidth = 130
+          const hudHeight = 210
+          
+          // Semi-transparent background
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'
+          ctx.fillRect(kitX - 20, kitY, hudWidth, hudHeight)
+          ctx.strokeStyle = '#00ff00'
+          ctx.lineWidth = 2
+          ctx.strokeRect(kitX - 20, kitY, hudWidth, hudHeight)
+          
+          // Level and rank
+          ctx.font = 'bold 12px monospace'
+          ctx.fillStyle = '#ffd700'
+          ctx.textAlign = 'left'
+          const rank = getRank()
+          ctx.fillText(`L${currentLevel} ${rank}`, kitX - 15, kitY + 18)
+          
+          // Kit progress
+          const kitsNeeded = calculateKitsNeededForNextLevel(currentLevel)
+          const progressPercent = Math.min(totalKitsCollected / kitsNeeded, 1)
+          ctx.font = '9px monospace'
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText(`${totalKitsCollected}/${kitsNeeded}`, kitX - 15, kitY + 33)
+          
+          // Progress bar
+          const barWidth = 110
+          const barHeight = 5
+          ctx.fillStyle = '#333333'
+          ctx.fillRect(kitX - 15, kitY + 38, barWidth, barHeight)
+          ctx.fillStyle = '#00ff00'
+          ctx.fillRect(kitX - 15, kitY + 38, barWidth * progressPercent, barHeight)
+          
+          // Kits - ICONS ONLY
+          ctx.font = '15px monospace'
+          const kits = [
+            { emoji: '🔐', count: kitInventory['password-manager'] },
+            { emoji: '🔗', count: kitInventory['link-analyzer'] },
+            { emoji: '🛡️', count: kitInventory['patch-manager'] },
+            { emoji: '🕵️', count: kitInventory['privacy-optimizer'] },
+            { emoji: '🔒', count: kitInventory['vpn-shield'] },
+            { emoji: '🔑', count: kitInventory['mfa-authenticator'] },
+            { emoji: '💾', count: kitInventory['backup-system'] },
+            { emoji: '🎭', count: kitInventory['social-engineering-defense'] }
+          ]
+          
+          // Draw in compact grid
+          for (let i = 0; i < kits.length; i++) {
+            const col = i % 2
+            const row = Math.floor(i / 2)
+            const x = kitX - 10 + (col * 60)
+            const y = kitY + 65 + (row * 18)
+            
+            const kit = kits[i]
+            const count = kit.count || 0
+            ctx.fillStyle = count > 0 ? '#ffffff' : '#555555'
+            ctx.fillText(`${kit.emoji}${count}`, x, y)
+          }
+          
+          // Zone icon
+          const currentZone = getCurrentZone(currentLevel)
+          ctx.font = '18px monospace'
+          ctx.fillStyle = currentZone.colorScheme.accent
+          ctx.fillText(currentZone.icon, kitX + 35, kitY + 195)
+          
+          // Collapse indicator
+          ctx.font = 'bold 10px monospace'
+          ctx.fillStyle = '#00ffff'
+          ctx.fillText('TAP ▲', kitX + 28, kitY + 195)
         }
-        
-        // Zone icon only (no tip on mobile)
-        const currentZone = getCurrentZone(currentLevel)
-        ctx.font = '20px monospace'
-        ctx.fillStyle = currentZone.colorScheme.accent
-        ctx.fillText(currentZone.icon, kitX + 52, kitY + 190)
         
       } else {
         // DESKTOP: Full detailed HUD
@@ -1348,6 +1605,7 @@ export default function SimpleGame() {
                 score: score
               })
               setLastAttacker(obstacle.sentBy, obstacle.threatId)
+              trackGameOver(currentLevel, score, obstacle.threatId)
               setGameOver(true)
               setRunning(false)
               // Track first death for tutorial tooltip
@@ -1696,10 +1954,16 @@ export default function SimpleGame() {
       canvas.removeEventListener('touchmove', handleTouchMove)
       canvas.removeEventListener('touchend', handleTouchEnd)
       canvas.removeEventListener('touchcancel', handleTouchEnd)
+      canvas.removeEventListener('click', handleCanvasClick)
+      // Clean up HUD collapse timer
+      if (mobileHudCollapseTimer.current) {
+        clearTimeout(mobileHudCollapseTimer.current)
+      }
     }
-  }, [gameStarted, isGameOver, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, setLevel])
+  }, [gameStarted, isGameOver, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, setLevel, mobileHudExpanded])
   
   const handleStart = () => {
+    trackGameStart()
     resetGame()
     setGameStarted(true)
     setLevel(1)
@@ -1714,6 +1978,11 @@ export default function SimpleGame() {
   }
   
   const handleQuizPass = () => {
+    // Track quiz pass
+    if (lastThreatType) {
+      const kit = getProtectionKitForThreat(lastThreatType)
+      if (kit) trackQuizPass(kit.id)
+    }
     // Continue from saved checkpoint!
     setShowQuiz(false)
     if (savedGameState) {
@@ -1727,6 +1996,11 @@ export default function SimpleGame() {
   }
   
   const handleQuizFail = () => {
+    // Track quiz fail
+    if (lastThreatType) {
+      const kit = getProtectionKitForThreat(lastThreatType)
+      if (kit) trackQuizFail(kit.id)
+    }
     // Restart but keep 50% of kits (rounded down) - ALL 8 TYPES
     setShowQuiz(false)
     
@@ -1758,12 +2032,188 @@ export default function SimpleGame() {
     setTimeout(() => setSavedGameState(null), 100)
   }
   
+  // Show nothing during SSR to prevent hydration errors
+  if (!isMounted) {
+    return null
+  }
+  
+  // Loading screen
+  if (isLoading) {
+    return (
+      <div className="relative flex items-center justify-center min-h-screen overflow-hidden" style={{ zIndex: 10 }}>
+        {/* Semi-transparent overlay to see background through */}
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+        <div className="relative z-10 text-center space-y-6 px-4">
+          {/* Logo with glow effect */}
+          <div className="relative">
+            <img 
+              src="/logo.png" 
+              alt="Byte Runner Logo" 
+              className="w-48 h-48 md:w-64 md:h-64 mx-auto drop-shadow-[0_0_40px_rgba(0,255,255,0.8)] animate-pulse"
+              style={{ 
+                filter: 'drop-shadow(0 0 30px rgba(0, 255, 255, 0.6))'
+              }}
+            />
+          </div>
+
+          <h2 className="text-3xl md:text-4xl font-bold text-cyan-400 font-mono">
+            INITIALIZING CYBERSPACE...
+          </h2>
+
+          {/* Progress bar */}
+          <div className="w-64 md:w-96 mx-auto">
+            <div className="h-3 bg-gray-900 rounded-full overflow-hidden border-2 border-cyan-700 shadow-[0_0_20px_rgba(0,255,255,0.3)]">
+              <div 
+                className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 transition-all duration-300 shadow-[0_0_20px_rgba(0,255,255,0.8)]"
+                style={{ 
+                  width: `${loadProgress}%`,
+                  animation: 'shimmer 2s infinite'
+                }}
+              />
+            </div>
+            <p className="text-cyan-300 text-sm md:text-base font-mono mt-2">
+              {Math.round(loadProgress)}% • Loading assets...
+            </p>
+          </div>
+
+          {/* Loading dots animation */}
+          <div className="flex justify-center gap-2">
+            <div className="w-2 h-2 md:w-3 md:h-3 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+            <div className="w-2 h-2 md:w-3 md:h-3 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+            <div className="w-2 h-2 md:w-3 md:h-3 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+          </div>
+        </div>
+      </div>
+    )
+  }
+  
   if (!gameStarted) {
     return (
       <div className="relative flex items-center justify-center min-h-screen overflow-y-auto py-4" style={{ zIndex: 10 }}>
+        {/* Tutorial Overlay - Compact Version */}
+        {showTutorial && (
+          <div 
+            className="absolute inset-0 flex items-center justify-center bg-black z-50 p-4 overflow-y-auto"
+            onClick={closeTutorial}
+          >
+            <div 
+              className="bg-gradient-to-br from-gray-900 to-blue-900 border-2 border-cyan-500 rounded-lg p-3 md:p-4 max-w-2xl w-full max-h-[75vh] overflow-y-auto relative animate-in fade-in slide-in-from-top-2 duration-500"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close button */}
+              <button
+                onClick={closeTutorial}
+                className="absolute top-1 right-1 text-gray-400 hover:text-white text-lg font-bold transition-colors z-10"
+                aria-label="Close tutorial"
+              >
+                ✕
+              </button>
+
+              {/* Header */}
+              <div className="text-center mb-2">
+                <h2 className="text-xl md:text-2xl font-bold text-cyan-400 mb-1">
+                  🎮 HOW TO PLAY
+                </h2>
+              </div>
+
+              {/* Content - Compact Grid Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-white text-xs">
+                {/* Objective */}
+                <div className="bg-black/50 border-2 border-cyan-600 rounded-lg p-2">
+                  <h3 className="text-cyan-400 font-bold text-sm mb-1">🎯 Objective</h3>
+                  <p className="text-gray-300 text-xs leading-tight">
+                    Collect <strong className="text-green-400">kits</strong>, survive threats. 
+                    Hit without kit = <strong className="text-red-400">game over!</strong>
+                  </p>
+                </div>
+
+                {/* Controls */}
+                <div className="bg-black/50 border-2 border-purple-600 rounded-lg p-2">
+                  <h3 className="text-purple-400 font-bold text-sm mb-1">🕹️ Controls</h3>
+                  <div className="text-xs text-gray-300 space-y-1">
+                    <p>💻 <kbd className="bg-gray-800 px-1 py-0.5 rounded text-xs">WASD</kbd> or arrows</p>
+                    <p>📱 Touch & drag</p>
+                  </div>
+                </div>
+
+                {/* Key Mechanics - Full Width */}
+                <div className="bg-black/50 border-2 border-yellow-600 rounded-lg p-2 md:col-span-2">
+                  <h3 className="text-yellow-400 font-bold text-sm mb-1">⚡ Key Mechanics</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-1 text-xs text-gray-300">
+                    <div>🔐 8 Kits</div>
+                    <div>🦠 15 Threats</div>
+                    <div>📈 4 Zones</div>
+                    <div>🧠 Quiz</div>
+                    <div>💾 Backup = Life</div>
+                    <div>📚 Real Tools</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Educational Note - Compact */}
+              <div className="text-center text-xs text-gray-400 italic mt-2 pt-2 border-t border-gray-700">
+                Learn real cybersecurity. Each death teaches defense tools.
+              </div>
+
+              {/* Legal Links */}
+              <div className="flex justify-center gap-2 mt-2 text-xs flex-wrap">
+                <a 
+                  href="/privacy" 
+                  target="_blank"
+                  className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                >
+                  Privacy
+                </a>
+                <span className="text-gray-600">•</span>
+                <a 
+                  href="/terms" 
+                  target="_blank"
+                  className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                >
+                  Terms
+                </a>
+                <span className="text-gray-600">•</span>
+                <a 
+                  href="/faq" 
+                  target="_blank"
+                  className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                >
+                  FAQ
+                </a>
+              </div>
+
+              {/* Hint text */}
+              <p className="text-center text-xs text-gray-500 mt-2 italic">
+                Click outside or X to close
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Help Button (top-left corner) */}
+        <button
+          onClick={() => {
+            setShowTutorial(true)
+            tutorialStartTime.current = Date.now()
+            setTutorialCountdown(5)
+            trackTutorialViewed()
+          }}
+          className="absolute top-4 left-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg z-20"
+          title="Show tutorial"
+        >
+          <span className="text-xl md:text-2xl">?</span>
+        </button>
+
         <div className="text-center space-y-4 max-w-2xl px-4 my-auto">
-          <h1 className="text-5xl md:text-6xl font-bold text-cyan-400 font-mono animate-pulse drop-shadow-[0_0_20px_rgba(0,255,255,0.5)]">BYTE RUNNER</h1>
-          <p className="text-cyan-300 text-lg md:text-xl drop-shadow-[0_0_10px_rgba(0,255,255,0.3)]">The cyber storm is here - fortify or fall!</p>
+          {/* Logo - now the main header */}
+          <img 
+            src="/logo.png" 
+            alt="Byte Runner Logo" 
+            className="w-40 h-40 md:w-56 md:h-56 mx-auto mb-4 drop-shadow-[0_0_40px_rgba(0,255,255,0.8)] hover:scale-105 transition-transform duration-300"
+          />
+          
+          <p className="text-red-500 text-lg md:text-xl font-bold drop-shadow-[0_0_10px_rgba(255,0,0,0.5)]">The cyber storm is here - fortify or fall!</p>
           
           <div className="bg-black/80 border-2 border-cyan-600 rounded-lg p-4 md:p-6 text-white space-y-2 backdrop-blur-sm">
             <h3 className="text-cyan-400 font-bold text-lg md:text-xl mb-2">HOW TO PLAY:</h3>
@@ -1797,6 +2247,17 @@ export default function SimpleGame() {
             🎮 START GAME
           </button>
         </div>
+
+        {/* Feedback Button - Floating */}
+        <button
+          onClick={() => {
+            window.open('mailto:connect@knacksters.co?subject=Byte Runner Feedback&body=Hi! Here\'s my feedback about Byte Runner:%0D%0A%0D%0A', '_blank')
+          }}
+          className="absolute bottom-4 right-4 bg-purple-600 hover:bg-purple-700 text-white text-sm md:text-base font-semibold py-2 px-4 rounded-lg transition-all shadow-lg hover:scale-105 flex items-center gap-2 z-20"
+          title="Send feedback"
+        >
+          📝 Feedback
+        </button>
       </div>
     )
   }
@@ -1834,6 +2295,17 @@ export default function SimpleGame() {
         className="w-full h-full"
         tabIndex={0}
       />
+
+      {/* Feedback Button - During Gameplay */}
+      <button
+        onClick={() => {
+          window.open('mailto:connect@knacksters.co?subject=Byte Runner Feedback&body=Hi! Here\'s my feedback about Byte Runner:%0D%0A%0D%0A', '_blank')
+        }}
+        className="absolute bottom-4 left-4 bg-purple-600 hover:bg-purple-700 text-white text-xs md:text-sm font-semibold py-2 px-3 md:px-4 rounded-lg transition-all shadow-lg hover:scale-105 flex items-center gap-1 md:gap-2 z-10 pointer-events-auto"
+        title="Send feedback"
+      >
+        📝 <span className="hidden md:inline">Feedback</span>
+      </button>
       
       {/* Game Over Overlay */}
       {isGameOver && (
@@ -1876,6 +2348,11 @@ export default function SimpleGame() {
                     onClick={() => {
                       const newState = !showEducationDetails
                       setShowEducationDetails(newState)
+                      // Track education expansion
+                      if (newState && lastThreatType) {
+                        const kit = getProtectionKitForThreat(lastThreatType)
+                        if (kit) trackEducationExpanded(kit.id)
+                      }
                       // Auto-award bonus kit when expanded for first time!
                       if (newState && !bonusKitType) {
                         setBonusKitType(protectionKit.id)
@@ -1937,7 +2414,13 @@ export default function SimpleGame() {
                       
                       {/* Learn More Button - Inside Accordion */}
                       <button
-                        onClick={() => setShowLearnMore(true)}
+                        onClick={() => {
+                          setShowLearnMore(true)
+                          if (lastThreatType) {
+                            const kit = getProtectionKitForThreat(lastThreatType)
+                            if (kit) trackDeepDiveViewed(kit.id)
+                          }
+                        }}
                         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 mt-3 text-sm"
                       >
                         🎓 LEARN MORE (Deep Dive)
@@ -1955,6 +2438,62 @@ export default function SimpleGame() {
               ) : null
             })()}
             
+            {/* Social Share Section */}
+            <div className="border-t border-gray-700 pt-3 pb-2">
+              <p className="text-cyan-400 text-sm font-bold text-center mb-2">Share Your Score:</p>
+              <div className="flex gap-2 justify-center flex-wrap">
+                {/* Twitter/X Share */}
+                <button
+                  onClick={() => {
+                    trackSocialShare('twitter', score)
+                    const text = `I scored ${score} on Byte Runner! 🎮🔐 Reached level ${level}. Can you beat me?\n\nPlay: ${window.location.origin}`;
+                    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+                    window.open(twitterUrl, '_blank');
+                  }}
+                  className="bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white text-xs md:text-sm font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
+                  title="Share on Twitter/X"
+                >
+                  𝕏 Share
+                </button>
+
+                {/* LinkedIn Share */}
+                <button
+                  onClick={() => {
+                    trackSocialShare('linkedin', score)
+                    const url = encodeURIComponent(window.location.origin);
+                    const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+                    window.open(linkedInUrl, '_blank');
+                  }}
+                  className="bg-[#0077B5] hover:bg-[#006399] text-white text-xs md:text-sm font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
+                  title="Share on LinkedIn"
+                >
+                  in Share
+                </button>
+
+                {/* Copy Link */}
+                <button
+                  onClick={(e) => {
+                    navigator.clipboard.writeText(window.location.origin);
+                    // Show brief confirmation
+                    const btn = e.currentTarget as HTMLButtonElement;
+                    if (btn) {
+                      const originalText = btn.innerHTML;
+                      btn.innerHTML = '✓ Copied!';
+                      btn.classList.add('bg-green-600');
+                      setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.remove('bg-green-600');
+                      }, 2000);
+                    }
+                  }}
+                  className="bg-gray-700 hover:bg-gray-600 text-white text-xs md:text-sm font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
+                  title="Copy link to clipboard"
+                >
+                  🔗 Copy Link
+                </button>
+              </div>
+            </div>
+
             {/* COMBINED ACTION CHOICE - Radio Buttons */}
             <div className="space-y-3 pt-3 border-t border-gray-700">
               <p className="text-center text-cyan-300 font-bold text-lg md:text-xl font-mono">
@@ -2019,6 +2558,11 @@ export default function SimpleGame() {
                     if (deathAction === 'restart') {
                       handleRestart()
                     } else {
+                      // Track quiz attempt
+                      if (lastThreatType) {
+                        const kit = getProtectionKitForThreat(lastThreatType)
+                        if (kit) trackQuizAttempt(kit.id)
+                      }
                       setShowQuiz(true)
                     }
                   }}
