@@ -17,6 +17,21 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
   const [showResult, setShowResult] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
 
+  // Get dynamic header based on kit type
+  const getQuizHeader = (kit: string): string => {
+    const headers: Record<string, string> = {
+      'password-manager': 'CHECK PASSWORDS',
+      'link-analyzer': 'ANALYZE LINKS',
+      'patch-manager': 'UPDATE SECURITY',
+      'privacy-optimizer': 'PROTECT PRIVACY',
+      'vpn-shield': 'NETWORK SAFETY',
+      'mfa-authenticator': 'VERIFY IDENTITY',
+      'backup-system': 'BACKUP DATA',
+      'social-engineering-defense': 'DETECT SCAMS'
+    }
+    return headers[kit] || 'KNOWLEDGE CHECK'
+  }
+
   // Load question on mount
   useEffect(() => {
     const q = getRandomQuizQuestion(kitType)
@@ -59,77 +74,89 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
 
   if (!question) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/95 z-30">
+      <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] z-30">
         <div className="text-white text-2xl font-mono">Loading question...</div>
       </div>
     )
   }
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/95 z-30 p-4">
-      <div className="bg-gradient-to-br from-gray-900 to-blue-900 border-4 border-cyan-500 rounded-2xl p-8 max-w-3xl w-full mx-auto">
+    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] z-30 p-4">
+      <div 
+        className="bg-[#0f1629] rounded-3xl p-6 md:p-8 max-w-2xl w-full mx-auto relative"
+        style={{
+          border: '4px solid',
+          borderImage: 'linear-gradient(135deg, #00ffff, #0088ff, #aa44ff, #ff00ff) 1'
+        }}
+      >
         {!showResult ? (
           <>
-            {/* Timer */}
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="text-2xl font-bold text-cyan-400 font-mono">KNOWLEDGE CHECK</h2>
-                <div className={`text-3xl font-bold font-mono ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-green-400'}`}>
-                  ⏱️ {timeLeft}s
+            {/* Header with Timer */}
+            <div className="mb-5">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-xl md:text-2xl font-black text-cyan-400 font-mono tracking-widest">{getQuizHeader(kitType)}</h2>
+                <div className={`text-3xl md:text-4xl font-bold font-mono ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-green-400'}`}>
+                  {timeLeft}s
                 </div>
               </div>
               
               {/* Progress bar */}
-              <div className="w-full bg-gray-700 rounded-full h-3">
+              <div className="w-full bg-gray-800/50 rounded-full h-2.5">
                 <div 
-                  className={`h-3 rounded-full transition-all ${timeLeft <= 10 ? 'bg-red-500' : 'bg-green-500'}`}
+                  className={`h-2.5 rounded-full transition-all ${timeLeft <= 10 ? 'bg-red-500' : 'bg-green-500'}`}
                   style={{ width: `${(timeLeft / 30) * 100}%` }}
                 />
               </div>
             </div>
 
             {/* Question */}
-            <div className="bg-black/50 border-2 border-cyan-600 rounded-lg p-6 mb-6">
-              <p className="text-white text-xl font-mono leading-relaxed">
+            <div className="bg-black/30 border-2 border-cyan-500/40 rounded-2xl p-5 md:p-6 mb-5">
+              <p className="text-white text-base md:text-lg font-mono leading-relaxed">
                 {question.question}
               </p>
             </div>
 
-            {/* Options */}
-            <div className="space-y-3 mb-6">
+            {/* Options - 2x2 Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
               {question.options.map((option, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedAnswer(index)}
-                  className={`w-full text-left p-4 rounded-lg font-mono text-lg transition-all border-2 ${
+                  className={`text-left p-4 md:p-5 rounded-2xl font-mono text-sm md:text-base transition-all border-2 relative ${
                     selectedAnswer === index
-                      ? 'bg-cyan-600 border-cyan-400 text-white scale-105'
-                      : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-cyan-600'
+                      ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                      : 'bg-black/30 border-gray-700/50 text-gray-300 hover:bg-gray-800/50 hover:border-cyan-600/40'
                   }`}
                 >
-                  <span className="font-bold text-cyan-400 mr-3">{String.fromCharCode(65 + index)}.</span>
-                  {option}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <span className={`font-extrabold mr-2 ${selectedAnswer === index ? 'text-cyan-400' : 'text-gray-500'}`}>
+                        {String.fromCharCode(65 + index)}.
+                      </span>
+                      <span className="break-words">{option}</span>
+                    </div>
+                    {selectedAnswer === index && (
+                      <span className="text-green-400 text-xl font-bold flex-shrink-0">✓</span>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
 
-            {/* Submit Button */}
-            <button
-              onClick={handleSubmit}
-              disabled={selectedAnswer === null}
-              className={`w-full text-2xl font-bold py-4 px-8 rounded-lg transition-all font-mono ${
-                selectedAnswer === null
-                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white transform hover:scale-105'
-              }`}
-            >
-              {selectedAnswer === null ? 'SELECT AN ANSWER' : '✓ SUBMIT ANSWER'}
-            </button>
-
-            {/* Hint */}
-            <p className="text-center text-gray-400 text-sm mt-4 font-mono">
-              Time runs out = automatic failure
+            {/* Bottom Info */}
+            <p className="text-center text-gray-400 text-sm font-mono mb-6">
+              30s • Multiple choice
             </p>
+
+            {/* Submit Button (Hidden, auto-submit on selection in mockup style) */}
+            {selectedAnswer !== null && (
+              <button
+                onClick={handleSubmit}
+                className="w-full text-lg md:text-xl font-black py-4 px-8 rounded-2xl transition-all font-mono bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white transform hover:scale-[1.02] tracking-wide shadow-xl"
+              >
+                ✓ SUBMIT ANSWER
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -137,34 +164,34 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
             <div className="text-center">
               {isCorrect ? (
                 <>
-                  <div className="text-8xl mb-4 animate-bounce">✅</div>
-                  <h2 className="text-5xl font-bold text-green-400 font-mono mb-4 animate-pulse">CORRECT!</h2>
-                  <p className="text-2xl text-white mb-6 font-mono">Continuing from your checkpoint...</p>
+                  <div className="text-8xl mb-6 animate-bounce">✅</div>
+                  <h2 className="text-4xl md:text-5xl font-black text-green-400 font-mono mb-4 animate-pulse tracking-widest">CORRECT!</h2>
+                  <p className="text-xl md:text-2xl text-white mb-6 font-mono">Continuing from your checkpoint...</p>
                 </>
               ) : (
                 <>
-                  <div className="text-8xl mb-4 animate-pulse">❌</div>
-                  <h2 className="text-5xl font-bold text-red-500 font-mono mb-4">INCORRECT</h2>
-                  <p className="text-xl text-gray-300 mb-4 font-mono">
+                  <div className="text-8xl mb-6 animate-pulse">❌</div>
+                  <h2 className="text-4xl md:text-5xl font-black text-red-500 font-mono mb-4 tracking-widest">INCORRECT</h2>
+                  <p className="text-lg md:text-xl text-gray-300 mb-4 font-mono font-bold">
                     {timeLeft === 0 ? "Time's up!" : 'Wrong answer'}
                   </p>
                 </>
               )}
 
               {/* Show correct answer and explanation */}
-              <div className="bg-black/50 border-2 border-yellow-600 rounded-lg p-6 mt-6 text-left">
-                <p className="text-yellow-400 font-bold mb-2 font-mono">💡 CORRECT ANSWER:</p>
-                <p className="text-white text-lg mb-4 font-mono">
-                  <span className="font-bold text-cyan-400">{String.fromCharCode(65 + question.correctAnswer)}.</span> {question.options[question.correctAnswer]}
+              <div className="bg-black/30 border-2 border-yellow-500/60 rounded-2xl p-5 md:p-6 mt-6 text-left">
+                <p className="text-yellow-400 font-extrabold mb-3 font-mono tracking-wide">💡 CORRECT ANSWER:</p>
+                <p className="text-white text-base md:text-lg mb-4 font-mono">
+                  <span className="font-extrabold text-cyan-400">{String.fromCharCode(65 + question.correctAnswer)}.</span> {question.options[question.correctAnswer]}
                 </p>
                 
-                <p className="text-gray-400 font-mono leading-relaxed">
+                <p className="text-gray-300 font-mono leading-relaxed text-sm md:text-base">
                   {question.explanation}
                 </p>
               </div>
 
               {!isCorrect && (
-                <p className="text-red-400 text-lg mt-6 font-mono">
+                <p className="text-red-400 text-base md:text-lg mt-6 font-mono font-bold">
                   Restarting with partial kit retention...
                 </p>
               )}
