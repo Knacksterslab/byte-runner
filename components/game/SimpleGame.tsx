@@ -2310,40 +2310,45 @@ export default function SimpleGame() {
       
       {/* Game Over Overlay */}
       {isGameOver && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20 overflow-y-auto p-2 md:p-4">
-          <div className="text-center space-y-4 bg-gray-900 border-4 border-red-600 rounded-2xl p-4 md:p-6 max-w-2xl w-full mx-auto my-auto max-h-[95vh] overflow-y-auto [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-red-500">
-            <h2 className="text-4xl md:text-6xl font-bold text-red-500 font-mono animate-pulse">ELIMINATED</h2>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/95 z-20 overflow-y-auto p-2 md:p-4">
+          <div className="text-center space-y-3 bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 border-4 border-red-500 rounded-2xl p-4 md:p-6 max-w-xl w-full mx-auto my-auto max-h-[95vh] overflow-y-auto [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-red-500">
+            {/* Header - Compact */}
+            <h2 className="text-4xl md:text-5xl font-bold text-red-500 font-mono tracking-wider">ELIMINATED</h2>
             
-            {/* Killer Info - COMPACT */}
+            {/* Killer Info - Ultra Compact */}
             {lastAttacker && lastThreatType && (
-              <div className="border-2 border-red-500 px-3 py-2 rounded-lg bg-red-950/30">
-                <p className="text-white text-base md:text-lg">
-                  💀 Killed by {lastAttacker.emoji} 
-                  <span className="font-bold mx-1">{lastAttacker.name}</span>
-                  <span className={`text-sm ${
-                    lastAttacker.level >= 100 ? 'text-red-500' : 
-                    lastAttacker.level >= 71 ? 'text-yellow-400' : 
-                    'text-cyan-400'
-                  }`}>
-                    (Lv{lastAttacker.level} {lastAttacker.level >= 71 ? 'HIGH' : 'MID'})
-                  </span>
-                </p>
-                <p className="text-yellow-400 text-sm md:text-base">
+              <div className="border-2 border-red-400/50 bg-red-950/40 backdrop-blur-sm px-3 py-2.5 rounded-xl">
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <span className="text-2xl">{lastAttacker.emoji}</span>
+                  <p className="text-white text-sm md:text-base">
+                    Killed by <span className="font-bold text-red-400">{lastAttacker.name}</span>
+                    <span className={`ml-1 text-xs ${
+                      lastAttacker.level >= 100 ? 'text-red-400' : 
+                      lastAttacker.level >= 71 ? 'text-yellow-400' : 
+                      'text-cyan-400'
+                    }`}>
+                      (Lv{lastAttacker.level} {lastAttacker.level >= 71 ? 'HIGH' : 'MID'})
+                    </span>
+                  </p>
+                </div>
+                <p className="text-yellow-300 text-xs md:text-sm mt-1">
                   Using: {getThreatName(lastThreatType)}
                 </p>
               </div>
             )}
             
-            {/* Stats - COMPACT */}
-            <div className="text-white space-y-1 text-base md:text-lg border-t border-gray-700 pt-2">
-              <p>Level: <span className="text-cyan-400 font-bold">{level}</span> • Score: <span className="text-yellow-400 font-bold">{score}</span></p>
+            {/* Stats - Single Line */}
+            <div className="text-white text-sm md:text-base font-mono">
+              <span className="text-gray-400">Level:</span> <span className="text-cyan-400 font-bold">{level}</span> 
+              <span className="text-gray-600 mx-2">•</span> 
+              <span className="text-gray-400">Score:</span> <span className="text-yellow-400 font-bold">{score}</span>
             </div>
             
-            {/* Educational moment - COLLAPSIBLE ACCORDION */}
+            {/* Educational moment - Compact Collapsible */}
             {lastThreatType && (() => {
               const protectionKit = getProtectionKitForThreat(lastThreatType)
               return protectionKit ? (
-                <div className="bg-gradient-to-br from-blue-900/80 to-purple-900/80 border-2 border-blue-400 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-br from-purple-900/60 to-blue-900/60 border-2 border-cyan-500/30 rounded-xl overflow-hidden backdrop-blur-sm">
                   {/* Collapsed Header - Always Visible */}
                   <button
                     onClick={() => {
@@ -2361,51 +2366,54 @@ export default function SimpleGame() {
                         setTimeout(() => setShowBonusNotification(false), 3000)
                       }
                     }}
-                    className="w-full p-3 md:p-4 text-left flex items-center justify-between hover:bg-blue-900/30 transition-colors"
+                    className="w-full p-3 text-left flex items-center justify-between hover:bg-cyan-900/20 transition-colors group"
                   >
-                    <div className="flex-1">
-                      <p className="text-blue-300 text-sm md:text-base font-bold flex items-center gap-2">
-                        💡 WHY YOU DIED 
-                        {isFirstDeath && !showEducationDetails && (
-                          <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded animate-pulse">
-                            👇 Tap to learn
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-red-300 text-xs md:text-sm mt-1">
-                        Missing {protectionKit.name}
-                      </p>
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="text-xl">💡</span>
+                      <div>
+                        <p className="text-cyan-300 text-xs md:text-sm font-bold">
+                          WHY YOU DIED
+                          {isFirstDeath && !showEducationDetails && (
+                            <span className="ml-2 text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded animate-pulse">
+                              TAP
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-red-300 text-xs mt-0.5">
+                          Missing {protectionKit.name}
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-xl md:text-2xl text-cyan-400 transition-transform duration-300" style={{ transform: showEducationDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    <span className="text-lg text-cyan-400 transition-transform duration-300 group-hover:scale-110" style={{ transform: showEducationDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                       ▼
                     </span>
                   </button>
                   
                   {/* Expandable Content */}
                   {showEducationDetails && (
-                    <div className="px-3 md:px-4 pb-4 space-y-2 border-t border-blue-400 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <p className="text-red-300 text-xs md:text-sm pt-3">
-                        You were hit by <span className="font-bold text-red-400">{getThreatName(lastThreatType)}</span> without protection.
+                    <div className="px-3 pb-3 space-y-2 border-t border-cyan-500/20 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <p className="text-red-300 text-xs pt-2">
+                        Hit by <span className="font-bold text-red-400">{getThreatName(lastThreatType)}</span> without protection.
                       </p>
                       
-                      <div className="space-y-2">
-                        <div>
-                          <p className="text-cyan-300 text-xs font-bold mb-1">WHAT IS {protectionKit.name.toUpperCase()}?</p>
-                          <p className="text-white text-xs leading-relaxed">
+                      <div className="space-y-1.5 text-xs">
+                        <div className="bg-black/30 rounded p-2">
+                          <p className="text-cyan-300 font-bold mb-0.5">WHAT IS IT?</p>
+                          <p className="text-white leading-snug text-[11px]">
                             {protectionKit.whatItIs}
                           </p>
                         </div>
                         
-                        <div>
-                          <p className="text-yellow-300 text-xs font-bold mb-1">WHY IT MATTERS:</p>
-                          <p className="text-gray-200 text-xs leading-relaxed">
+                        <div className="bg-black/30 rounded p-2">
+                          <p className="text-yellow-300 font-bold mb-0.5">WHY IT MATTERS:</p>
+                          <p className="text-gray-200 leading-snug text-[11px]">
                             {protectionKit.whyItMatters}
                           </p>
                         </div>
                         
-                        <div>
-                          <p className="text-green-300 text-xs font-bold mb-1">HOW TO GET IT:</p>
-                          <ul className="text-gray-200 text-xs space-y-0.5 list-disc list-inside">
+                        <div className="bg-black/30 rounded p-2">
+                          <p className="text-green-300 font-bold mb-0.5">HOW TO GET IT:</p>
+                          <ul className="text-gray-200 text-[11px] space-y-0.5 list-disc list-inside leading-snug">
                             {protectionKit.howToGetIt.slice(0, 2).map((item, idx) => (
                               <li key={idx}>{item}</li>
                             ))}
@@ -2413,7 +2421,7 @@ export default function SimpleGame() {
                         </div>
                       </div>
                       
-                      {/* Learn More Button - Inside Accordion */}
+                      {/* Learn More Button */}
                       <button
                         onClick={() => {
                           setShowLearnMore(true)
@@ -2422,17 +2430,17 @@ export default function SimpleGame() {
                             if (kit) trackDeepDiveViewed(kit.id)
                           }
                         }}
-                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all transform hover:scale-105 mt-3 text-sm"
+                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-2 px-3 rounded-lg transition-all transform hover:scale-[1.02] text-xs"
                       >
-                        🎓 LEARN MORE (Deep Dive)
+                        🎓 LEARN MORE
                       </button>
                     </div>
                   )}
                   
                   {/* Bonus Kit Notification */}
                   {showBonusNotification && bonusKitType === protectionKit.id && (
-                    <div className="bg-green-600 text-white px-3 py-2 text-xs md:text-sm font-bold text-center border-t border-green-400">
-                      ✓ +1 {protectionKit.emoji} {protectionKit.name} awarded for learning!
+                    <div className="bg-green-600 text-white px-2 py-1.5 text-xs font-bold text-center border-t border-green-400">
+                      ✓ +1 {protectionKit.emoji} {protectionKit.name}
                     </div>
                   )}
                 </div>
@@ -2440,9 +2448,9 @@ export default function SimpleGame() {
             })()}
             
             {/* Social Share Section */}
-            <div className="border-t border-gray-700 pt-3 pb-2">
-              <p className="text-cyan-400 text-sm font-bold text-center mb-2">Share Your Score:</p>
-              <div className="flex gap-2 justify-center flex-wrap">
+            <div className="border-t border-gray-700/50 pt-2.5 pb-2">
+              <p className="text-cyan-400 text-xs font-bold text-center mb-2">Share Your Score:</p>
+              <div className="flex gap-1.5 justify-center flex-wrap">
                 {/* Twitter/X Share */}
                 <button
                   onClick={() => {
@@ -2451,7 +2459,7 @@ export default function SimpleGame() {
                     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
                     window.open(twitterUrl, '_blank');
                   }}
-                  className="bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white text-xs md:text-sm font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
+                  className="bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white text-[11px] md:text-xs font-semibold py-1.5 px-3 rounded-lg transition-all"
                   title="Share on Twitter/X"
                 >
                   𝕏 Share
@@ -2465,7 +2473,7 @@ export default function SimpleGame() {
                     const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
                     window.open(linkedInUrl, '_blank');
                   }}
-                  className="bg-[#0077B5] hover:bg-[#006399] text-white text-xs md:text-sm font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
+                  className="bg-[#0077B5] hover:bg-[#006399] text-white text-[11px] md:text-xs font-semibold py-1.5 px-3 rounded-lg transition-all"
                   title="Share on LinkedIn"
                 >
                   in Share
@@ -2475,7 +2483,6 @@ export default function SimpleGame() {
                 <button
                   onClick={(e) => {
                     navigator.clipboard.writeText(window.location.origin);
-                    // Show brief confirmation
                     const btn = e.currentTarget as HTMLButtonElement;
                     if (btn) {
                       const originalText = btn.innerHTML;
@@ -2487,79 +2494,78 @@ export default function SimpleGame() {
                       }, 2000);
                     }
                   }}
-                  className="bg-gray-700 hover:bg-gray-600 text-white text-xs md:text-sm font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
-                  title="Copy link to clipboard"
+                  className="bg-gray-700 hover:bg-gray-600 text-white text-[11px] md:text-xs font-semibold py-1.5 px-3 rounded-lg transition-all"
+                  title="Copy link"
                 >
-                  🔗 Copy Link
+                  🔗 Copy
                 </button>
               </div>
             </div>
 
-            {/* COMBINED ACTION CHOICE - Radio Buttons */}
-            <div className="space-y-3 pt-3 border-t border-gray-700">
-              <p className="text-center text-cyan-300 font-bold text-lg md:text-xl font-mono">
+            {/* ACTION CHOICE - Card-based selection (like mockup) */}
+            <div className="space-y-2 pt-2.5 border-t border-gray-700/50">
+              <p className="text-center text-cyan-300 font-bold text-sm md:text-base font-mono tracking-wide">
                 ⚡ CHOOSE YOUR FATE ⚡
               </p>
               
-              {/* Combined Options Card */}
-              <div className="bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-cyan-500 rounded-xl p-4">
+              {/* Option Cards */}
+              <div className="space-y-2">
                 {/* Option 1: Restart */}
-                <label 
-                  className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                <button
+                  onClick={() => setDeathAction('restart')}
+                  className={`w-full text-left p-3 rounded-xl transition-all border-2 ${
                     deathAction === 'restart' 
-                      ? 'bg-cyan-900/50 border-2 border-cyan-400' 
-                      : 'bg-gray-800/30 border-2 border-transparent hover:border-gray-600'
+                      ? 'bg-cyan-900/40 border-cyan-400 shadow-lg shadow-cyan-500/20' 
+                      : 'bg-gray-800/50 border-cyan-700/30 hover:border-cyan-600/50'
                   }`}
                 >
-                  <input
-                    type="radio"
-                    name="deathAction"
-                    value="restart"
-                    checked={deathAction === 'restart'}
-                    onChange={(e) => setDeathAction(e.target.value as 'restart' | 'quiz')}
-                    className="mt-1 w-4 h-4 accent-cyan-500"
-                  />
-                  <div className="flex-1">
-                    <h3 className="text-cyan-400 font-bold text-sm md:text-base">🔄 RESTART FROM LEVEL 1</h3>
-                    <p className="text-gray-300 text-xs mt-1">
-                      Start fresh • Instant restart{bonusKitType && ' • +1 BONUS KIT! 🎁'}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <div className="text-2xl mt-0.5">🔄</div>
+                    <div className="flex-1">
+                      <h3 className="text-cyan-400 font-bold text-sm">RESTART FROM LEVEL 1</h3>
+                      <p className="text-gray-300 text-xs mt-0.5">
+                        Start fresh • Instant restart{bonusKitType && ' • +1 BONUS KIT! 🎁'}
+                      </p>
+                    </div>
+                    {deathAction === 'restart' && (
+                      <div className="text-cyan-400 text-xl">✓</div>
+                    )}
                   </div>
-                </label>
+                </button>
                 
                 {/* Option 2: Quiz */}
-                <label 
-                  className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all mt-2 ${
+                <button
+                  onClick={() => setDeathAction('quiz')}
+                  className={`w-full text-left p-3 rounded-xl transition-all border-2 ${
                     deathAction === 'quiz' 
-                      ? 'bg-purple-900/50 border-2 border-purple-400' 
-                      : 'bg-gray-800/30 border-2 border-transparent hover:border-gray-600'
+                      ? 'bg-purple-900/40 border-purple-400 shadow-lg shadow-purple-500/20' 
+                      : 'bg-gray-800/50 border-purple-700/30 hover:border-purple-600/50'
                   }`}
                 >
-                  <input
-                    type="radio"
-                    name="deathAction"
-                    value="quiz"
-                    checked={deathAction === 'quiz'}
-                    onChange={(e) => setDeathAction(e.target.value as 'restart' | 'quiz')}
-                    className="mt-1 w-4 h-4 accent-purple-500"
-                  />
-                  <div className="flex-1">
-                    <h3 className="text-purple-400 font-bold text-sm md:text-base">🧠 ANSWER QUIZ TO CONTINUE</h3>
-                    <p className="text-gray-300 text-xs mt-1">
-                      <span className="text-green-400">✓ Pass:</span> Continue Level {level} • 
-                      <span className="text-red-400"> ✗ Fail:</span> Restart w/ 50% kits
-                    </p>
-                    <p className="text-yellow-300 text-xs mt-1">⏱️ 30s quiz • Multiple choice</p>
+                  <div className="flex items-start gap-3">
+                    <div className="text-2xl mt-0.5">🧠</div>
+                    <div className="flex-1">
+                      <h3 className="text-purple-400 font-bold text-sm">ANSWER QUIZ TO CONTINUE</h3>
+                      <p className="text-gray-300 text-xs mt-0.5">
+                        <span className="text-green-400">✓ Pass:</span> Continue Level {level} • 
+                        <span className="text-red-400"> ✗ Fail:</span> Restart w/ 50% kits
+                      </p>
+                      <p className="text-yellow-300 text-[10px] mt-0.5">⏱️ 30s quiz • Multiple choice</p>
+                    </div>
+                    {deathAction === 'quiz' && (
+                      <div className="text-purple-400 text-xl">✓</div>
+                    )}
                   </div>
-                </label>
-                
-                {/* Action Button */}
+                </button>
+              </div>
+              
+              {/* Action Buttons - Large and Clear */}
+              <div className="pt-2 space-y-2">
                 <button
                   onClick={() => {
                     if (deathAction === 'restart') {
                       handleRestart()
                     } else {
-                      // Track quiz attempt
                       if (lastThreatType) {
                         const kit = getProtectionKitForThreat(lastThreatType)
                         if (kit) trackQuizAttempt(kit.id)
@@ -2567,34 +2573,13 @@ export default function SimpleGame() {
                       setShowQuiz(true)
                     }
                   }}
-                  className={`w-full mt-3 font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105 text-base md:text-lg ${
+                  className={`w-full font-bold py-3.5 px-6 rounded-xl transition-all transform hover:scale-[1.02] text-sm md:text-base shadow-lg ${
                     deathAction === 'restart'
-                      ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
-                      : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white animate-pulse'
+                      ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white shadow-cyan-500/30'
+                      : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-purple-500/30'
                   }`}
                 >
-                  {deathAction === 'restart' 
-                    ? (bonusKitType ? '✓ RESTART WITH BONUS!' : '✓ RESTART NOW')
-                    : '🎯 TAKE THE QUIZ'
-                  }
-                </button>
-              </div>
-              
-              {/* Small Twitter Share Button */}
-              <div className="flex justify-center">
-                <button
-                  onClick={() => {
-                    const attackerName = lastAttacker?.name || 'a cyber threat'
-                    const threatName = lastThreatType ? getThreatName(lastThreatType) : 'an attack'
-                    const protectionName = lastThreatType ? getProtectionKitName(lastThreatType) : 'better protection'
-                    const text = `Just got eliminated by ${attackerName} using ${threatName} in #ByteRunner! 💀 Next time I'll have the ${protectionName} ready... Level ${level}, Score: ${score}`
-                    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
-                    window.open(twitterUrl, '_blank')
-                  }}
-                  className="bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white text-xs md:text-sm font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
-                  title="Share on Twitter"
-                >
-                  🐦 Share
+                  {deathAction === 'restart' ? 'RESTART' : 'ANSWER QUIZ'}
                 </button>
               </div>
             </div>
