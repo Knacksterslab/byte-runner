@@ -1,7 +1,7 @@
 // Puzzle templates for all 5 Tier 1 categories (password, updates, privacy, wifi)
 // Phishing puzzles use the existing email system
-
 import type { ThreatCategory } from './threatData'
+import { getRandomByFilter, findById, filterByCategory } from './utils'
 
 export interface PuzzleChoice {
   text: string
@@ -329,17 +329,15 @@ export const puzzleTemplates: PuzzleTemplate[] = [
 
 // Get random puzzle by category
 export function getRandomPuzzle(category: ThreatCategory): PuzzleTemplate | null {
-  const categoryPuzzles = puzzleTemplates.filter(p => p.category === category)
-  if (categoryPuzzles.length === 0) return null
-  return categoryPuzzles[Math.floor(Math.random() * categoryPuzzles.length)]
+  return getRandomByFilter(puzzleTemplates, p => p.category === category)
 }
 
 // Get all puzzles for a category
 export function getPuzzlesByCategory(category: ThreatCategory): PuzzleTemplate[] {
-  return puzzleTemplates.filter(p => p.category === category)
+  return filterByCategory(puzzleTemplates, category)
 }
 
 // Get puzzle by ID
 export function getPuzzleById(id: string): PuzzleTemplate | undefined {
-  return puzzleTemplates.find(p => p.id === id)
+  return findById(puzzleTemplates, id)
 }

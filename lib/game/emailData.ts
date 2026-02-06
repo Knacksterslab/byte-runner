@@ -1,4 +1,5 @@
 // Phishing email templates for boss battles
+import { getRandomByFilter, getRandomItem } from './utils'
 
 export interface EmailTemplate {
   isPhishing: boolean
@@ -81,16 +82,18 @@ export const emailTemplates: EmailTemplate[] = [
 
 // Get random email set (1 phishing, 2 legitimate)
 export function getRandomEmailSet(): EmailTemplate[] {
-  const phishingEmails = emailTemplates.filter(e => e.isPhishing)
-  const legitimateEmails = emailTemplates.filter(e => !e.isPhishing)
+  const phishing = getRandomByFilter(emailTemplates, e => e.isPhishing)
+  const legit1 = getRandomByFilter(emailTemplates, e => !e.isPhishing)
+  let legit2 = getRandomByFilter(emailTemplates, e => !e.isPhishing)
   
-  const phishing = phishingEmails[Math.floor(Math.random() * phishingEmails.length)]
-  const legit1 = legitimateEmails[Math.floor(Math.random() * legitimateEmails.length)]
-  let legit2 = legitimateEmails[Math.floor(Math.random() * legitimateEmails.length)]
+  if (!phishing || !legit1 || !legit2) {
+    return []
+  }
   
   // Ensure different legitimate emails
-  while (legit2.sender === legit1.sender) {
-    legit2 = legitimateEmails[Math.floor(Math.random() * legitimateEmails.length)]
+  const legitimateEmails = emailTemplates.filter(e => !e.isPhishing)
+  while (legit2.sender === legit1.sender && legitimateEmails.length > 1) {
+    legit2 = getRandomItem(legitimateEmails)
   }
   
   // Shuffle the order

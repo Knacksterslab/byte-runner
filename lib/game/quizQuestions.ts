@@ -1,5 +1,6 @@
 // Quiz questions for continue-from-checkpoint mechanic
 // Each question tests knowledge from the educational content
+import { getRandomByFilter, filterByCategory } from './utils'
 
 export interface QuizQuestion {
   id: string
@@ -417,9 +418,12 @@ export const quizQuestions: QuizQuestion[] = [
 
 // Get random question for a specific kit type
 export function getRandomQuizQuestion(kitType: string): QuizQuestion {
-  const questionsForKit = quizQuestions.filter(q => q.kitType === kitType)
-  const randomIndex = Math.floor(Math.random() * questionsForKit.length)
-  return questionsForKit[randomIndex]
+  const question = getRandomByFilter(quizQuestions, q => q.kitType === kitType)
+  if (!question) {
+    // Fallback to first question
+    return quizQuestions[0]
+  }
+  return question
 }
 
 // Get all questions for a specific kit type

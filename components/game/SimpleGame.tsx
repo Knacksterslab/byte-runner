@@ -6,7 +6,19 @@ import { getRandomThreat, getThreatName, getQuickTip, type ThreatType, type Thre
 import { getRandomGhostPlayer, type GhostPlayer } from '@/lib/game/ghostPlayers'
 import { getProtectionKitName, getProtectionKitForThreat, getProtectionKitById, type ProtectionKit } from '@/lib/game/protectionKits'
 import { getCurrentZone, isZoneTransition, getZoneTip, getThreatSpawnWeight } from '@/lib/game/zones'
-import { trackGameStart, trackGameOver, trackLevelUp, trackKitCollected, trackQuizAttempt, trackQuizPass, trackQuizFail, trackTutorialViewed, trackTutorialDismissed, trackSocialShare, trackEducationExpanded, trackDeepDiveViewed } from '@/lib/analytics'
+import { trackGameStart, trackGameOver, trackLevelUp, trackKitCollected, trackQuizAttempt, trackQuizPass, trackQuizFail, trackTutorialViewed, trackSocialShare, trackEducationExpanded, trackDeepDiveViewed } from '@/lib/analytics'
+import { getQuizForLevel, type QuizChallenge, type QuizItem } from '@/lib/game/inGameQuizzes'
+import { calculateTotalKits } from '@/lib/game/utils'
+import { PLAYER_CONFIG, GAME_CONFIG, KIT_CONFIG, QUIZ_CONFIG, VISUAL_CONFIG, ALL_KIT_TYPES, getKitIcon } from '@/lib/game/gameConstants'
+import { ObjectPool } from '@/lib/game/objectPool'
+import { createInputState, createKeyboardHandlers, createTouchHandlers, createClickHandler } from '@/lib/game/gameInput'
+import { checkCollisions } from '@/lib/game/collisionDetection'
+import { useQuizState } from './hooks/useQuizState'
+import { useTutorialState } from './hooks/useTutorialState'
+import { useUIState } from './hooks/useUIState'
+import { LoadingScreen } from './ui/LoadingScreen'
+import { TutorialOverlay } from './ui/TutorialOverlay'
+import { StartScreen } from './ui/StartScreen'
 import QuizModal from './QuizModal'
 
 interface GameObject {
@@ -32,42 +44,35 @@ export default function SimpleGame() {
   const [loadProgress, setLoadProgress] = useState(0)
   const [isMounted, setIsMounted] = useState(false)
   const [level, setLevel] = useState(1)
-  const [showLearnMore, setShowLearnMore] = useState(false)
   const [bonusKitType, setBonusKitType] = useState<string | null>(null)
-  const [showBonusNotification, setShowBonusNotification] = useState(false)
   const [showQuiz, setShowQuiz] = useState(false)
   const [savedGameState, setSavedGameState] = useState<{level: number, kits: {[key:string]:number}, score: number} | null>(null)
-  const [showEducationDetails, setShowEducationDetails] = useState(false)
   const [isFirstDeath, setIsFirstDeath] = useState(true)
   const [deathAction, setDeathAction] = useState<'restart' | 'quiz'>('restart')
-  const [mobileHudExpanded, setMobileHudExpanded] = useState(false)
-  const mobileHudCollapseTimer = useRef<number | null>(null)
-  const [showTutorial, setShowTutorial] = useState(false)
-  const [tutorialCountdown, setTutorialCountdown] = useState(5)
-  const tutorialStartTime = useRef<number>(0)
+  
+  // Track all timeouts for cleanup to prevent memory leaks
+  const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([])
+  
+  // Use custom hooks for state management
+  const quiz = useQuizState()
+  const tutorial = useTutorialState()
+  const ui = useUIState()
+  
   const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame } = useGameStore()
-  
-  // Countdown timer for tutorial (only when manually opened)
-  useEffect(() => {
-    if (showTutorial && tutorialCountdown > 0) {
-      const timer = setTimeout(() => {
-        setTutorialCountdown(tutorialCountdown - 1)
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [showTutorial, tutorialCountdown])
-  
-  const closeTutorial = () => {
-    const timeSpent = Date.now() - tutorialStartTime.current
-    trackTutorialDismissed(timeSpent)
-    setShowTutorial(false)
-    setTutorialCountdown(5)
-  }
   
   // Ensure component is mounted (client-side only)
   useEffect(() => {
     setIsMounted(true)
   }, [])
+  
+  // Show bonus notification when bonus kit is awarded
+  useEffect(() => {
+    if (bonusKitType) {
+      ui.actions.showBonus(5000)
+      const tid = setTimeout(() => setBonusKitType(null), 100)
+      timeoutRefs.current.push(tid)
+    }
+  }, [bonusKitType])
   
   // Preload sprites and show loading screen
   useEffect(() => {
@@ -89,7 +94,8 @@ export default function SimpleGame() {
       loadedCount++
       setLoadProgress((loadedCount / totalImages) * 100)
       if (loadedCount === totalImages) {
-        setTimeout(() => setIsLoading(false), 2000) // 2 second delay for dramatic effect
+        const tid = setTimeout(() => setIsLoading(false), 2000)
+        timeoutRefs.current.push(tid)
       }
     }
     
@@ -106,6 +112,15 @@ export default function SimpleGame() {
     images.dataBreach.src = '/assets/sprites/data-breach.png'
     images.spamWave.src = '/assets/sprites/spam-wave.png'
     images.dataPacket.src = '/assets/sprites/data-packet.png'
+    
+    return () => {
+      // Clean up image references to prevent memory leaks
+      Object.values(images).forEach(img => {
+        img.src = ''
+        img.onload = null
+        img.onerror = null
+      })
+    }
   }, [isMounted])
   
   useEffect(() => {
@@ -113,6 +128,21 @@ export default function SimpleGame() {
     
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')!
+    if (!(ctx as any).__debugFillTextWrapped) {
+      ;(ctx as any).__debugFillTextWrapped = true
+      const originalFillText = ctx.fillText.bind(ctx)
+      ctx.fillText = ((text: string, x: number, y: number, maxWidth?: number) => {
+        const hasNonAscii = typeof text === 'string' && /[^\x20-\x7E]/.test(text)
+        const hasLockEmoji =
+          typeof text === 'string' && /[\uD83D\uDD12\uD83D\uDD10]/.test(text)
+        if (hasNonAscii || hasLockEmoji) {
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7',location:'SimpleGame.tsx:fillTextWrap',message:'fillText drew non-ascii/lock',data:{hasNonAscii,hasLockEmoji,textLength:typeof text === 'string' ? text.length : null,x,y,font:ctx.font},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+        }
+        return originalFillText(text as any, x as any, y as any, maxWidth as any)
+      }) as any
+    }
     
     // Disable image smoothing for crisp pixel art
     ctx.imageSmoothingEnabled = false
@@ -226,14 +256,7 @@ export default function SimpleGame() {
       'backup-system': bonusKitType === 'backup-system' ? 1 : 0,
       'social-engineering-defense': bonusKitType === 'social-engineering-defense' ? 1 : 0
     }
-    const MAX_KIT_CAPACITY = 3
-    
-    // Show bonus notification and clear bonus after applying it
-    if (bonusKitType) {
-      setShowBonusNotification(true)
-      setTimeout(() => setShowBonusNotification(false), 5000) // Show for 5 seconds
-      setTimeout(() => setBonusKitType(null), 100) // Clear after a brief delay
-    }
+    const MAX_KIT_CAPACITY = KIT_CONFIG.MAX_CAPACITY
     
     // Tutorial overlay state
     let showingTutorial = false
@@ -243,6 +266,11 @@ export default function SimpleGame() {
     
     // Healing state - player frozen during tutorial
     let isHealing = false
+    
+    // Quiz completion message state
+    let showQuizCompletionMessage = false
+    let quizCompletionSuccess = false
+    let quizCompletionTimer = 0
     
     // Backup restoration state (extra life mechanic)
     let isRestoring = false
@@ -315,10 +343,10 @@ export default function SimpleGame() {
       
       // Check if tap is on mobile HUD (for toggling)
       if (canvas.width < 768) { // Mobile
-        const hudX = canvas.width - (mobileHudExpanded ? 130 : 110)
+        const hudX = canvas.width - (ui.state.mobileHudExpanded ? 130 : 110)
         const hudY = 80
-        const hudWidth = mobileHudExpanded ? 130 : 100
-        const hudHeight = mobileHudExpanded ? 210 : 80
+        const hudWidth = ui.state.mobileHudExpanded ? 130 : 100
+        const hudHeight = ui.state.mobileHudExpanded ? 210 : 80
         
         // Check if touch is within HUD bounds
         if (
@@ -327,20 +355,8 @@ export default function SimpleGame() {
           touch.clientY >= hudY && 
           touch.clientY <= hudY + hudHeight
         ) {
-          // Toggle HUD
-          setMobileHudExpanded(!mobileHudExpanded)
-          
-          // Clear existing timer
-          if (mobileHudCollapseTimer.current) {
-            clearTimeout(mobileHudCollapseTimer.current)
-          }
-          
-          // Auto-collapse after 3 seconds if expanded
-          if (!mobileHudExpanded) {
-            mobileHudCollapseTimer.current = window.setTimeout(() => {
-              setMobileHudExpanded(false)
-            }, 3000)
-          }
+          // Toggle HUD (timer management handled by hook)
+          ui.actions.setMobileHudExpanded(!ui.state.mobileHudExpanded)
           
           return // Don't process as player movement
         }
@@ -375,15 +391,32 @@ export default function SimpleGame() {
     
     // Mouse click handler for HUD toggle (useful for testing on desktop)
     const handleCanvasClick = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect()
+      const clickX = e.clientX - rect.left
+      const clickY = e.clientY - rect.top
+      
       if (canvas.width < 768) { // Mobile viewport
-        const rect = canvas.getBoundingClientRect()
-        const clickX = e.clientX - rect.left
-        const clickY = e.clientY - rect.top
-        
-        const hudX = canvas.width - (mobileHudExpanded ? 130 : 110)
+        const hudX = canvas.width - (ui.state.mobileHudExpanded ? 130 : 110)
         const hudY = 80
-        const hudWidth = mobileHudExpanded ? 130 : 100
-        const hudHeight = mobileHudExpanded ? 210 : 80
+        const hudWidth = ui.state.mobileHudExpanded ? 130 : 100
+        const hudHeight = ui.state.mobileHudExpanded ? 210 : 80
+        
+        // Check if click is within HUD bounds
+        if (
+          clickX >= hudX && 
+          clickX <= hudX + hudWidth &&
+          clickY >= hudY && 
+          clickY <= hudY + hudHeight
+        ) {
+          // Toggle HUD (timer management handled by hook)
+          ui.actions.setMobileHudExpanded(!ui.state.mobileHudExpanded)
+        }
+      } else {
+        // Desktop viewport - toggle desktop HUD
+        const hudX = 20
+        const hudY = 80
+        const hudWidth = ui.state.desktopHudExpanded ? 450 : 280
+        const hudHeight = ui.state.desktopHudExpanded ? 80 : 70
         
         // Check if click is within HUD bounds
         if (
@@ -393,19 +426,7 @@ export default function SimpleGame() {
           clickY <= hudY + hudHeight
         ) {
           // Toggle HUD
-          setMobileHudExpanded(!mobileHudExpanded)
-          
-          // Clear existing timer
-          if (mobileHudCollapseTimer.current) {
-            clearTimeout(mobileHudCollapseTimer.current)
-          }
-          
-          // Auto-collapse after 3 seconds if expanded
-          if (!mobileHudExpanded) {
-            mobileHudCollapseTimer.current = window.setTimeout(() => {
-              setMobileHudExpanded(false)
-            }, 3000)
-          }
+          ui.actions.setDesktopHudExpanded(!ui.state.desktopHudExpanded)
         }
       }
     }
@@ -859,12 +880,184 @@ export default function SimpleGame() {
       restorationTimer -= 16
     }
     
+    // Draw quiz completion message
+    function drawQuizCompletionMessage() {
+      if (!showQuizCompletionMessage || quizCompletionTimer <= 0) {
+        showQuizCompletionMessage = false
+        return
+      }
+      
+      const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7
+      
+      // Flash effect
+      if (quizCompletionSuccess) {
+        ctx.fillStyle = `rgba(0, 255, 0, ${0.3 * (quizCompletionTimer / 2000)})`
+      } else {
+        ctx.fillStyle = `rgba(255, 0, 0, ${0.3 * (quizCompletionTimer / 2000)})`
+      }
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Message box
+      const overlayWidth = 600
+      const overlayHeight = 200
+      const overlayX = canvas.width / 2 - overlayWidth / 2
+      const overlayY = canvas.height / 2 - overlayHeight / 2
+      
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'
+      ctx.fillRect(overlayX, overlayY, overlayWidth, overlayHeight)
+      
+      // Border
+      ctx.strokeStyle = quizCompletionSuccess ? '#00ff00' : '#ff0000'
+      ctx.lineWidth = 4
+      ctx.shadowBlur = 20
+      ctx.shadowColor = quizCompletionSuccess ? '#00ff00' : '#ff0000'
+      ctx.strokeRect(overlayX, overlayY, overlayWidth, overlayHeight)
+      ctx.shadowBlur = 0
+      
+      // Message
+      ctx.font = `bold ${Math.floor(48 * pulse)}px monospace`
+      ctx.fillStyle = quizCompletionSuccess ? '#00ff00' : '#ff0000'
+      ctx.textAlign = 'center'
+      ctx.fillText(
+        quizCompletionSuccess ? '✅ QUIZ PASSED!' : '❌ QUIZ FAILED',
+        canvas.width / 2,
+        canvas.height / 2 - 20
+      )
+      
+      // Sub text
+      ctx.font = 'bold 24px monospace'
+      ctx.fillStyle = '#ffffff'
+      if (quizCompletionSuccess) {
+        ctx.fillText('Speed Boost Activated! +500 Points', canvas.width / 2, canvas.height / 2 + 40)
+      } else {
+        ctx.fillText('Continue with current speed', canvas.width / 2, canvas.height / 2 + 40)
+      }
+      
+      ctx.textAlign = 'left'
+      
+      // Decrement timer
+      quizCompletionTimer -= 16
+    }
+    
     // Get rank based on total kits collected
     function getRank() {
       if (totalKitsCollected < 10) return 'Newbie'
       if (totalKitsCollected < 30) return 'Analyst'
       if (totalKitsCollected < 60) return 'Expert'
       return 'Commando'
+    }
+    
+    // In-game quiz functions
+    function startInGameQuiz(quizChallenge: QuizChallenge) {
+      // Activate quiz through hook action
+      quiz.actions.startQuiz(currentLevel)
+      
+      // IMMEDIATELY clear all obstacles for safety
+      obstacles.length = 0
+      
+      // Spawn quiz items after countdown (3 seconds)
+      const tid = setTimeout(() => {
+        if (quiz.refs.activeRef.current) {
+          spawnQuizItems(quizChallenge)
+        }
+      }, 3000)
+      timeoutRefs.current.push(tid)
+    }
+    
+    function endInGameQuiz(success: boolean) {
+      
+      quiz.actions.markCompleted()
+      
+      if (success) {
+        // Apply speed bonus
+        if (quiz.refs.currentQuizRef.current) {
+          obstacleSpeed *= quiz.refs.currentQuizRef.current.speedBonus
+          addScore(500) // Bonus points for completing quiz
+          
+          // Show success message
+          showQuizCompletionMessage = true
+          quizCompletionSuccess = true
+          quizCompletionTimer = 2000
+        }
+      } else {
+        // Show failure message
+        showQuizCompletionMessage = true
+        quizCompletionSuccess = false
+        quizCompletionTimer = 2000
+      }
+      
+      // Clear quiz items from powerups array
+      powerups = powerups.filter(p => p.type !== 'quiz-item')
+      
+      // Reset quiz state after brief delay
+      const tid = setTimeout(() => {
+        quiz.actions.endQuiz()
+        showQuizCompletionMessage = false
+      }, 2000)
+      timeoutRefs.current.push(tid)
+    }
+    
+    function spawnQuizItems(quizChallenge: QuizChallenge) {
+      // Clear existing powerups
+      powerups.length = 0
+      
+      // Spawn quiz items in a well-spaced 2x3 grid (like mockup)
+      const itemWidth = 120
+      const itemHeight = 120
+      const horizontalSpacing = 450 // Much wider spacing
+      const verticalSpacing = 350 // Taller spacing
+      const startX = (canvas.width - (horizontalSpacing * 2)) / 2
+      const startY = (canvas.height - (verticalSpacing * 1)) / 2 - 50 // Center better
+      
+      quizChallenge.items.forEach((item, index) => {
+        const row = Math.floor(index / 3)
+        const col = index % 3
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'SimpleGame.tsx:spawnQuizItems',message:'spawn quiz item label/visual',data:{id:item.id,label:item.label,visual:item.visual,type:quizChallenge.type},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        
+        powerups.push({
+          x: startX + (col * horizontalSpacing),
+          y: startY + (row * verticalSpacing),
+          width: itemWidth,
+          height: itemHeight,
+          vx: 0,
+          vy: 0,
+          type: 'quiz-item',
+          color: item.color,
+          threatId: item.id,
+          sentBy: { id: item.id, name: item.label, level: 0, speciality: item.visual, category: 'password' },
+          category: quizChallenge.type
+        })
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'SimpleGame.tsx:spawnQuizItems',message:'pushed quiz powerup sentBy.name',data:{id:item.id,name:item.label},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+      })
+    }
+    
+    function checkQuizCompletion() {
+      
+      if (!quiz.refs.currentQuizRef.current || !quiz.refs.activeRef.current || quiz.refs.completedRef.current || quiz.refs.countdownRef.current > 0) {
+        return
+      }
+      
+      // Check if all quiz items have been collected or time ran out
+      const allItemsGone = powerups.filter(p => p.type === 'quiz-item').length === 0
+      
+      
+      if (allItemsGone || quiz.refs.timeRemainingRef.current === 0) {
+        // Calculate score using REF (not state)
+        const correctAnswers = quiz.refs.currentQuizRef.current.correctAnswers
+        const correctCollected = quiz.refs.itemsCollectedRef.current.filter(id => correctAnswers.includes(id)).length
+        const incorrectCollected = quiz.refs.itemsCollectedRef.current.filter(id => !correctAnswers.includes(id)).length
+        
+        // Need to collect at least 2/3 correct answers to pass
+        const passingScore = Math.ceil(correctAnswers.length * 0.67)
+        const success = correctCollected >= passingScore && incorrectCollected === 0
+        
+        
+        endInGameQuiz(success)
+      }
     }
     
     function advanceLevel() {
@@ -902,10 +1095,20 @@ export default function SimpleGame() {
         sectorChangeTimer = SECTOR_CHANGE_DURATION * 1.5 // Longer for zone transitions
       }
       
+      // Trigger in-game quiz at certain levels
+      const quizChallenge = getQuizForLevel(currentLevel)
+      if (quizChallenge && !quiz.refs.activeRef.current) {
+        const tid1 = setTimeout(() => {
+          startInGameQuiz(quizChallenge)
+        }, 2000)
+        timeoutRefs.current.push(tid1)
+      }
+      
       // Reset flag after a short delay
-      setTimeout(() => {
+      const tid2 = setTimeout(() => {
         isAdvancingLevel = false
       }, 1000)
+      timeoutRefs.current.push(tid2)
     }
     
     function spawnPowerups() {
@@ -1058,41 +1261,215 @@ export default function SimpleGame() {
       }
     }
     
+    // Render quiz overlay UI
+    function renderQuizOverlay() {
+      if (!quiz.refs.currentQuizRef.current) return
+      
+      const quizData = quiz.refs.currentQuizRef.current
+      const countdown = quiz.refs.countdownRef.current
+      if (/[^\x20-\x7E]/.test(quizData.question) || /[^\x20-\x7E]/.test(quizData.instructions)) {
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'SimpleGame.tsx:drawQuizOverlay',message:'quiz header has non-ascii',data:{question:quizData.question,instructions:quizData.instructions},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+      }
+      
+      // Show countdown intro before actual quiz
+      if (countdown > 0) {
+        // Full screen dark overlay
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        
+        // Pulsing countdown number
+        const pulse = Math.sin(Date.now() / 150) * 0.3 + 0.7
+        ctx.font = `bold ${Math.floor(180 * pulse)}px monospace`
+        ctx.fillStyle = '#00ffff'
+        ctx.textAlign = 'center'
+        ctx.shadowBlur = 40
+        ctx.shadowColor = '#00ffff'
+        ctx.fillText(countdown.toString(), canvas.width / 2, canvas.height / 2)
+        
+        // "Get Ready" text
+        ctx.font = 'bold 32px monospace'
+        ctx.fillStyle = '#ffff00'
+        ctx.shadowBlur = 10
+        ctx.fillText('⚡ SECURITY CHALLENGE INCOMING ⚡', canvas.width / 2, canvas.height / 2 - 120)
+        
+        // Quiz type
+        ctx.font = 'bold 24px monospace'
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText(quizData.question, canvas.width / 2, canvas.height / 2 + 100)
+        
+        ctx.shadowBlur = 0
+        ctx.textAlign = 'left'
+        return // Don't render quiz items during countdown
+      }
+      
+      // Enhanced dark overlay with vignette effect for better focus
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)' // Slightly darker
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Add subtle vignette effect
+      const vignette = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, canvas.width * 0.2,
+        canvas.width / 2, canvas.height / 2, canvas.width * 0.7
+      )
+      vignette.addColorStop(0, 'rgba(0, 0, 0, 0)')
+      vignette.addColorStop(1, 'rgba(0, 0, 0, 0.4)')
+      ctx.fillStyle = vignette
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // CLEAN: Simple quiz banner (high contrast, no effects)
+      const bannerHeight = 100
+      ctx.fillStyle = 'rgba(10, 27, 63, 0.95)'
+      ctx.fillRect(0, 0, canvas.width, bannerHeight)
+      
+      ctx.strokeStyle = '#00ffff'
+      ctx.lineWidth = 2
+      ctx.strokeRect(0, 0, canvas.width, bannerHeight)
+      
+      // CLEAN: Large, clear title (no shadows)
+      ctx.font = 'bold 28px monospace'
+      ctx.fillStyle = '#ffffff'
+      ctx.textAlign = 'center'
+      ctx.fillText(quizData.question, canvas.width / 2, 35)
+      
+      // CLEAN: Simple instructions with color coding
+      ctx.font = '16px monospace'
+      ctx.fillStyle = '#ffffff'
+      const collectText = 'Collect '
+      const strongText = 'STRONG'
+      const avoidText = ' · Avoid '
+      const weakText = 'WEAK'
+      
+      const collectWidth = ctx.measureText(collectText).width
+      const strongWidth = ctx.measureText(strongText).width
+      const avoidWidth = ctx.measureText(avoidText).width
+      
+      const totalWidth = collectWidth + strongWidth + avoidWidth + ctx.measureText(weakText).width
+      let xPos = canvas.width / 2 - totalWidth / 2
+      
+      ctx.fillText(collectText, xPos, 60)
+      xPos += collectWidth
+      ctx.fillStyle = '#00ff9c'
+      ctx.fillText(strongText, xPos, 60)
+      xPos += strongWidth
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(avoidText, xPos, 60)
+      xPos += avoidWidth
+      ctx.fillStyle = '#ff4d4d'
+      ctx.fillText(weakText, xPos, 60)
+      
+      // CLEAN: High contrast score and timer
+      ctx.font = 'bold 18px monospace'
+      ctx.fillStyle = '#00ff9c'
+      ctx.textAlign = 'left'
+      ctx.fillText(`✅ ${quiz.state.score.correct}`, 40, 85)
+      
+      ctx.fillStyle = '#ff4d4d'
+      ctx.fillText(`❌ ${quiz.state.score.incorrect}`, 140, 85)
+      
+      ctx.fillStyle = '#ffffff'
+      ctx.textAlign = 'right'
+      const timeWarning = quiz.state.timeRemaining < 10
+      ctx.fillStyle = timeWarning ? '#ff4d4d' : '#ffffff'
+      ctx.fillText(`⏱ ${quiz.state.timeRemaining}s`, canvas.width - 40, 85)
+      
+      ctx.shadowBlur = 0
+      ctx.textAlign = 'left'
+      
+      // Instructions at bottom (controls reminder)
+      ctx.font = 'bold 18px monospace'
+      ctx.fillStyle = '#ffffff'
+      ctx.textAlign = 'center'
+      ctx.shadowBlur = 3
+      ctx.shadowColor = '#000000'
+      ctx.fillText('💻 WASD / 📱 Touch to Move • Game in Slow Motion', canvas.width / 2, canvas.height - 30)
+      ctx.shadowBlur = 0
+      ctx.textAlign = 'left'
+      
+      // Render quiz items with labels
+      powerups.forEach(item => {
+        if (item.type === 'quiz-item') {
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4',location:'SimpleGame.tsx:drawQuizItem',message:'quiz powerup info',data:{type:item.type,color:item.color,speciality:item.sentBy?.speciality,name:item.sentBy?.name},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          // Draw larger, well-spaced item (like mockup)
+          const size = 120
+          const pulse = Math.sin(Date.now() / 200) * 0.1 + 0.95
+          
+          // Background box
+          ctx.fillStyle = item.color
+          ctx.fillRect(item.x - size / 2, item.y - size / 2, size, size)
+          
+          // Border
+          ctx.strokeStyle = item.color === '#00ff00' ? '#00cc00' : '#cc0000'
+          ctx.lineWidth = 3
+          ctx.strokeRect(item.x - size / 2, item.y - size / 2, size, size)
+          
+          // Password text - clear and readable (no emojis)
+          ctx.font = 'bold 16px monospace'
+          ctx.textAlign = 'center'
+          const rawName = item.sentBy.name
+          const passwordText = rawName.replace(/[^\x20-\x7E]/g, '')
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3',location:'SimpleGame.tsx:drawQuizItem',message:'quiz item render name vs sanitized',data:{rawName,hasNonAscii:/[^\x20-\x7E]/.test(rawName),passwordText},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          const passwordWidth = ctx.measureText(passwordText).width
+          const textBgPaddingX = 6
+          const textBgHeight = 20
+          const textTopY = item.y - size / 2 + 26
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
+          ctx.fillRect(
+            item.x - passwordWidth / 2 - textBgPaddingX,
+            textTopY - textBgHeight + 6,
+            passwordWidth + textBgPaddingX * 2,
+            textBgHeight
+          )
+          ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = '#000000'
+          ctx.shadowBlur = 3
+          ctx.fillText(passwordText, item.x, textTopY)
+          ctx.shadowBlur = 0
+          
+          // Character count badge at bottom (like mockup)
+          const charCount = item.sentBy.name.length
+          const badgeText = `${charCount} characters`
+          const badgeColor = charCount >= 8 ? '#00ff00' : '#ff0000'
+          
+          ctx.font = 'bold 11px monospace'
+          const badgeWidth = 100
+          const badgeHeight = 18
+          ctx.fillStyle = badgeColor
+          ctx.fillRect(item.x - badgeWidth / 2, item.y + 28, badgeWidth, badgeHeight)
+          ctx.fillStyle = '#000000'
+          ctx.fillText(badgeText, item.x, item.y + 41)
+          
+          // Subtle glow effect
+          ctx.shadowBlur = 15 * pulse
+          ctx.shadowColor = item.color
+          ctx.strokeStyle = item.color
+          ctx.lineWidth = 2
+          ctx.strokeRect(item.x - size / 2, item.y - size / 2, size, size)
+          ctx.shadowBlur = 0
+          
+          ctx.textAlign = 'left'
+        }
+      })
+    }
+    
     // Draw animated cyber background with color progression
     function drawBackground() {
-      const colorScheme = getBackgroundColorScheme(currentLevel)
-      
-      // Dark gradient background
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0)
-      gradient.addColorStop(0, colorScheme.gradient1)
-      gradient.addColorStop(0.5, colorScheme.gradient2)
-      gradient.addColorStop(1, colorScheme.gradient1)
+      // CLEAN: Simple deep space background (no clutter)
+      const gradient = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, 0,
+        canvas.width / 2, canvas.height / 2, canvas.width
+      )
+      gradient.addColorStop(0, '#0b1020')
+      gradient.addColorStop(1, '#02030a')
       ctx.fillStyle = gradient
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
-      // Animated grid lines
-      ctx.strokeStyle = colorScheme.gridColor
-      ctx.lineWidth = 1
-      
-      // Horizontal lines
-      for (let i = 0; i < 30; i++) {
-        const y = i * 50
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(canvas.width, y)
-        ctx.stroke()
-      }
-      
-      // Vertical lines (animated)
-      for (let i = 0; i < 50; i++) {
-        const x = ((i * 50 + bgOffset) % (canvas.width + 100)) - 100
-        ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, canvas.height)
-        ctx.stroke()
-      }
-      
-      // Moving particles
+      // CLEAN: Simple subtle stars (no effects, no grid, no icons)
       particles.forEach(particle => {
         particle.y += particle.speed
         if (particle.y > canvas.height) {
@@ -1100,44 +1477,14 @@ export default function SimpleGame() {
           particle.x = Math.random() * canvas.width
         }
         
-        ctx.fillStyle = colorScheme.particleColor
+        // Simple stars - white only, subtle twinkle
+        const twinkle = Math.sin(Date.now() / 800 + particle.x) * 0.3 + 0.7
+        ctx.globalAlpha = twinkle * 0.6
+        ctx.fillStyle = '#ffffff'
         ctx.beginPath()
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
+        ctx.arc(particle.x, particle.y, particle.size * 0.8, 0, Math.PI * 2)
         ctx.fill()
       })
-      
-      // MATRIX RAIN for level 15+ (advanced cloud zone)
-      if (currentLevel >= 15) {
-        matrixColumns.forEach(col => {
-          col.y += col.speed
-          if (col.y > canvas.height) {
-            col.y = -20
-            col.x = Math.random() * canvas.width
-          }
-          
-          const char = col.chars[Math.floor(Math.random() * col.chars.length)]
-          ctx.fillStyle = '#00ff0088' // Green matrix text
-          ctx.font = '14px monospace'
-          ctx.fillText(char, col.x, col.y)
-        })
-      }
-      
-      // ZONE-SPECIFIC ENVIRONMENTAL ELEMENTS (ambient icons)
-      const zone = getCurrentZone(currentLevel)
-      const iconOpacity = Math.sin(Date.now() / 2000) * 0.1 + 0.15
-      ctx.globalAlpha = iconOpacity
-      ctx.font = '24px monospace'
-      
-      // Spawn zone icons in grid pattern
-      for (let i = 0; i < 8; i++) {
-        const element = zone.environmentalElements[Math.floor(Math.random() * zone.environmentalElements.length)]
-        if (Math.random() < element.frequency) {
-          const x = (i % 4) * (canvas.width / 4) + Math.random() * 100
-          const y = Math.floor(i / 4) * (canvas.height / 2) + Math.random() * 100
-          ctx.fillStyle = colorScheme.particleColor
-          ctx.fillText(element.content, x, y)
-        }
-      }
       
       ctx.globalAlpha = 1.0
       
@@ -1150,8 +1497,21 @@ export default function SimpleGame() {
     function gameLoop(timestamp: number) {
       if (!ctx) return
       
+      // Apply slow-motion effect during quiz (only after countdown finishes)
+      const slowMotionMultiplier = (quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0) ? 0.15 : 1.0
+      
       // Draw animated background
       drawBackground()
+      
+      // Render quiz UI overlay if active
+      if (quiz.refs.activeRef.current && quiz.refs.currentQuizRef.current) {
+        renderQuizOverlay()
+      }
+      
+      // Check quiz completion
+      if (quiz.refs.activeRef.current) {
+        checkQuizCompletion()
+      }
       
       // Handle player movement (WASD) - frozen during healing OR restoration
       if (!isHealing && !isRestoring) {
@@ -1201,6 +1561,7 @@ export default function SimpleGame() {
       drawLevelUpOverlay()
       drawSectorChangeOverlay()
       drawRestorationOverlay()
+      drawQuizCompletionMessage()
       
       // Update sector change timer
       if (showingSectorChange && sectorChangeTimer > 0) {
@@ -1226,43 +1587,39 @@ export default function SimpleGame() {
         const kitX = canvas.width - 110
         const kitY = 80
         
-        if (!mobileHudExpanded) {
+        if (!ui.state.mobileHudExpanded) {
           // COLLAPSED STATE - Minimal HUD
           const hudWidth = 100
           const hudHeight = 80
+          const cornerRadius = 10
           
           // Semi-transparent background with pulse effect
           const pulse = Math.sin(Date.now() / 1000) * 0.1 + 0.85
           ctx.fillStyle = `rgba(0, 0, 0, ${pulse})`
-          ctx.fillRect(kitX, kitY, hudWidth, hudHeight)
+          ctx.beginPath()
+          ctx.roundRect(kitX, kitY, hudWidth, hudHeight, cornerRadius)
+          ctx.fill()
+          
           ctx.strokeStyle = '#00ffff'
           ctx.lineWidth = 2
-          ctx.strokeRect(kitX, kitY, hudWidth, hudHeight)
+          ctx.stroke()
           
-          // Level and rank
+          // CLEAN: Level and rank (pure white, high contrast)
           ctx.font = 'bold 13px monospace'
-          ctx.fillStyle = '#ffd700'
+          ctx.fillStyle = '#ffffff'
           ctx.textAlign = 'left'
           const rank = getRank()
           ctx.fillText(`L${currentLevel}`, kitX + 8, kitY + 20)
           ctx.font = '9px monospace'
           ctx.fillStyle = '#ffffff'
-          ctx.fillText(rank, kitX + 8, kitY + 32)
+          ctx.fillText(rank.toUpperCase(), kitX + 8, kitY + 32)
           
-          // Total kit count (non-zero)
-          const totalKitsInInventory = 
-            (kitInventory['password-manager'] || 0) + 
-            (kitInventory['link-analyzer'] || 0) + 
-            (kitInventory['patch-manager'] || 0) + 
-            (kitInventory['privacy-optimizer'] || 0) + 
-            (kitInventory['vpn-shield'] || 0) +
-            (kitInventory['mfa-authenticator'] || 0) +
-            (kitInventory['backup-system'] || 0) +
-            (kitInventory['social-engineering-defense'] || 0)
+          // Total kit count
+          const totalKitsInInventory = calculateTotalKits(kitInventory)
           
-          ctx.font = 'bold 18px monospace'
-          ctx.fillStyle = totalKitsInInventory > 0 ? '#00ff00' : '#ff6666'
-          ctx.fillText(`🛡️${totalKitsInInventory}`, kitX + 8, kitY + 55)
+          ctx.font = 'bold 16px monospace'
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText(`❤️${totalKitsInInventory}`, kitX + 8, kitY + 53)
           
           // Expand indicator (animated)
           ctx.font = 'bold 10px monospace'
@@ -1274,13 +1631,17 @@ export default function SimpleGame() {
           // EXPANDED STATE - Full HUD
           const hudWidth = 130
           const hudHeight = 210
+          const cornerRadius = 10
           
           // Semi-transparent background
           ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'
-          ctx.fillRect(kitX - 20, kitY, hudWidth, hudHeight)
+          ctx.beginPath()
+          ctx.roundRect(kitX - 20, kitY, hudWidth, hudHeight, cornerRadius)
+          ctx.fill()
+          
           ctx.strokeStyle = '#00ff00'
           ctx.lineWidth = 2
-          ctx.strokeRect(kitX - 20, kitY, hudWidth, hudHeight)
+          ctx.stroke()
           
           // Level and rank
           ctx.font = 'bold 12px monospace'
@@ -1343,86 +1704,226 @@ export default function SimpleGame() {
         }
         
       } else {
-        // DESKTOP: Full detailed HUD
-        const kitX = canvas.width - 280
-        const kitY = 120
+        // DESKTOP: Collapsible top-left HUD
+        const hudX = 20
+        const hudY = 80
         
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
-        ctx.fillRect(kitX, kitY, 260, 380)
-        ctx.strokeStyle = '#00ffff'
-        ctx.lineWidth = 2
-        ctx.strokeRect(kitX, kitY, 260, 380)
-        
-        // Level and rank header
-        ctx.font = 'bold 16px monospace'
-        ctx.fillStyle = '#ffd700'
-        ctx.textAlign = 'left'
-        const rank = getRank()
-        ctx.fillText(`Level ${currentLevel} | ${rank}`, kitX + 10, kitY + 25)
-        
-        // Kit progress bar
-        const kitsNeeded = calculateKitsNeededForNextLevel(currentLevel)
-        const progressPercent = Math.min(totalKitsCollected / kitsNeeded, 1)
-        ctx.font = '14px monospace'
-        ctx.fillStyle = '#ffffff'
-        ctx.fillText(`Progress: ${totalKitsCollected}/${kitsNeeded} kits`, kitX + 10, kitY + 50)
-        
-        // Progress bar
-        const barWidth = 240
-        const barHeight = 12
-        ctx.fillStyle = '#333333'
-        ctx.fillRect(kitX + 10, kitY + 60, barWidth, barHeight)
-        ctx.fillStyle = '#00ff00'
-        ctx.fillRect(kitX + 10, kitY + 60, barWidth * progressPercent, barHeight)
-        ctx.strokeStyle = '#00ffff'
-        ctx.lineWidth = 1
-        ctx.strokeRect(kitX + 10, kitY + 60, barWidth, barHeight)
-        
-        // Kit inventory section - ALL 8 KITS!
-        ctx.font = 'bold 16px monospace'
-        ctx.fillStyle = '#00ffff'
-        ctx.fillText('PROTECTION KITS', kitX + 10, kitY + 95)
-        
-        ctx.font = '11px monospace'
-        ctx.fillStyle = '#ffffff'
-        ctx.fillText(`🔐 Password: ${kitInventory['password-manager']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 120)
-        ctx.fillText(`🔗 Link: ${kitInventory['link-analyzer']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 138)
-        ctx.fillText(`🛡️ Patch: ${kitInventory['patch-manager']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 156)
-        ctx.fillText(`🕵️ Privacy: ${kitInventory['privacy-optimizer']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 174)
-        ctx.fillText(`🔒 VPN: ${kitInventory['vpn-shield']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 192)
-        ctx.fillText(`🔑 MFA: ${kitInventory['mfa-authenticator']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 210)
-        ctx.fillText(`💾 Backup: ${kitInventory['backup-system']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 228)
-        ctx.fillText(`🎭 Social: ${kitInventory['social-engineering-defense']}/${MAX_KIT_CAPACITY}`, kitX + 10, kitY + 246)
-        
-        // Zone indicator and contextual tip
-        const currentZone = getCurrentZone(currentLevel)
-        ctx.font = 'bold 14px monospace'
-        ctx.fillStyle = currentZone.colorScheme.accent
-        ctx.fillText(`ZONE: ${currentZone.icon}`, kitX + 10, kitY + 275)
-        
-        // Rotating zone tip (changes every 5 seconds)
-        const tipIndex = Math.floor(Date.now() / 5000) % currentZone.contextualTips.length
-        const zoneTip = currentZone.contextualTips[tipIndex]
-        ctx.font = '10px monospace'
-        ctx.fillStyle = '#ffff00'
-        // Word wrap the tip
-        const maxWidth = 240
-        const words = zoneTip.split(' ')
-        let line = ''
-        let y = kitY + 293
-        words.forEach(word => {
-          const testLine = line + word + ' '
-          const metrics = ctx.measureText(testLine)
-          if (metrics.width > maxWidth && line !== '') {
-            ctx.fillText(line, kitX + 10, y)
-            line = word + ' '
-            y += 12
-          } else {
-            line = testLine
+        if (!ui.state.desktopHudExpanded) {
+          // COLLAPSED STATE - Minimal info (like mockup)
+          const hudWidth = 280
+          const hudHeight = 70
+          const cornerRadius = 12
+          
+          // Background with pulse - rounded corners
+          const pulse = Math.sin(Date.now() / 1000) * 0.1 + 0.7
+          ctx.fillStyle = `rgba(0, 0, 0, ${pulse})`
+          ctx.beginPath()
+          ctx.roundRect(hudX, hudY, hudWidth, hudHeight, cornerRadius)
+          ctx.fill()
+          
+          ctx.strokeStyle = '#00ffff'
+          ctx.lineWidth = 2
+          ctx.stroke()
+          
+          // CLEAN: High contrast white text, larger fonts
+          // Level and rank on left
+          ctx.font = 'bold 16px monospace'
+          ctx.fillStyle = '#ffffff'
+          ctx.textAlign = 'left'
+          const rank = getRank()
+          ctx.fillText(`LEVEL ${currentLevel} · ${rank.toUpperCase()}`, hudX + 15, hudY + 25)
+          
+          // Score on right of same line (high contrast)
+          ctx.font = 'bold 18px monospace'
+          ctx.fillStyle = '#ffffff'
+          ctx.textAlign = 'right'
+          ctx.fillText(`Score: ${score}`, hudX + hudWidth - 15, hudY + 25)
+          
+          // Total kits count with shield emoji
+          const totalKitsInInventory = calculateTotalKits(kitInventory)
+          
+          ctx.font = 'bold 20px monospace'
+          ctx.fillStyle = '#ffffff'
+          ctx.textAlign = 'left'
+          ctx.fillText(`❤️ ${totalKitsInInventory}`, hudX + 15, hudY + 52)
+          
+          // Expand indicator (small chevron)
+          ctx.font = 'bold 10px monospace'
+          ctx.fillStyle = '#00ffff'
+          ctx.textAlign = 'right'
+          const expandY = hudY + 55 + Math.sin(Date.now() / 300) * 1
+          ctx.fillText('▼', hudX + hudWidth - 15, expandY)
+          
+          ctx.textAlign = 'left'
+          
+        } else {
+          // EXPANDED STATE - Full details
+          const hudWidth = 450
+          const hudHeight = 80
+          const cornerRadius = 12
+          
+          // Background - rounded corners
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+          ctx.beginPath()
+          ctx.roundRect(hudX, hudY, hudWidth, hudHeight, cornerRadius)
+          ctx.fill()
+          
+          ctx.strokeStyle = '#00ff00'
+          ctx.lineWidth = 2
+          ctx.stroke()
+          
+          // Level and rank
+          ctx.font = 'bold 14px monospace'
+          ctx.fillStyle = '#ffd700'
+          ctx.textAlign = 'left'
+          const rank = getRank()
+          ctx.fillText(`L${currentLevel} ${rank}`, hudX + 10, hudY + 20)
+          
+          // Score
+          ctx.font = 'bold 12px monospace'
+          ctx.fillStyle = '#ffff00'
+          ctx.fillText(`Score: ${score}`, hudX + 10, hudY + 65)
+          
+          const kitsNeeded = calculateKitsNeededForNextLevel(currentLevel)
+          const progressPercent = Math.min(totalKitsCollected / kitsNeeded, 1)
+          ctx.font = '11px monospace'
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText(`${totalKitsCollected}/${kitsNeeded}`, hudX + 10, hudY + 37)
+          
+          // Mini progress bar
+          const barWidth = 80
+          const barHeight = 6
+          ctx.fillStyle = '#333333'
+          ctx.fillRect(hudX + 10, hudY + 42, barWidth, barHeight)
+          ctx.fillStyle = '#00ff00'
+          ctx.fillRect(hudX + 10, hudY + 42, barWidth * progressPercent, barHeight)
+          
+          // Kit icons in compact row - ALL 8 KITS
+          ctx.font = '18px monospace'
+          const kits = [
+            { emoji: '🔐', count: kitInventory['password-manager'] },
+            { emoji: '🔗', count: kitInventory['link-analyzer'] },
+            { emoji: '🛡️', count: kitInventory['patch-manager'] },
+            { emoji: '🕵️', count: kitInventory['privacy-optimizer'] },
+            { emoji: '🔒', count: kitInventory['vpn-shield'] },
+            { emoji: '🔑', count: kitInventory['mfa-authenticator'] },
+            { emoji: '💾', count: kitInventory['backup-system'] },
+            { emoji: '🎭', count: kitInventory['social-engineering-defense'] }
+          ]
+          
+          // Draw kits in single row
+          for (let i = 0; i < kits.length; i++) {
+            const x = hudX + 110 + (i * 42)
+            const y = hudY + 40
+            const kit = kits[i]
+            const count = kit.count || 0
+            
+            // Kit icon
+            ctx.fillStyle = count > 0 ? '#ffffff' : '#555555'
+            ctx.fillText(kit.emoji, x, y)
+            
+            // Count below icon
+            ctx.font = 'bold 10px monospace'
+            ctx.fillStyle = count > 0 ? '#00ff00' : '#555555'
+            ctx.fillText(`${count}`, x + 6, y + 15)
+            ctx.font = '18px monospace'
           }
-        })
-        ctx.fillText(line, kitX + 10, y)
+          
+          // Zone indicator
+          const currentZone = getCurrentZone(currentLevel)
+          ctx.font = '20px monospace'
+          ctx.fillStyle = currentZone.colorScheme.accent
+          ctx.fillText(currentZone.icon, hudX + 50, hudY + 70)
+          
+          // Collapse indicator
+          ctx.font = 'bold 11px monospace'
+          ctx.fillStyle = '#00ffff'
+          ctx.fillText('▲', hudX + 425, hudY + 20)
+        }
       }
+      
+      // Draw Threats From Panel (top-right) - desktop only - HIDDEN DURING QUIZ
+      const isQuizActive = quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0
+      if (canvas.width >= 768 && obstacles.length > 0 && !isQuizActive) {
+        const activeThreats = obstacles.filter(o => o.active && o.sentBy)
+        if (activeThreats.length > 0) {
+          // Get the closest threat to player
+          const closestThreat = activeThreats.reduce((closest, current) => {
+            const currentDist = Math.hypot(current.x - playerX, current.y - playerY)
+            const closestDist = Math.hypot(closest.x - playerX, closest.y - playerY)
+            return currentDist < closestDist ? current : closest
+          })
+          
+          // Get unique threat categories currently active
+          const categoryEmojis: {[key: string]: string} = {
+            'password': '🔐',
+            'phishing': '📧',
+            'updates': '💥',
+            'privacy': '🕵️',
+            'wifi': '📡',
+            'authentication': '🔑',
+            'data-loss': '💾',
+            'social-engineering': '🎭'
+          }
+          
+          const uniqueCategories = [...new Set(activeThreats.map(t => t.category))]
+          const threatIcons = uniqueCategories.slice(0, 3).map(cat => categoryEmojis[cat] || '⚠️')
+          
+          const panelWidth = 220
+          const panelHeight = 110
+          const panelX = canvas.width - panelWidth - 20
+          const panelY = 20
+          const cornerRadius = 12
+          
+          // Background
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+          ctx.beginPath()
+          ctx.roundRect(panelX, panelY, panelWidth, panelHeight, cornerRadius)
+          ctx.fill()
+          
+          ctx.strokeStyle = '#ff3300'
+          ctx.lineWidth = 2
+          ctx.stroke()
+          
+          // Header (warmer orange/red)
+          ctx.font = 'bold 12px monospace'
+          ctx.fillStyle = '#ff6600'
+          ctx.textAlign = 'center'
+          ctx.fillText('THREATS FROM:', panelX + panelWidth / 2, panelY + 18)
+          
+          // Threat icons in a row
+          ctx.font = '28px monospace'
+          ctx.fillStyle = '#ffffff'
+          const iconSpacing = 50
+          const startX = panelX + (panelWidth - (threatIcons.length - 1) * iconSpacing) / 2
+          threatIcons.forEach((icon, i) => {
+            ctx.fillText(icon, startX + i * iconSpacing, panelY + 52)
+          })
+          
+          // CLEAN: Attacker name (pure white)
+          ctx.font = 'bold 12px monospace'
+          ctx.fillStyle = '#ffffff'
+          const attackerName = closestThreat.sentBy?.name || 'UNKNOWN'
+          // Truncate name if too long
+          const maxNameLength = 18
+          const displayName = attackerName.length > maxNameLength 
+            ? attackerName.substring(0, maxNameLength) + '...' 
+            : attackerName
+          ctx.fillText(displayName, panelX + panelWidth / 2, panelY + 75)
+          
+          // CLEAN: Status (red = bad, green = safe)
+          ctx.font = 'bold 11px monospace'
+          const distance = Math.floor(Math.hypot(closestThreat.x - playerX, closestThreat.y - playerY))
+          const status = distance < 100 ? 'CRITICAL' : distance < 200 ? 'NEAR' : 'SAFE'
+          const statusColor = distance < 100 ? '#ff4d4d' : distance < 200 ? '#ff4d4d' : '#00ff9c'
+          ctx.fillStyle = statusColor
+          ctx.fillText(status, panelX + panelWidth / 2, panelY + 95)
+          
+          ctx.textAlign = 'left'
+        }
+      }
+      
+      // REMOVED: Bottom-right quiz panel - info now in top banner (cleaner design)
       
       // Spawn obstacles continuously (frequency increases with level)
       if (timestamp - lastSpawn > spawnFrequency) {
@@ -1438,10 +1939,10 @@ export default function SimpleGame() {
       // Update game time
       gameTime += 16 // Approximately 16ms per frame at 60fps
       
-      // Update and draw obstacles
+      // Update and draw obstacles (apply slow-motion during quiz)
       obstacles = obstacles.filter(obstacle => {
-        obstacle.y += obstacle.vy
-        obstacle.x += obstacle.vx
+        obstacle.y += obstacle.vy * slowMotionMultiplier
+        obstacle.x += obstacle.vx * slowMotionMultiplier
         
         // Bounce off edges for boss attacks (creates zigzag pattern)
         if (obstacle.type === 'boss-attack') {
@@ -1453,9 +1954,12 @@ export default function SimpleGame() {
         // Culling: only draw if visible on screen
         const isVisible = obstacle.y > -100 && obstacle.y < canvas.height + 100
         
-        if (isVisible) {
-          ctx.shadowBlur = 15
-          ctx.shadowColor = obstacle.color
+        // Skip drawing obstacles during quiz mode (clean focus like mockup)
+        const isQuizActive = quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0
+        
+        if (isVisible && !isQuizActive) {
+          // CLEAN: Removed shadow effects for better performance and clarity
+          ctx.shadowBlur = 0
           
           if (obstacle.type === 'boss-attack') {
             // Boss attacks are circles with motion trails
@@ -1511,9 +2015,9 @@ export default function SimpleGame() {
           ctx.shadowBlur = 0
         }
         
-        // Show ghost player name for first 2 seconds (2000ms)
+        // Show ghost player name for first 2 seconds (2000ms) - HIDDEN DURING QUIZ
         const timeSinceSpawn = gameTime - (obstacle.spawnTime || 0)
-        if (timeSinceSpawn < 2000 && obstacle.sentBy && obstacle.type !== 'boss-attack') {
+        if (timeSinceSpawn < 2000 && obstacle.sentBy && obstacle.type !== 'boss-attack' && !isQuizActive) {
           const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
           
           // Color based on level (low=gray, mid=cyan, high=yellow, elite=red)
@@ -1558,8 +2062,9 @@ export default function SimpleGame() {
           ctx.textAlign = 'left'
         }
         
-        // Check collision with obstacles
-        if (checkCollision(
+        // Check collision with obstacles (skip if player is invincible during quiz)
+        const isPlayerInvincible = quiz.refs.activeRef.current
+        if (!isPlayerInvincible && checkCollision(
           { x: playerX - playerSize / 2, y: playerY - playerSize / 2, width: playerSize, height: playerSize },
           { x: obstacle.x - obstacle.width / 2, y: obstacle.y - obstacle.height / 2, width: obstacle.width, height: obstacle.height }
         )) {
@@ -1572,7 +2077,7 @@ export default function SimpleGame() {
             kitInventory[requiredKit]--
             totalKitsCollected = Math.max(0, totalKitsCollected - 1) // Deduct from progress - must recollect to advance
             showTutorial(requiredKit)
-            addScore(25) // Bonus for surviving with kit
+            addScore(-25) // Cost for consuming kit
             returnObstacleToPool(obstacle)
             return false
           } else {
@@ -1591,7 +2096,7 @@ export default function SimpleGame() {
               obstacles = []
               
               // Bonus score for survival via backup
-              addScore(100) // Higher reward for having backup!
+              addScore(-100) // Cost for consuming backup kit
               
               // Remove the threat
               returnObstacleToPool(obstacle)
@@ -1634,6 +2139,20 @@ export default function SimpleGame() {
       
       // Update and draw kits (protection kits)
       powerups = powerups.filter(kit => {
+        // Skip drawing non-quiz items during quiz mode (reduce clutter)
+        const isQuizActive = quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0
+        const isQuizItem = kit.type === 'quiz-item'
+        
+        if (isQuizActive && !isQuizItem) {
+          // Hide regular powerups during quiz but keep them in array
+          return true
+        }
+        if (isQuizItem) {
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8',location:'SimpleGame.tsx:powerupRender',message:'quiz-item entering kit render',data:{type:kit.type,color:kit.color},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+        }
+        
         // Draw kit with pulsing glow
         const pulse = Math.sin(timestamp * 0.005) * 0.3 + 0.7
         const size = 35 * pulse
@@ -1659,11 +2178,24 @@ export default function SimpleGame() {
         ctx.lineWidth = 3
         ctx.strokeRect(kit.x - size / 2, kit.y - size / 2, size, size)
         
-        // Draw icon
+        // Draw icon; for quiz items, overlay password text on top
         ctx.font = 'bold 24px monospace'
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'center'
         ctx.fillText(icon, kit.x, kit.y + 8)
+        if (isQuizItem) {
+          const rawQuizName = kit.sentBy?.name || ''
+          const quizName = rawQuizName.replace(/[^\x20-\x7E]/g, '')
+          ctx.font = 'bold 12px monospace'
+          ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = '#000000'
+          ctx.shadowBlur = 3
+          ctx.fillText(quizName, kit.x, kit.y - 10)
+          ctx.shadowBlur = 0
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'post-fix',hypothesisId:'H9',location:'SimpleGame.tsx:powerupRender',message:'overlay quiz text on icon',data:{type:kit.type,textLength:quizName.length},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+        }
         ctx.textAlign = 'left'
         
         ctx.shadowBlur = 0
@@ -1673,7 +2205,33 @@ export default function SimpleGame() {
           { x: playerX - playerSize / 2, y: playerY - playerSize / 2, width: playerSize, height: playerSize },
           { x: kit.x - size / 2, y: kit.y - size / 2, width: size, height: size }
         )) {
-          // Determine kit type
+          // Handle quiz item collection
+          if (kit.type === 'quiz-item' && quiz.refs.activeRef.current && quiz.refs.currentQuizRef.current) {
+            const itemId = kit.threatId
+            
+            // Check if this was correct or incorrect
+            const isCorrect = quiz.refs.currentQuizRef.current.correctAnswers.includes(itemId)
+            
+            // Update via quiz action
+            quiz.actions.collectItem(itemId, isCorrect)
+            
+            if (isCorrect) {
+              addScore(100)
+              
+              // Green flash for correct
+              ctx.fillStyle = 'rgba(0, 255, 0, 0.3)'
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+            } else {
+              // Red flash for incorrect
+              ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+            }
+            
+            // Remove this quiz item
+            return false
+          }
+          
+          // Normal kit collection
           const kitType = kit.type.replace('kit-', '') as keyof typeof kitInventory
           
           // Add to inventory if not full
@@ -1681,6 +2239,7 @@ export default function SimpleGame() {
             kitInventory[kitType]++
             totalKitsCollected++
             addScore(50)
+            trackKitCollected(kitType, totalKitsCollected)
             
             // ⭐ TRIGGER CELEBRATION ANIMATION! ⭐
             celebrationTimer = CELEBRATION_DURATION
@@ -1843,6 +2402,63 @@ export default function SimpleGame() {
         ctx.textAlign = 'left'
       }
       
+      // Quiz invincibility shield - protective barrier during quiz
+      if (quiz.refs.activeRef.current) {
+        const shieldPulse = Math.sin(Date.now() / 200) * 0.3 + 0.7
+        const rotation = (Date.now() / 40) % 360
+        
+        // Outer rotating shield ring (cyan)
+        ctx.save()
+        ctx.translate(playerX, playerY)
+        ctx.rotate((rotation * Math.PI) / 180)
+        
+        ctx.strokeStyle = `rgba(0, 255, 255, ${0.7 * shieldPulse})`
+        ctx.lineWidth = 5
+        ctx.shadowBlur = 25
+        ctx.shadowColor = '#00ffff'
+        ctx.beginPath()
+        ctx.arc(0, 0, playerSize * 1.6, 0, Math.PI * 2)
+        ctx.stroke()
+        
+        // Inner hexagon pattern (counter-rotating)
+        ctx.rotate(-((rotation * 1.5 * Math.PI) / 180))
+        const hexagonPoints = 6
+        const hexRadius = playerSize * 1.3
+        ctx.strokeStyle = `rgba(0, 200, 255, ${0.6 * shieldPulse})`
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        for (let i = 0; i <= hexagonPoints; i++) {
+          const angle = (i * 2 * Math.PI) / hexagonPoints
+          const x = hexRadius * Math.cos(angle)
+          const y = hexRadius * Math.sin(angle)
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        }
+        ctx.stroke()
+        
+        ctx.restore()
+        
+        // Shield icon above player
+        ctx.font = 'bold 32px monospace'
+        ctx.fillStyle = `rgba(0, 255, 255, ${shieldPulse})`
+        ctx.textAlign = 'center'
+        ctx.shadowBlur = 15
+        ctx.shadowColor = '#00ffff'
+        ctx.fillText('🛡️', playerX, playerY - playerSize - 35)
+        ctx.shadowBlur = 0
+        ctx.textAlign = 'left'
+        
+        // "INVINCIBLE" text above shield icon
+        ctx.font = 'bold 14px monospace'
+        ctx.fillStyle = `rgba(0, 255, 255, ${shieldPulse})`
+        ctx.textAlign = 'center'
+        ctx.shadowBlur = 10
+        ctx.shadowColor = '#00ffff'
+        ctx.fillText('INVINCIBLE', playerX, playerY - playerSize - 55)
+        ctx.shadowBlur = 0
+        ctx.textAlign = 'left'
+      }
+      
       // Draw animated stick figure with moving limbs
       ctx.shadowBlur = 0
       
@@ -1955,12 +2571,19 @@ export default function SimpleGame() {
       canvas.removeEventListener('touchend', handleTouchEnd)
       canvas.removeEventListener('touchcancel', handleTouchEnd)
       canvas.removeEventListener('click', handleCanvasClick)
-      // Clean up HUD collapse timer
-      if (mobileHudCollapseTimer.current) {
-        clearTimeout(mobileHudCollapseTimer.current)
-      }
+      
+      // Clean up UI timers
+      ui.cleanup()
+      // Clear all tracked game timeouts to prevent memory leaks
+      timeoutRefs.current.forEach(tid => clearTimeout(tid))
+      timeoutRefs.current = []
+      
+      // Clean up image references
+      Object.values(images).forEach(img => {
+        img.src = ''
+      })
     }
-  }, [gameStarted, isGameOver, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, setLevel, mobileHudExpanded])
+  }, [gameStarted, isGameOver, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, setLevel, ui.state.mobileHudExpanded, ui.state.desktopHudExpanded])
   
   const handleStart = () => {
     trackGameStart()
@@ -1992,7 +2615,8 @@ export default function SimpleGame() {
     setGameOver(false)
     setGameStarted(true)
     // Clear saved state after a brief delay (after game loop starts)
-    setTimeout(() => setSavedGameState(null), 100)
+    const tid = setTimeout(() => setSavedGameState(null), 100)
+    timeoutRefs.current.push(tid)
   }
   
   const handleQuizFail = () => {
@@ -2029,7 +2653,8 @@ export default function SimpleGame() {
     setGameStarted(true)
     setLevel(1)
     // Clear saved state after game loop starts
-    setTimeout(() => setSavedGameState(null), 100)
+    const tid = setTimeout(() => setSavedGameState(null), 100)
+    timeoutRefs.current.push(tid)
   }
   
   // Show nothing during SSR to prevent hydration errors
@@ -2039,227 +2664,21 @@ export default function SimpleGame() {
   
   // Loading screen
   if (isLoading) {
-    return (
-      <div className="relative flex items-center justify-center min-h-screen overflow-hidden" style={{ zIndex: 10 }}>
-        {/* Semi-transparent overlay to see background through */}
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-
-        <div className="relative z-10 text-center space-y-6 px-4">
-          {/* Logo with glow effect */}
-          <div className="relative">
-            <img 
-              src="/logo.png" 
-              alt="Byte Runner Logo" 
-              className="w-48 h-48 md:w-64 md:h-64 mx-auto drop-shadow-[0_0_40px_rgba(0,255,255,0.8)] animate-pulse"
-              style={{ 
-                filter: 'drop-shadow(0 0 30px rgba(0, 255, 255, 0.6))'
-              }}
-            />
-          </div>
-
-          <h2 className="text-3xl md:text-4xl font-bold text-cyan-400 font-mono">
-            INITIALIZING CYBERSPACE...
-          </h2>
-
-          {/* Progress bar */}
-          <div className="w-64 md:w-96 mx-auto">
-            <div className="h-3 bg-gray-900 rounded-full overflow-hidden border-2 border-cyan-700 shadow-[0_0_20px_rgba(0,255,255,0.3)]">
-              <div 
-                className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 transition-all duration-300 shadow-[0_0_20px_rgba(0,255,255,0.8)]"
-                style={{ 
-                  width: `${loadProgress}%`,
-                  animation: 'shimmer 2s infinite'
-                }}
-              />
-            </div>
-            <p className="text-cyan-300 text-sm md:text-base font-mono mt-2">
-              {Math.round(loadProgress)}% • Loading assets...
-            </p>
-          </div>
-
-          {/* Loading dots animation */}
-          <div className="flex justify-center gap-2">
-            <div className="w-2 h-2 md:w-3 md:h-3 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-            <div className="w-2 h-2 md:w-3 md:h-3 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-            <div className="w-2 h-2 md:w-3 md:h-3 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
-          </div>
-        </div>
-      </div>
-    )
+    return <LoadingScreen progress={loadProgress} />
   }
   
   if (!gameStarted) {
     return (
-      <div className="relative flex items-center justify-center min-h-screen overflow-y-auto py-4" style={{ zIndex: 10 }}>
-        {/* Tutorial Overlay - Compact Version */}
-        {showTutorial && (
-          <div 
-            className="absolute inset-0 flex items-center justify-center bg-black z-50 p-4 overflow-y-auto"
-            onClick={closeTutorial}
-          >
-            <div 
-              className="bg-gradient-to-br from-gray-900 to-blue-900 border-2 border-cyan-500 rounded-lg p-3 md:p-4 max-w-2xl w-full max-h-[75vh] overflow-y-auto relative animate-in fade-in slide-in-from-top-2 duration-500"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Close button */}
-              <button
-                onClick={closeTutorial}
-                className="absolute top-1 right-1 text-gray-400 hover:text-white text-lg font-bold transition-colors z-10"
-                aria-label="Close tutorial"
-              >
-                ✕
-              </button>
-
-              {/* Header */}
-              <div className="text-center mb-2">
-                <h2 className="text-xl md:text-2xl font-bold text-cyan-400 mb-1">
-                  🎮 HOW TO PLAY
-                </h2>
-              </div>
-
-              {/* Content - Compact Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-white text-xs">
-                {/* Objective */}
-                <div className="bg-black/50 border-2 border-cyan-600 rounded-lg p-2">
-                  <h3 className="text-cyan-400 font-bold text-sm mb-1">🎯 Objective</h3>
-                  <p className="text-gray-300 text-xs leading-tight">
-                    Collect <strong className="text-green-400">kits</strong>, survive threats. 
-                    Hit without kit = <strong className="text-red-400">game over!</strong>
-                  </p>
-                </div>
-
-                {/* Controls */}
-                <div className="bg-black/50 border-2 border-purple-600 rounded-lg p-2">
-                  <h3 className="text-purple-400 font-bold text-sm mb-1">🕹️ Controls</h3>
-                  <div className="text-xs text-gray-300 space-y-1">
-                    <p>💻 <kbd className="bg-gray-800 px-1 py-0.5 rounded text-xs">WASD</kbd> or arrows</p>
-                    <p>📱 Touch & drag</p>
-                  </div>
-                </div>
-
-                {/* Key Mechanics - Full Width */}
-                <div className="bg-black/50 border-2 border-yellow-600 rounded-lg p-2 md:col-span-2">
-                  <h3 className="text-yellow-400 font-bold text-sm mb-1">⚡ Key Mechanics</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-1 text-xs text-gray-300">
-                    <div>🔐 8 Kits</div>
-                    <div>🦠 15 Threats</div>
-                    <div>📈 4 Zones</div>
-                    <div>🧠 Quiz</div>
-                    <div>💾 Backup = Life</div>
-                    <div>📚 Real Tools</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Educational Note - Compact */}
-              <div className="text-center text-xs text-gray-400 italic mt-2 pt-2 border-t border-gray-700">
-                Learn real cybersecurity. Each death teaches defense tools.
-              </div>
-
-              {/* Legal Links */}
-              <div className="flex justify-center gap-2 mt-2 text-xs flex-wrap">
-                <a 
-                  href="/privacy" 
-                  target="_blank"
-                  className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
-                >
-                  Privacy
-                </a>
-                <span className="text-gray-600">•</span>
-                <a 
-                  href="/terms" 
-                  target="_blank"
-                  className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
-                >
-                  Terms
-                </a>
-                <span className="text-gray-600">•</span>
-                <a 
-                  href="/faq" 
-                  target="_blank"
-                  className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
-                >
-                  FAQ
-                </a>
-              </div>
-
-              {/* Hint text */}
-              <p className="text-center text-xs text-gray-500 mt-2 italic">
-                Click outside or X to close
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Help Button (top-right corner for better mobile access) */}
-        <button
-          onClick={() => {
-            setShowTutorial(true)
-            tutorialStartTime.current = Date.now()
-            setTutorialCountdown(5)
-            trackTutorialViewed()
-          }}
-          className="absolute top-4 right-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-xl z-20 text-xl md:text-2xl"
-          title="Show tutorial"
-        >
-          ?
-        </button>
-
-        <div className="text-center space-y-4 max-w-2xl px-4 my-auto">
-          {/* Logo - now the main header */}
-          <img 
-            src="/logo.png" 
-            alt="Byte Runner Logo" 
-            className="w-40 h-40 md:w-56 md:h-56 mx-auto mb-4 drop-shadow-[0_0_40px_rgba(0,255,255,0.8)] hover:scale-105 transition-transform duration-300"
-          />
-          
-          <p className="text-red-500 text-lg md:text-xl font-bold drop-shadow-[0_0_10px_rgba(255,0,0,0.5)]">The cyber storm is here - fortify or fall!</p>
-          
-          <div className="bg-black/80 border-2 border-cyan-600 rounded-lg p-4 md:p-6 text-white space-y-2 backdrop-blur-sm">
-            <h3 className="text-cyan-400 font-bold text-lg md:text-xl mb-2">HOW TO PLAY:</h3>
-            
-            <div className="text-left space-y-1 text-sm md:text-base">
-              <p><strong className="text-yellow-400">COLLECT KITS:</strong> Grab protection kits (🔐 🛡️ 🦠)</p>
-              <p><strong className="text-green-400">SURVIVE:</strong> Use kits when hit by threats</p>
-              <p><strong className="text-red-400">NO KIT = GAME OVER:</strong> Stay stocked!</p>
-            </div>
-            
-            <div className="border-t-2 border-cyan-800 pt-2 mt-2">
-              <h4 className="text-cyan-400 font-bold mb-1">CONTROLS:</h4>
-              <div className="grid grid-cols-2 gap-1 text-left text-xs">
-                <p>💻 <strong>WASD/Arrows</strong></p>
-                <p>📱 <strong>Touch & Drag</strong></p>
-              </div>
-            </div>
-            
-            <div className="border-t-2 border-cyan-800 pt-2 mt-2">
-              <h4 className="text-green-400 font-bold mb-1 text-sm">8 KITS • 4 ZONES • 15 THREATS</h4>
-              <p className="text-yellow-400 text-xs">💡 Learn real cybersecurity while playing!</p>
-              <p className="text-green-400 text-xs">💾 Backup Kit = Extra Life!</p>
-            </div>
-          </div>
-          
-          <button
-            onClick={handleStart}
-            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white text-xl md:text-2xl font-bold py-4 md:py-5 px-12 md:px-14 rounded-xl transition-transform transform hover:scale-105 shadow-2xl animate-pulse mt-2 cursor-pointer relative"
-            style={{ zIndex: 100 }}
-          >
-            🎮 START GAME
-          </button>
-        </div>
-
-        {/* Feedback Button - Floating (bottom-left for mobile thumb access) */}
-        <button
-          onClick={() => {
-            window.open('mailto:connect@knacksters.co?subject=Byte Runner Feedback&body=Hi! Here\'s my feedback about Byte Runner:%0D%0A%0D%0A', '_blank')
-          }}
-          className="absolute bottom-4 left-4 bg-purple-600 hover:bg-purple-700 text-white text-sm md:text-base font-semibold py-3 px-4 md:px-5 rounded-full md:rounded-lg transition-all shadow-xl hover:scale-105 flex items-center gap-2 z-20"
-          title="Send feedback"
-        >
-          <span className="text-lg md:text-base">📝</span>
-          <span className="hidden md:inline">Feedback</span>
-        </button>
-      </div>
+      <>
+        <TutorialOverlay 
+          showing={tutorial.state.showing}
+          onClose={tutorial.actions.close}
+        />
+        <StartScreen 
+          onStart={handleStart}
+          onShowTutorial={tutorial.actions.open}
+        />
+      </>
     )
   }
   
@@ -2268,24 +2687,16 @@ export default function SimpleGame() {
       {/* HUD - RESPONSIVE FOR MOBILE */}
       <div className="absolute top-2 md:top-4 left-2 md:left-4 right-2 md:right-4 flex justify-between items-start text-white font-mono text-sm md:text-xl z-10 pointer-events-none">
         <div className="space-y-1 md:space-y-2">
-          <div className="bg-black/80 border border-cyan-600 md:border-2 rounded px-2 py-1 md:px-6 md:py-3">
-            <span className="text-[10px] md:text-base">L:</span> <span className="text-cyan-400 font-bold text-sm md:text-xl">{level}</span>
+          {/* Mobile only - level and score shown in canvas HUD on desktop */}
+          <div className="md:hidden bg-black/80 border border-cyan-600 rounded px-2 py-1">
+            <span className="text-[10px]">L:</span> <span className="text-cyan-400 font-bold text-sm">{level}</span>
           </div>
-          <div className="bg-black/80 border border-yellow-600 md:border-2 rounded px-2 py-1 md:px-6 md:py-3">
-            <span className="text-[10px] md:text-base">S:</span> <span className="text-yellow-400 font-bold text-sm md:text-xl">{score}</span>
+          <div className="md:hidden bg-black/80 border border-yellow-600 rounded px-2 py-1">
+            <span className="text-[10px]">S:</span> <span className="text-yellow-400 font-bold text-sm">{score}</span>
           </div>
         </div>
         
-        {/* Threat Direction Indicator - Hide on mobile to save space */}
-        <div className="hidden md:block bg-black/70 border-2 border-red-600 rounded-lg px-4 py-2 text-center">
-          <p className="text-red-400 text-sm font-bold mb-1">THREATS FROM:</p>
-          <div className="flex gap-2 text-lg justify-center">
-            <span className="text-green-400">⬇️</span>
-            {level >= 2 && <span className="text-green-400">⬆️</span>}
-            {level >= 3 && <span className="text-green-400">⬅️</span>}
-            {level >= 4 && <span className="text-green-400">➡️</span>}
-          </div>
-        </div>
+        {/* Threat Direction Indicator - rendered in canvas HUD */}
         
         {/* Kit inventory displayed in canvas */}
       </div>
@@ -2356,8 +2767,8 @@ export default function SimpleGame() {
                   {/* Collapsed Header - Always Visible */}
                   <button
                     onClick={() => {
-                      const newState = !showEducationDetails
-                      setShowEducationDetails(newState)
+                      ui.actions.toggleEducationDetails()
+                      const newState = !ui.state.showEducationDetails
                       // Track education expansion
                       if (newState && lastThreatType) {
                         const kit = getProtectionKitForThreat(lastThreatType)
@@ -2366,8 +2777,7 @@ export default function SimpleGame() {
                       // Auto-award bonus kit when expanded for first time!
                       if (newState && !bonusKitType) {
                         setBonusKitType(protectionKit.id)
-                        setShowBonusNotification(true)
-                        setTimeout(() => setShowBonusNotification(false), 3000)
+                        ui.actions.showBonus(3000)
                       }
                     }}
                     className="w-full p-3 text-left flex items-center justify-between hover:bg-cyan-900/20 transition-colors group"
@@ -2377,7 +2787,7 @@ export default function SimpleGame() {
                       <div>
                         <p className="text-cyan-300 text-xs md:text-sm font-extrabold font-mono tracking-wide">
                           WHY YOU DIED
-                          {isFirstDeath && !showEducationDetails && (
+                          {isFirstDeath && !ui.state.showEducationDetails && (
                             <span className="ml-2 text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded animate-pulse font-bold">
                               TAP
                             </span>
@@ -2388,13 +2798,13 @@ export default function SimpleGame() {
                         </p>
                       </div>
                     </div>
-                    <span className="text-lg text-cyan-400 transition-transform duration-300 group-hover:scale-110" style={{ transform: showEducationDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    <span className="text-lg text-cyan-400 transition-transform duration-300 group-hover:scale-110" style={{ transform: ui.state.showEducationDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                       ▼
                     </span>
                   </button>
                   
                   {/* Expandable Content */}
-                  {showEducationDetails && (
+                  {ui.state.showEducationDetails && (
                     <div className="px-3 pb-3 space-y-2 border-t border-cyan-500/20 animate-in fade-in slide-in-from-top-2 duration-300">
                       <p className="text-red-300 text-xs pt-2 font-mono">
                         Hit by <span className="font-extrabold text-red-400">{getThreatName(lastThreatType)}</span> without protection.
@@ -2428,7 +2838,7 @@ export default function SimpleGame() {
                       {/* Learn More Button */}
                       <button
                         onClick={() => {
-                          setShowLearnMore(true)
+                          ui.actions.toggleLearnMore()
                           if (lastThreatType) {
                             const kit = getProtectionKitForThreat(lastThreatType)
                             if (kit) trackDeepDiveViewed(kit.id)
@@ -2442,7 +2852,7 @@ export default function SimpleGame() {
                   )}
                   
                   {/* Bonus Kit Notification */}
-                  {showBonusNotification && bonusKitType === protectionKit.id && (
+                  {ui.state.showBonusNotification && bonusKitType === protectionKit.id && (
                     <div className="bg-green-600 text-white px-2 py-1.5 text-xs font-extrabold text-center border-t border-green-400 font-mono">
                       ✓ +1 {protectionKit.emoji} {protectionKit.name}
                     </div>
@@ -2592,7 +3002,7 @@ export default function SimpleGame() {
       )}
       
       {/* Knowledge Card Modal - Deep Learning */}
-      {showLearnMore && lastThreatType && (() => {
+      {ui.state.showLearnMore && lastThreatType && (() => {
         const protectionKit = getProtectionKitForThreat(lastThreatType)
         return protectionKit ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/95 z-30 overflow-y-auto p-4">
@@ -2663,7 +3073,7 @@ export default function SimpleGame() {
                   if (protectionKit) {
                     setBonusKitType(protectionKit.id)
                   }
-                  setShowLearnMore(false)
+                  ui.actions.toggleLearnMore()
                 }}
                 className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white text-2xl font-bold py-4 px-8 rounded-lg transition-all transform hover:scale-105"
               >
@@ -2675,7 +3085,7 @@ export default function SimpleGame() {
       })()}
       
       {/* Bonus Kit Notification */}
-      {showBonusNotification && bonusKitType && (
+      {ui.state.showBonusNotification && bonusKitType && (
         <div className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 border-4 border-yellow-400 rounded-lg px-8 py-4 z-20 animate-bounce">
           <p className="text-yellow-300 text-2xl font-bold text-center">🎁 BONUS REWARD ACTIVE!</p>
           <p className="text-white text-lg text-center mt-2">

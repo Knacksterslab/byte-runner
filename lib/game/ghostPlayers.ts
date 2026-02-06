@@ -1,6 +1,6 @@
 // Ghost player system - AI-generated "players" that send threats
-
 import type { ThreatCategory } from './threatData'
+import { getRandomByFilter, getRandomItem } from './utils'
 
 export interface GhostPlayer {
   id: string
@@ -154,10 +154,10 @@ const specialities: { [key in ThreatCategory]: string[] } = {
 // Generate a random ghost player
 export function getRandomGhostPlayer(preferredCategory?: ThreatCategory): GhostPlayer {
   // Pick random base name
-  const baseName = ghostPlayerNames[Math.floor(Math.random() * ghostPlayerNames.length)]
+  const baseName = getRandomItem(ghostPlayerNames)
   
   // Add random suffix for variety
-  const suffix = nameSuffixes[Math.floor(Math.random() * nameSuffixes.length)]
+  const suffix = getRandomItem(nameSuffixes)
   const name = baseName + suffix
   
   // Generate level with weighted distribution (more variety)
@@ -178,15 +178,15 @@ export function getRandomGhostPlayer(preferredCategory?: ThreatCategory): GhostP
   }
   
   // If category specified, use it; otherwise random from all 8 categories
-  const category: ThreatCategory = preferredCategory || 
-    (['password', 'phishing', 'updates', 'privacy', 'wifi', 'authentication', 'data-loss', 'social-engineering'] as ThreatCategory[])[Math.floor(Math.random() * 8)]
+  const allCategories: ThreatCategory[] = ['password', 'phishing', 'updates', 'privacy', 'wifi', 'authentication', 'data-loss', 'social-engineering']
+  const category: ThreatCategory = preferredCategory || getRandomItem(allCategories)
   
   const categorySpecialities = specialities[category]
-  const speciality = categorySpecialities[Math.floor(Math.random() * categorySpecialities.length)]
+  const speciality = getRandomItem(categorySpecialities)
   
   // Random emoji (20% chance of having one)
   const emoji = Math.random() < 0.2 
-    ? playerEmojis[Math.floor(Math.random() * playerEmojis.length)]
+    ? getRandomItem(playerEmojis)
     : undefined
   
   return {

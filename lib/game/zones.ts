@@ -1,6 +1,6 @@
 // Zone/Theme system for environmental storytelling
-
 import type { ThreatCategory } from './threatData'
+import { getRandomItem, findById } from './utils'
 
 export interface GameZone {
   id: string
@@ -172,13 +172,13 @@ export function isZoneTransition(level: number): boolean {
 
 // Get zone by ID
 export function getZoneById(id: string): GameZone | undefined {
-  return gameZones.find(zone => zone.id === id)
+  return findById(gameZones, id)
 }
 
 // Get random contextual tip for current zone
 export function getZoneTip(level: number): string {
   const zone = getCurrentZone(level)
-  return zone.contextualTips[Math.floor(Math.random() * zone.contextualTips.length)]
+  return getRandomItem(zone.contextualTips)
 }
 
 // Check if threat category is relevant to zone

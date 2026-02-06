@@ -1,4 +1,5 @@
 // Threat type system for all 8 Tier 1 cybersecurity categories
+import { getRandomItem, findById, filterByCategory } from './utils'
 
 export type ThreatCategory = 'password' | 'phishing' | 'updates' | 'privacy' | 'wifi' | 'authentication' | 'data-loss' | 'social-engineering'
 export type DamageType = 'instant' | 'minor'
@@ -275,17 +276,17 @@ export const threatTypes: ThreatType[] = [
 
 // Get random threat type
 export function getRandomThreat(): ThreatType {
-  return threatTypes[Math.floor(Math.random() * threatTypes.length)]
+  return getRandomItem(threatTypes)
 }
 
 // Get threat by ID
 export function getThreatById(id: string): ThreatType | undefined {
-  return threatTypes.find(t => t.id === id)
+  return findById(threatTypes, id)
 }
 
 // Get threats by category
 export function getThreatsByCategory(category: ThreatCategory): ThreatType[] {
-  return threatTypes.filter(t => t.category === category)
+  return filterByCategory(threatTypes, category)
 }
 
 // Get threat name for display
