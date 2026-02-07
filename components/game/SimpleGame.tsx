@@ -129,6 +129,8 @@ export default function SimpleGame() {
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')!
     const EMOJI_FONT_STACK = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",monospace'
+    const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent)
+    const performanceMode = isChrome
     if (!(ctx as any).__debugFillTextWrapped) {
       ;(ctx as any).__debugFillTextWrapped = true
       const originalFillText = ctx.fillText.bind(ctx)
@@ -196,11 +198,11 @@ export default function SimpleGame() {
     
     // Level state
     let currentLevel = 1
-    let obstacleSpeed = 3
+    let obstacleSpeed = 4
     let powerupsNeeded = 0
     let powerupsCollected = 0
     let isAdvancingLevel = false // Prevent multiple level advances
-    let spawnFrequency = 800 // ms between obstacle spawns
+    let spawnFrequency = 650 // ms between obstacle spawns
     
     // Animation state for running character
     let animationTime = 0
@@ -302,7 +304,8 @@ export default function SimpleGame() {
     const SECTOR_CHANGE_DURATION = 2000 // 2 seconds
     
     // Create background particles
-    for (let i = 0; i < 100; i++) {
+    const particleCount = performanceMode ? 60 : 100
+    for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
@@ -312,7 +315,8 @@ export default function SimpleGame() {
     }
     
     // Create matrix columns (for level 10+)
-    for (let i = 0; i < 50; i++) {
+    const matrixCount = performanceMode ? 30 : 50
+    for (let i = 0; i < matrixCount; i++) {
       matrixColumns.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
@@ -1612,7 +1616,9 @@ export default function SimpleGame() {
         }
         
         // Simple stars - white only, subtle twinkle
-        const twinkle = Math.sin(Date.now() / 800 + particle.x) * 0.3 + 0.7
+        const twinkle = performanceMode
+          ? 0.6
+          : Math.sin(Date.now() / 800 + particle.x) * 0.3 + 0.7
         ctx.globalAlpha = twinkle * 0.6
         ctx.fillStyle = '#ffffff'
         ctx.beginPath()
@@ -2177,7 +2183,7 @@ export default function SimpleGame() {
           ctx.font = `bold ${fontSize}px ${EMOJI_FONT_STACK}`
           ctx.fillStyle = `rgba(${parseInt(nameColor.slice(1, 3), 16)}, ${parseInt(nameColor.slice(3, 5), 16)}, ${parseInt(nameColor.slice(5, 7), 16)}, ${opacity})`
           ctx.textAlign = 'center'
-          ctx.shadowBlur = 8
+          ctx.shadowBlur = performanceMode ? 0 : 8
           ctx.shadowColor = `rgba(${parseInt(nameColor.slice(1, 3), 16)}, ${parseInt(nameColor.slice(3, 5), 16)}, ${parseInt(nameColor.slice(5, 7), 16)}, ${opacity * 0.8})`
           
           // Draw name with level (and emoji if available)
@@ -2290,7 +2296,7 @@ export default function SimpleGame() {
         const pulse = Math.sin(timestamp * 0.005) * 0.3 + 0.7
         const size = 35 * pulse
         
-        ctx.shadowBlur = 30 * pulse
+        ctx.shadowBlur = performanceMode ? 0 : 30 * pulse
         ctx.shadowColor = kit.color
         
         // Kit icon based on type
@@ -2435,7 +2441,7 @@ export default function SimpleGame() {
       }
       
       // Multi-layered glow effect
-      ctx.shadowBlur = glowSize
+      ctx.shadowBlur = performanceMode ? 0 : glowSize
       ctx.shadowColor = glowColor
       
       // Add pulsing effect for higher ranks
