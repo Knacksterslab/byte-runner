@@ -59,6 +59,16 @@ export default function SimpleGame() {
   const ui = useUIState()
   
   const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame } = useGameStore()
+
+  const isDev = process.env.NODE_ENV !== 'production'
+  const debugIngest = (payload: Record<string, unknown>) => {
+    if (!isDev) return
+    fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {})
+  }
   
   // Ensure component is mounted (client-side only)
   useEffect(() => {
@@ -140,7 +150,7 @@ export default function SimpleGame() {
           typeof text === 'string' && /[\uD83D\uDD12\uD83D\uDD10]/.test(text)
         if (hasNonAscii || hasLockEmoji) {
           // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7',location:'SimpleGame.tsx:fillTextWrap',message:'fillText drew non-ascii/lock',data:{hasNonAscii,hasLockEmoji,textLength:typeof text === 'string' ? text.length : null,x,y,font:ctx.font},timestamp:Date.now()})}).catch(()=>{});
+          debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7',location:'SimpleGame.tsx:fillTextWrap',message:'fillText drew non-ascii/lock',data:{hasNonAscii,hasLockEmoji,textLength:typeof text === 'string' ? text.length : null,x,y,font:ctx.font},timestamp:Date.now()})
           // #endregion
         }
         return originalFillText(text as any, x as any, y as any, maxWidth as any)
@@ -1158,7 +1168,7 @@ export default function SimpleGame() {
         const row = Math.floor(index / 3)
         const col = index % 3
         // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'SimpleGame.tsx:spawnQuizItems',message:'spawn quiz item label/visual',data:{id:item.id,label:item.label,visual:item.visual,type:quizChallenge.type},timestamp:Date.now()})}).catch(()=>{});
+        debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'SimpleGame.tsx:spawnQuizItems',message:'spawn quiz item label/visual',data:{id:item.id,label:item.label,visual:item.visual,type:quizChallenge.type},timestamp:Date.now()})
         // #endregion
         
         powerups.push({
@@ -1175,7 +1185,7 @@ export default function SimpleGame() {
           category: quizChallenge.type
         })
         // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'SimpleGame.tsx:spawnQuizItems',message:'pushed quiz powerup sentBy.name',data:{id:item.id,name:item.label},timestamp:Date.now()})}).catch(()=>{});
+        debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'SimpleGame.tsx:spawnQuizItems',message:'pushed quiz powerup sentBy.name',data:{id:item.id,name:item.label},timestamp:Date.now()})
         // #endregion
       })
     }
@@ -1414,7 +1424,7 @@ export default function SimpleGame() {
       const countdown = quiz.refs.countdownRef.current
       if (/[^\x20-\x7E]/.test(quizData.question) || /[^\x20-\x7E]/.test(quizData.instructions)) {
         // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'SimpleGame.tsx:drawQuizOverlay',message:'quiz header has non-ascii',data:{question:quizData.question,instructions:quizData.instructions},timestamp:Date.now()})}).catch(()=>{});
+        debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'SimpleGame.tsx:drawQuizOverlay',message:'quiz header has non-ascii',data:{question:quizData.question,instructions:quizData.instructions},timestamp:Date.now()})
         // #endregion
       }
       
@@ -1536,7 +1546,7 @@ export default function SimpleGame() {
       powerups.forEach(item => {
         if (item.type === 'quiz-item') {
           // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4',location:'SimpleGame.tsx:drawQuizItem',message:'quiz powerup info',data:{type:item.type,color:item.color,speciality:item.sentBy?.speciality,name:item.sentBy?.name},timestamp:Date.now()})}).catch(()=>{});
+          debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4',location:'SimpleGame.tsx:drawQuizItem',message:'quiz powerup info',data:{type:item.type,color:item.color,speciality:item.sentBy?.speciality,name:item.sentBy?.name},timestamp:Date.now()})
           // #endregion
           // Draw larger, well-spaced item (like mockup)
           const size = 120
@@ -1557,7 +1567,7 @@ export default function SimpleGame() {
           const rawName = item.sentBy.name
           const passwordText = rawName.replace(/[^\x20-\x7E]/g, '')
           // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3',location:'SimpleGame.tsx:drawQuizItem',message:'quiz item render name vs sanitized',data:{rawName,hasNonAscii:/[^\x20-\x7E]/.test(rawName),passwordText},timestamp:Date.now()})}).catch(()=>{});
+          debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3',location:'SimpleGame.tsx:drawQuizItem',message:'quiz item render name vs sanitized',data:{rawName,hasNonAscii:/[^\x20-\x7E]/.test(rawName),passwordText},timestamp:Date.now()})
           // #endregion
           const passwordWidth = ctx.measureText(passwordText).width
           const textBgPaddingX = 6
@@ -2299,7 +2309,7 @@ export default function SimpleGame() {
         }
         if (isQuizItem) {
           // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8',location:'SimpleGame.tsx:powerupRender',message:'quiz-item entering kit render',data:{type:kit.type,color:kit.color},timestamp:Date.now()})}).catch(()=>{});
+          debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8',location:'SimpleGame.tsx:powerupRender',message:'quiz-item entering kit render',data:{type:kit.type,color:kit.color},timestamp:Date.now()})
           // #endregion
         }
         
@@ -2340,7 +2350,7 @@ export default function SimpleGame() {
           ctx.fillText(quizName, kit.x, kit.y - 10)
           ctx.shadowBlur = 0
           // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'post-fix',hypothesisId:'H9',location:'SimpleGame.tsx:powerupRender',message:'overlay quiz text on icon',data:{type:kit.type,textLength:quizName.length},timestamp:Date.now()})}).catch(()=>{});
+          debugIngest({sessionId:'debug-session',runId:'post-fix',hypothesisId:'H9',location:'SimpleGame.tsx:powerupRender',message:'overlay quiz text on icon',data:{type:kit.type,textLength:quizName.length},timestamp:Date.now()})
           // #endregion
         }
         ctx.textAlign = 'left'
