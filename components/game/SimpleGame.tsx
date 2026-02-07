@@ -570,6 +570,13 @@ export default function SimpleGame() {
         return
       }
       
+      // Blur + dim background to focus on tutorial
+      ctx.save()
+      ctx.filter = 'blur(3px)'
+      ctx.globalAlpha = 0.7
+      ctx.drawImage(canvas, 0, 0)
+      ctx.restore()
+      
       let title = ''
       let subtitle = ''
       let blocks = ''
@@ -2064,15 +2071,17 @@ export default function SimpleGame() {
       
       // REMOVED: Bottom-right quiz panel - info now in top banner (cleaner design)
       
-      // Spawn obstacles continuously (frequency increases with level)
-      if (timestamp - lastSpawn > spawnFrequency) {
-        spawnObstacle()
-        lastSpawn = timestamp
-      }
-      
-      // Spawn kits periodically
-      if (timestamp % 5000 < 50) { // Approximately every 5 seconds
-        spawnKit()
+      // Spawn obstacles and kits (pause during healing)
+      if (!isHealing) {
+        if (timestamp - lastSpawn > spawnFrequency) {
+          spawnObstacle()
+          lastSpawn = timestamp
+        }
+        
+        // Spawn kits periodically
+        if (timestamp % 5000 < 50) { // Approximately every 5 seconds
+          spawnKit()
+        }
       }
       
       // Update game time
@@ -2080,8 +2089,10 @@ export default function SimpleGame() {
       
       // Update and draw obstacles (apply slow-motion during quiz)
       obstacles = obstacles.filter(obstacle => {
-        obstacle.y += obstacle.vy * slowMotionMultiplier
-        obstacle.x += obstacle.vx * slowMotionMultiplier
+        if (!isHealing) {
+          obstacle.y += obstacle.vy * slowMotionMultiplier
+          obstacle.x += obstacle.vx * slowMotionMultiplier
+        }
         
         // Bounce off edges for boss attacks (creates zigzag pattern)
         if (obstacle.type === 'boss-attack') {
@@ -2202,7 +2213,7 @@ export default function SimpleGame() {
         }
         
         // Check collision with obstacles (skip if player is invincible during quiz)
-        const isPlayerInvincible = quiz.refs.activeRef.current
+        const isPlayerInvincible = quiz.refs.activeRef.current || isHealing || isRestoring
         if (!isPlayerInvincible && checkCollision(
           { x: playerX - playerSize / 2, y: playerY - playerSize / 2, width: playerSize, height: playerSize },
           { x: obstacle.x - obstacle.width / 2, y: obstacle.y - obstacle.height / 2, width: obstacle.width, height: obstacle.height }
@@ -2335,6 +2346,11 @@ export default function SimpleGame() {
         ctx.textAlign = 'left'
         
         ctx.shadowBlur = 0
+        
+        // Skip collection while healing to keep tutorial focus
+        if (isHealing) {
+          return true
+        }
         
         // Check collision
         if (checkCollision(
