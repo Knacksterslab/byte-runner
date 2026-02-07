@@ -4,7 +4,30 @@ import { getRandomByFilter, filterByCategory } from './utils'
 
 export interface QuizQuestion {
   id: string
-  kitType: 'password-manager' | 'link-analyzer' | 'patch-manager' | 'privacy-optimizer' | 'vpn-shield' | 'mfa-authenticator' | 'backup-system' | 'social-engineering-defense'
+  kitType:
+    | 'password-manager'
+    | 'link-analyzer'
+    | 'patch-manager'
+    | 'privacy-optimizer'
+    | 'vpn-shield'
+    | 'mfa-authenticator'
+    | 'backup-system'
+    | 'social-engineering-defense'
+    | 'badge-tap'
+    | 'secure-shred'
+    | 'policy-knowledge'
+    | 'ethics-reporting'
+    | 'compliance-kit'
+    | 'remote-work-guard'
+    | 'waiting-room'
+    | 'travel-vpn'
+    | 'encryption-kit'
+    | 'sbom-toolkit'
+    | 'insider-monitor'
+    | 'email-gateway'
+    | 'classification-labeler'
+    | 'privacy-check'
+    | 'device-control'
   question: string
   options: string[]
   correctAnswer: number // Index of correct answer (0-3)
@@ -413,6 +436,426 @@ export const quizQuestions: QuizQuestion[] = [
     ],
     correctAnswer: 1,
     explanation: 'Social engineers use urgency and fear to bypass critical thinking. Legitimate companies give you time to respond and don\'t threaten immediate consequences.'
+  },
+
+  // ===== BADGE TAP QUESTIONS =====
+  {
+    id: 'badge-1',
+    kitType: 'badge-tap',
+    question: 'What should you do if someone tries to tailgate into a secure area?',
+    options: [
+      'Hold the door for them',
+      'Ask them to badge in or get security',
+      'Ignore them and walk away',
+      'Let them in if they look friendly'
+    ],
+    correctAnswer: 1,
+    explanation: 'Tailgating is a common physical security risk. Everyone must badge in or be escorted.'
+  },
+  {
+    id: 'badge-2',
+    kitType: 'badge-tap',
+    question: 'What is the safest action when leaving your desk?',
+    options: [
+      'Leave your screen on',
+      'Lock your workstation',
+      'Minimize windows',
+      'Close your email'
+    ],
+    correctAnswer: 1,
+    explanation: 'Locking your workstation prevents unauthorized access when you step away.'
+  },
+
+  // ===== SECURE SHRED QUESTIONS =====
+  {
+    id: 'shred-1',
+    kitType: 'secure-shred',
+    question: 'How should you dispose of documents with sensitive data?',
+    options: [
+      'Recycle them immediately',
+      'Shred or use secure disposal bins',
+      'Throw them in the trash',
+      'Give them to a coworker'
+    ],
+    correctAnswer: 1,
+    explanation: 'Sensitive documents should be shredded or placed in secure disposal bins.'
+  },
+  {
+    id: 'shred-2',
+    kitType: 'secure-shred',
+    question: 'What is dumpster diving?',
+    options: [
+      'Backing up data to the cloud',
+      'Searching trash for sensitive information',
+      'Organizing files for storage',
+      'Cleaning old devices'
+    ],
+    correctAnswer: 1,
+    explanation: 'Attackers retrieve sensitive information from trash if it is not destroyed.'
+  },
+
+  // ===== POLICY KNOWLEDGE QUESTIONS =====
+  {
+    id: 'policy-1',
+    kitType: 'policy-knowledge',
+    question: 'What is a common example of a policy violation?',
+    options: [
+      'Using approved software',
+      'Sharing your password with a coworker',
+      'Locking your screen',
+      'Using MFA'
+    ],
+    correctAnswer: 1,
+    explanation: 'Sharing passwords violates acceptable use and access policies.'
+  },
+  {
+    id: 'policy-2',
+    kitType: 'policy-knowledge',
+    question: 'Why is shadow IT risky?',
+    options: [
+      'It saves money on licenses',
+      'It uses unapproved tools without security controls',
+      'It speeds up updates',
+      'It improves compliance'
+    ],
+    correctAnswer: 1,
+    explanation: 'Unapproved tools often lack required security and auditing.'
+  },
+
+  // ===== ETHICS REPORTING QUESTIONS =====
+  {
+    id: 'report-1',
+    kitType: 'ethics-reporting',
+    question: 'What should you do if you suspect a security incident?',
+    options: [
+      'Wait to see if it resolves',
+      'Report immediately through official channels',
+      'Post it in a public chat',
+      'Investigate on your own'
+    ],
+    correctAnswer: 1,
+    explanation: 'Fast reporting reduces damage and helps responders act quickly.'
+  },
+  {
+    id: 'report-2',
+    kitType: 'ethics-reporting',
+    question: 'Which detail is MOST helpful in an incident report?',
+    options: [
+      'Your favorite app',
+      'Time and description of what happened',
+      'A guess of who caused it',
+      'A meme screenshot'
+    ],
+    correctAnswer: 1,
+    explanation: 'Time, impact, and clear description help responders act fast.'
+  },
+
+  // ===== COMPLIANCE KIT QUESTIONS =====
+  {
+    id: 'comp-1',
+    kitType: 'compliance-kit',
+    question: 'What is PCI-DSS concerned with?',
+    options: [
+      'Employee attendance',
+      'Payment card data security',
+      'Building access',
+      'Video meetings'
+    ],
+    correctAnswer: 1,
+    explanation: 'PCI-DSS defines controls for payment card data security.'
+  },
+  {
+    id: 'comp-2',
+    kitType: 'compliance-kit',
+    question: 'What is one key GDPR requirement?',
+    options: [
+      'Store all data forever',
+      'Collect only necessary personal data',
+      'Share data publicly',
+      'Disable encryption'
+    ],
+    correctAnswer: 1,
+    explanation: 'GDPR requires data minimization and lawful processing.'
+  },
+
+  // ===== REMOTE WORK GUARD QUESTIONS =====
+  {
+    id: 'remote-1',
+    kitType: 'remote-work-guard',
+    question: 'What should you do to secure a home router?',
+    options: [
+      'Keep default password',
+      'Change the default password and update firmware',
+      'Disable encryption',
+      'Share the password publicly'
+    ],
+    correctAnswer: 1,
+    explanation: 'Changing default credentials and updating firmware reduce risk.'
+  },
+  {
+    id: 'remote-2',
+    kitType: 'remote-work-guard',
+    question: 'What is the best way to separate work and personal devices?',
+    options: [
+      'Use the same WiFi for everything',
+      'Use a guest network for personal devices',
+      'Disable firewall',
+      'Share files between devices freely'
+    ],
+    correctAnswer: 1,
+    explanation: 'Guest networks isolate personal devices from work systems.'
+  },
+
+  // ===== WAITING ROOM QUESTIONS =====
+  {
+    id: 'meet-1',
+    kitType: 'waiting-room',
+    question: 'What prevents uninvited people from joining a meeting?',
+    options: [
+      'Posting the link publicly',
+      'Waiting rooms and meeting passwords',
+      'Disabling video',
+      'Using any random meeting ID'
+    ],
+    correctAnswer: 1,
+    explanation: 'Waiting rooms and passwords let hosts approve attendees.'
+  },
+  {
+    id: 'meet-2',
+    kitType: 'waiting-room',
+    question: 'When should you lock a meeting?',
+    options: [
+      'Never',
+      'After all expected participants join',
+      'Before the meeting starts',
+      'Only after a problem occurs'
+    ],
+    correctAnswer: 1,
+    explanation: 'Locking the meeting prevents new, unexpected attendees.'
+  },
+
+  // ===== TRAVEL VPN QUESTIONS =====
+  {
+    id: 'travel-1',
+    kitType: 'travel-vpn',
+    question: 'What is the safest option on hotel WiFi?',
+    options: [
+      'Connect without protection',
+      'Use a VPN for all traffic',
+      'Turn off encryption',
+      'Share passwords over email'
+    ],
+    correctAnswer: 1,
+    explanation: 'VPNs encrypt traffic on untrusted networks.'
+  },
+  {
+    id: 'travel-2',
+    kitType: 'travel-vpn',
+    question: 'What is risky about public kiosks?',
+    options: [
+      'They are too fast',
+      'They may capture credentials',
+      'They use wired networks',
+      'They require a mouse'
+    ],
+    correctAnswer: 1,
+    explanation: 'Public kiosks can have keyloggers or malware.'
+  },
+
+  // ===== ENCRYPTION KIT QUESTIONS =====
+  {
+    id: 'enc-1',
+    kitType: 'encryption-kit',
+    question: 'Why encrypt sensitive files?',
+    options: [
+      'To make them larger',
+      'To prevent unauthorized access if leaked',
+      'To remove backups',
+      'To make sharing public'
+    ],
+    correctAnswer: 1,
+    explanation: 'Encryption protects data if devices or files are lost.'
+  },
+  {
+    id: 'enc-2',
+    kitType: 'encryption-kit',
+    question: 'What is full-disk encryption used for?',
+    options: [
+      'Speeding up computers',
+      'Protecting data on a device if it is lost or stolen',
+      'Removing malware',
+      'Backing up files'
+    ],
+    correctAnswer: 1,
+    explanation: 'Full-disk encryption protects all data stored on the device.'
+  },
+
+  // ===== SBOM TOOLKIT QUESTIONS =====
+  {
+    id: 'sbom-1',
+    kitType: 'sbom-toolkit',
+    question: 'What does SBOM stand for?',
+    options: [
+      'Secure Backup of Memory',
+      'Software Bill of Materials',
+      'System Backup Operational Manual',
+      'Standard Browser of Modules'
+    ],
+    correctAnswer: 1,
+    explanation: 'SBOM means Software Bill of Materials, listing components in software.'
+  },
+  {
+    id: 'sbom-2',
+    kitType: 'sbom-toolkit',
+    question: 'Why are supply chain attacks dangerous?',
+    options: [
+      'They only affect printers',
+      'They hide in trusted updates and dependencies',
+      'They are easy to detect',
+      'They only happen offline'
+    ],
+    correctAnswer: 1,
+    explanation: 'Supply chain attacks exploit trusted software sources.'
+  },
+
+  // ===== INSIDER MONITOR QUESTIONS =====
+  {
+    id: 'insider-1',
+    kitType: 'insider-monitor',
+    question: 'What is least privilege?',
+    options: [
+      'Giving everyone admin rights',
+      'Giving users only the access they need',
+      'Sharing passwords to save time',
+      'Allowing all file downloads'
+    ],
+    correctAnswer: 1,
+    explanation: 'Least privilege limits access to reduce risk.'
+  },
+  {
+    id: 'insider-2',
+    kitType: 'insider-monitor',
+    question: 'What can indicate data exfiltration?',
+    options: [
+      'Small, regular uploads',
+      'Large, unusual file transfers',
+      'Normal login times',
+      'Updated antivirus'
+    ],
+    correctAnswer: 1,
+    explanation: 'Large or unusual transfers may signal data exfiltration.'
+  },
+
+  // ===== EMAIL GATEWAY QUESTIONS =====
+  {
+    id: 'email-1b',
+    kitType: 'email-gateway',
+    question: 'What should you do with unexpected attachments?',
+    options: [
+      'Open immediately',
+      'Scan or verify before opening',
+      'Forward to everyone',
+      'Upload to social media'
+    ],
+    correctAnswer: 1,
+    explanation: 'Unexpected attachments should be verified or scanned first.'
+  },
+  {
+    id: 'email-2b',
+    kitType: 'email-gateway',
+    question: 'What is Business Email Compromise (BEC)?',
+    options: [
+      'A slow internet connection',
+      'Fraudulent emails that impersonate executives',
+      'A broken email server',
+      'A password manager feature'
+    ],
+    correctAnswer: 1,
+    explanation: 'BEC scams impersonate trusted executives to trick employees.'
+  },
+
+  // ===== CLASSIFICATION LABELER QUESTIONS =====
+  {
+    id: 'class-1b',
+    kitType: 'classification-labeler',
+    question: 'Why apply data classification labels?',
+    options: [
+      'To make files larger',
+      'To control how data is shared and stored',
+      'To remove backups',
+      'To delete files'
+    ],
+    correctAnswer: 1,
+    explanation: 'Labels enforce the right handling and sharing rules.'
+  },
+  {
+    id: 'class-2b',
+    kitType: 'classification-labeler',
+    question: 'What is a common result of misclassification?',
+    options: [
+      'Better security',
+      'Sensitive data shared publicly',
+      'Faster backups',
+      'Lower risk'
+    ],
+    correctAnswer: 1,
+    explanation: 'Misclassification can expose confidential data.'
+  },
+
+  // ===== PRIVACY CHECK QUESTIONS =====
+  {
+    id: 'social-1b',
+    kitType: 'privacy-check',
+    question: 'What should you avoid posting about work?',
+    options: [
+      'Public event announcements',
+      'Sensitive internal details',
+      'Company logos on approved media',
+      'General marketing posts'
+    ],
+    correctAnswer: 1,
+    explanation: 'Sensitive internal details can help attackers.'
+  },
+  {
+    id: 'social-2b',
+    kitType: 'privacy-check',
+    question: 'Why disable location tagging?',
+    options: [
+      'It speeds up the app',
+      'It reveals your real-time location',
+      'It improves image quality',
+      'It reduces storage'
+    ],
+    correctAnswer: 1,
+    explanation: 'Location tags can expose travel and routines.'
+  },
+
+  // ===== DEVICE CONTROL QUESTIONS =====
+  {
+    id: 'usb-1b',
+    kitType: 'device-control',
+    question: 'What is the safest action with an unknown USB drive?',
+    options: [
+      'Plug it in to check',
+      'Do not plug it in and report it',
+      'Give it to a coworker',
+      'Take it home'
+    ],
+    correctAnswer: 1,
+    explanation: 'Unknown USB devices can contain malware.'
+  },
+  {
+    id: 'usb-2b',
+    kitType: 'device-control',
+    question: 'What does device control prevent?',
+    options: [
+      'Software updates',
+      'Unauthorized USB access and data transfers',
+      'WiFi connections',
+      'Email spam'
+    ],
+    correctAnswer: 1,
+    explanation: 'Device control blocks unsafe removable media and monitors transfers.'
   },
 ]
 

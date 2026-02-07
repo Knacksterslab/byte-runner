@@ -21,7 +21,7 @@ function drawObstacle(ctx: CanvasRenderingContext2D, obj: GameObject): void {
   ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
 
   ctx.fillStyle = 'white';
-  ctx.font = '24px Arial';
+  ctx.font = '24px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",Arial';
   ctx.textAlign = 'center';
   ctx.fillText(obj.icon || '⚠️', obj.x + obj.width / 2, obj.y + obj.height / 2 + 8);
   ctx.textAlign = 'left';
@@ -32,7 +32,7 @@ function drawKit(ctx: CanvasRenderingContext2D, obj: GameObject): void {
   ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
 
   ctx.fillStyle = 'white';
-  ctx.font = '20px Arial';
+  ctx.font = '20px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",Arial';
   ctx.textAlign = 'center';
   ctx.fillText(obj.icon || '🛡️', obj.x + obj.width / 2, obj.y + obj.height / 2 + 8);
   ctx.textAlign = 'left';

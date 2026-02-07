@@ -128,6 +128,7 @@ export default function SimpleGame() {
     
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')!
+    const EMOJI_FONT_STACK = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",monospace'
     if (!(ctx as any).__debugFillTextWrapped) {
       ;(ctx as any).__debugFillTextWrapped = true
       const originalFillText = ctx.fillText.bind(ctx)
@@ -242,19 +243,21 @@ export default function SimpleGame() {
       obstacle.y = -1000 // Move off screen
     }
     
-    // Kit inventory system - ALL 8 REAL protection kits!
+    // Kit inventory system - all protection kits
+    const createEmptyInventory = () => {
+      return ALL_KIT_TYPES.reduce((acc, kitId) => {
+        acc[kitId] = 0
+        return acc
+      }, {} as Record<string, number>)
+    }
     // Restore from saved state if continuing from quiz pass
+    const baseInventory = createEmptyInventory()
     let kitInventory = savedGameState ? {
+      ...baseInventory,
       ...savedGameState.kits
-    } : {
-      'password-manager': bonusKitType === 'password-manager' ? 1 : 0,
-      'link-analyzer': bonusKitType === 'link-analyzer' ? 1 : 0,
-      'patch-manager': bonusKitType === 'patch-manager' ? 1 : 0,
-      'privacy-optimizer': bonusKitType === 'privacy-optimizer' ? 1 : 0,
-      'vpn-shield': bonusKitType === 'vpn-shield' ? 1 : 0,
-      'mfa-authenticator': bonusKitType === 'mfa-authenticator' ? 1 : 0,
-      'backup-system': bonusKitType === 'backup-system' ? 1 : 0,
-      'social-engineering-defense': bonusKitType === 'social-engineering-defense' ? 1 : 0
+    } : baseInventory
+    if (!savedGameState && bonusKitType && kitInventory[bonusKitType] !== undefined) {
+      kitInventory[bonusKitType] = 1
     }
     const MAX_KIT_CAPACITY = KIT_CONFIG.MAX_CAPACITY
     
@@ -415,8 +418,14 @@ export default function SimpleGame() {
         // Desktop viewport - toggle desktop HUD
         const hudX = 20
         const hudY = 80
-        const hudWidth = ui.state.desktopHudExpanded ? 450 : 280
-        const hudHeight = ui.state.desktopHudExpanded ? 80 : 70
+        const collapsedHudWidth = 340
+        const collapsedHudHeight = 70
+        const kitColumns = 8
+        const kitRows = Math.ceil(ALL_KIT_TYPES.length / kitColumns)
+        const expandedHudWidth = 460
+        const expandedHudHeight = 90 + (kitRows * 24)
+        const hudWidth = ui.state.desktopHudExpanded ? expandedHudWidth : collapsedHudWidth
+        const hudHeight = ui.state.desktopHudExpanded ? expandedHudHeight : collapsedHudHeight
         
         // Check if click is within HUD bounds
         if (
@@ -440,19 +449,9 @@ export default function SimpleGame() {
     
     // ===== BOSS BATTLE FUNCTIONS =====
     
-    // Kit spawning function - ALL 8 TYPES
+    // Kit spawning function - all types
     function spawnKit() {
-      const kitTypes = [
-        'password-manager', 
-        'link-analyzer', 
-        'patch-manager', 
-        'privacy-optimizer', 
-        'vpn-shield',
-        'mfa-authenticator',
-        'backup-system',
-        'social-engineering-defense'
-      ] as const
-      const kitType = kitTypes[Math.floor(Math.random() * kitTypes.length)]
+      const kitType = ALL_KIT_TYPES[Math.floor(Math.random() * ALL_KIT_TYPES.length)]
       
       // Get kit data for accurate colors
       const kitData = getProtectionKitById(kitType)
@@ -475,7 +474,7 @@ export default function SimpleGame() {
       powerups.push(kit)
     }
     
-    // Map threats to their required protection kit - ALL 8 KITS
+    // Map threats to their required protection kit
     function getRequiredKit(threatId: string): keyof typeof kitInventory {
       const kitMap: { [key: string]: keyof typeof kitInventory } = {
         'weak-password': 'password-manager',
@@ -486,13 +485,58 @@ export default function SimpleGame() {
         'unpatched-vuln': 'patch-manager',
         'doxing-attack': 'privacy-optimizer',
         'data-harvester': 'privacy-optimizer',
+        'malicious-app': 'privacy-optimizer',
+        'permission-abuse': 'privacy-optimizer',
         'evil-twin': 'vpn-shield',
         'credential-stuffing': 'mfa-authenticator',
         'session-hijacking': 'mfa-authenticator',
+        'sim-swap': 'mfa-authenticator',
         'ransomware': 'backup-system',
         'hardware-failure': 'backup-system',
         'pretexting': 'social-engineering-defense',
-        'baiting-attack': 'social-engineering-defense'
+        'baiting-attack': 'social-engineering-defense',
+        'tailgating': 'badge-tap',
+        'shoulder-surfing': 'badge-tap',
+        'unlocked-workstation': 'badge-tap',
+        'document-theft': 'badge-tap',
+        'improper-disposal': 'secure-shred',
+        'dumpster-diving': 'secure-shred',
+        'policy-violation': 'policy-knowledge',
+        'unauthorized-software': 'policy-knowledge',
+        'delayed-reporting': 'ethics-reporting',
+        'wrong-channel': 'ethics-reporting',
+        'incomplete-details': 'ethics-reporting',
+        'retaliation-threat': 'ethics-reporting',
+        'gdpr-violation': 'compliance-kit',
+        'hipaa-breach': 'compliance-kit',
+        'pci-noncompliance': 'compliance-kit',
+        'unsecured-home-router': 'remote-work-guard',
+        'family-device': 'remote-work-guard',
+        'weak-home-wifi': 'remote-work-guard',
+        'zoom-bombing': 'waiting-room',
+        'meeting-link-leak': 'waiting-room',
+        'hotel-wifi': 'travel-vpn',
+        'public-kiosk': 'travel-vpn',
+        'unencrypted-storage': 'encryption-kit',
+        'over-shared-data': 'encryption-kit',
+        'vendor-breach': 'sbom-toolkit',
+        'compromised-update': 'sbom-toolkit',
+        'malicious-package': 'sbom-toolkit',
+        'accidental-data-share': 'insider-monitor',
+        'privilege-abuse': 'insider-monitor',
+        'data-exfiltration': 'insider-monitor',
+        'malicious-attachment': 'email-gateway',
+        'bec-scam': 'email-gateway',
+        'email-spoofing': 'email-gateway',
+        'misclassified-data': 'classification-labeler',
+        'wrong-sharing-channel': 'classification-labeler',
+        'oversharing-work-info': 'privacy-check',
+        'location-tagging': 'privacy-check',
+        'recon-posting': 'privacy-check',
+        'usb-drop': 'device-control',
+        'unauthorized-device': 'device-control',
+        'usb-data-theft': 'device-control',
+        'juice-jacking': 'device-control',
       }
       
       return kitMap[threatId] || 'password-manager'
@@ -506,12 +550,12 @@ export default function SimpleGame() {
       isHealing = true // Freeze player during healing
     }
     
-    // Calculate kits needed for next level (based on 8 kit types)
-    // Level 1→2: 8 kits (1 of each type)
-    // Level 2→3: 16 kits total (2 of each type)
-    // Level 3→4: 24 kits total (3 of each type)
+    // Calculate kits needed for next level (based on total kit types)
+    // Level 1→2: 1 of each type
+    // Level 2→3: 2 of each type
+    // Level 3→4: 3 of each type
     function calculateKitsNeededForNextLevel(level: number): number {
-      return level * 8
+      return level * ALL_KIT_TYPES.length
     }
     
     // Draw tutorial overlay (healing process - freezes player)
@@ -576,6 +620,96 @@ export default function SimpleGame() {
         blocks = 'Pretexting, baiting, impersonation, manipulation'
         tool = 'Real training: KnowBe4, SANS Security Awareness'
         tip = 'Verify unexpected requests through a different channel'
+      } else if (tutorialKit === 'badge-tap') {
+        title = '🪪 HEALING IN PROGRESS...'
+        subtitle = 'BADGE TAP ACTIVE'
+        blocks = 'Tailgating, shoulder surfing, unlocked workstations'
+        tool = 'Real tools: Access badges, visitor escorts, door logs'
+        tip = 'Do not hold secure doors for strangers'
+      } else if (tutorialKit === 'secure-shred') {
+        title = '🗑️ HEALING IN PROGRESS...'
+        subtitle = 'SECURE SHRED ACTIVE'
+        blocks = 'Improper disposal, dumpster diving, paper leaks'
+        tool = 'Real tools: Cross-cut shredders, secure bins'
+        tip = 'Shred sensitive documents before disposal'
+      } else if (tutorialKit === 'policy-knowledge') {
+        title = '📘 HEALING IN PROGRESS...'
+        subtitle = 'POLICY KNOWLEDGE ACTIVE'
+        blocks = 'Policy violations, unauthorized tools, risky behavior'
+        tool = 'Real tools: Acceptable use policies, training'
+        tip = 'Use only approved apps and services'
+      } else if (tutorialKit === 'ethics-reporting') {
+        title = '📣 HEALING IN PROGRESS...'
+        subtitle = 'ETHICS REPORTING ACTIVE'
+        blocks = 'Delayed reporting, wrong channel, retaliation risk'
+        tool = 'Real tools: Incident hotlines, reporting portals'
+        tip = 'Report incidents immediately with key details'
+      } else if (tutorialKit === 'compliance-kit') {
+        title = '⚖️ HEALING IN PROGRESS...'
+        subtitle = 'COMPLIANCE KIT ACTIVE'
+        blocks = 'GDPR, HIPAA, PCI violations, regulatory fines'
+        tool = 'Real tools: Data labels, audits, approved storage'
+        tip = 'Follow rules for regulated data handling'
+      } else if (tutorialKit === 'remote-work-guard') {
+        title = '🏡 HEALING IN PROGRESS...'
+        subtitle = 'REMOTE WORK GUARD ACTIVE'
+        blocks = 'Weak home WiFi, insecure routers, family devices'
+        tool = 'Real tools: VPN, router updates, guest networks'
+        tip = 'Secure home networks and separate devices'
+      } else if (tutorialKit === 'waiting-room') {
+        title = '🛎️ HEALING IN PROGRESS...'
+        subtitle = 'WAITING ROOM ACTIVE'
+        blocks = 'Meeting intrusions, leaked links, uninvited guests'
+        tool = 'Real tools: Meeting passwords, lobbies'
+        tip = 'Enable waiting rooms and lock meetings'
+      } else if (tutorialKit === 'travel-vpn') {
+        title = '🧳 HEALING IN PROGRESS...'
+        subtitle = 'TRAVEL VPN ACTIVE'
+        blocks = 'Hotel WiFi traps, public kiosk risks'
+        tool = 'Real tools: VPN clients, mobile hotspots'
+        tip = 'Use VPN on all travel networks'
+      } else if (tutorialKit === 'encryption-kit') {
+        title = '🔏 HEALING IN PROGRESS...'
+        subtitle = 'ENCRYPTION KIT ACTIVE'
+        blocks = 'Unencrypted storage, over-shared data'
+        tool = 'Real tools: BitLocker, FileVault, encrypted sharing'
+        tip = 'Encrypt sensitive data at rest and in transit'
+      } else if (tutorialKit === 'sbom-toolkit') {
+        title = '📦 HEALING IN PROGRESS...'
+        subtitle = 'SBOM TOOLKIT ACTIVE'
+        blocks = 'Vendor breaches, malicious packages, bad updates'
+        tool = 'Real tools: SBOM scanners, dependency checks'
+        tip = 'Verify and scan software components'
+      } else if (tutorialKit === 'insider-monitor') {
+        title = '👁️ HEALING IN PROGRESS...'
+        subtitle = 'INSIDER MONITOR ACTIVE'
+        blocks = 'Accidental shares, privilege abuse, data exfiltration'
+        tool = 'Real tools: DLP, audit logs, least privilege'
+        tip = 'Monitor access and limit permissions'
+      } else if (tutorialKit === 'email-gateway') {
+        title = '📧 HEALING IN PROGRESS...'
+        subtitle = 'EMAIL GATEWAY ACTIVE'
+        blocks = 'Malicious attachments, BEC, email spoofing'
+        tool = 'Real tools: Secure email gateways, sandboxing'
+        tip = 'Scan attachments and verify senders'
+      } else if (tutorialKit === 'classification-labeler') {
+        title = '🏷️ HEALING IN PROGRESS...'
+        subtitle = 'CLASSIFICATION LABELER ACTIVE'
+        blocks = 'Misclassified data, wrong sharing channels'
+        tool = 'Real tools: Data labels, access policies'
+        tip = 'Label data before sharing'
+      } else if (tutorialKit === 'privacy-check') {
+        title = '🕶️ HEALING IN PROGRESS...'
+        subtitle = 'PRIVACY CHECK ACTIVE'
+        blocks = 'Oversharing, location tagging, recon posts'
+        tool = 'Real tools: Privacy settings, post reviews'
+        tip = 'Avoid posting sensitive work details'
+      } else if (tutorialKit === 'device-control') {
+        title = '🔌 HEALING IN PROGRESS...'
+        subtitle = 'DEVICE CONTROL ACTIVE'
+        blocks = 'USB drops, unauthorized devices, data theft'
+        tool = 'Real tools: Device control policies, DLP'
+        tip = 'Block unknown USB devices'
       }
       
       // Full screen semi-transparent overlay
@@ -1629,8 +1763,15 @@ export default function SimpleGame() {
           
         } else {
           // EXPANDED STATE - Full HUD
-          const hudWidth = 130
-          const hudHeight = 210
+          const hudWidth = 140
+          const kitColumns = 3
+          const kitRowHeight = 16
+          const kits = ALL_KIT_TYPES.map((kitId) => ({
+            emoji: getKitIcon(kitId),
+            count: kitInventory[kitId] || 0
+          }))
+          const kitRows = Math.ceil(kits.length / kitColumns)
+          const hudHeight = 110 + kitRows * kitRowHeight
           const cornerRadius = 10
           
           // Semi-transparent background
@@ -1666,24 +1807,14 @@ export default function SimpleGame() {
           ctx.fillRect(kitX - 15, kitY + 38, barWidth * progressPercent, barHeight)
           
           // Kits - ICONS ONLY
-          ctx.font = '15px monospace'
-          const kits = [
-            { emoji: '🔐', count: kitInventory['password-manager'] },
-            { emoji: '🔗', count: kitInventory['link-analyzer'] },
-            { emoji: '🛡️', count: kitInventory['patch-manager'] },
-            { emoji: '🕵️', count: kitInventory['privacy-optimizer'] },
-            { emoji: '🔒', count: kitInventory['vpn-shield'] },
-            { emoji: '🔑', count: kitInventory['mfa-authenticator'] },
-            { emoji: '💾', count: kitInventory['backup-system'] },
-            { emoji: '🎭', count: kitInventory['social-engineering-defense'] }
-          ]
+          ctx.font = `13px ${EMOJI_FONT_STACK}`
           
           // Draw in compact grid
           for (let i = 0; i < kits.length; i++) {
-            const col = i % 2
-            const row = Math.floor(i / 2)
-            const x = kitX - 10 + (col * 60)
-            const y = kitY + 65 + (row * 18)
+            const col = i % kitColumns
+            const row = Math.floor(i / kitColumns)
+            const x = kitX - 10 + (col * 45)
+            const y = kitY + 65 + (row * kitRowHeight)
             
             const kit = kits[i]
             const count = kit.count || 0
@@ -1693,14 +1824,15 @@ export default function SimpleGame() {
           
           // Zone icon
           const currentZone = getCurrentZone(currentLevel)
-          ctx.font = '18px monospace'
+          ctx.font = `18px ${EMOJI_FONT_STACK}`
           ctx.fillStyle = currentZone.colorScheme.accent
-          ctx.fillText(currentZone.icon, kitX + 35, kitY + 195)
+          const zoneY = kitY + hudHeight - 12
+          ctx.fillText(currentZone.icon, kitX + 35, zoneY)
           
           // Collapse indicator
           ctx.font = 'bold 10px monospace'
           ctx.fillStyle = '#00ffff'
-          ctx.fillText('TAP ▲', kitX + 28, kitY + 195)
+          ctx.fillText('TAP ▲', kitX + 28, zoneY)
         }
         
       } else {
@@ -1710,7 +1842,7 @@ export default function SimpleGame() {
         
         if (!ui.state.desktopHudExpanded) {
           // COLLAPSED STATE - Minimal info (like mockup)
-          const hudWidth = 280
+          const hudWidth = 340
           const hudHeight = 70
           const cornerRadius = 12
           
@@ -1758,8 +1890,16 @@ export default function SimpleGame() {
           
         } else {
           // EXPANDED STATE - Full details
-          const hudWidth = 450
-          const hudHeight = 80
+          const kits = ALL_KIT_TYPES.map((kitId) => ({
+            emoji: getKitIcon(kitId),
+            count: kitInventory[kitId] || 0
+          }))
+          const kitColumns = 8
+          const iconSpacingX = 32
+          const iconSpacingY = 24
+          const kitRows = Math.ceil(kits.length / kitColumns)
+          const hudWidth = 460
+          const hudHeight = 90 + (kitRows * iconSpacingY)
           const cornerRadius = 12
           
           // Background - rounded corners
@@ -1798,23 +1938,16 @@ export default function SimpleGame() {
           ctx.fillStyle = '#00ff00'
           ctx.fillRect(hudX + 10, hudY + 42, barWidth * progressPercent, barHeight)
           
-          // Kit icons in compact row - ALL 8 KITS
-          ctx.font = '18px monospace'
-          const kits = [
-            { emoji: '🔐', count: kitInventory['password-manager'] },
-            { emoji: '🔗', count: kitInventory['link-analyzer'] },
-            { emoji: '🛡️', count: kitInventory['patch-manager'] },
-            { emoji: '🕵️', count: kitInventory['privacy-optimizer'] },
-            { emoji: '🔒', count: kitInventory['vpn-shield'] },
-            { emoji: '🔑', count: kitInventory['mfa-authenticator'] },
-            { emoji: '💾', count: kitInventory['backup-system'] },
-            { emoji: '🎭', count: kitInventory['social-engineering-defense'] }
-          ]
+          // Kit icons in compact grid
+          ctx.font = `16px ${EMOJI_FONT_STACK}`
+          const startX = hudX + 100
+          const startY = hudY + 40
           
-          // Draw kits in single row
           for (let i = 0; i < kits.length; i++) {
-            const x = hudX + 110 + (i * 42)
-            const y = hudY + 40
+            const col = i % kitColumns
+            const row = Math.floor(i / kitColumns)
+            const x = startX + (col * iconSpacingX)
+            const y = startY + (row * iconSpacingY)
             const kit = kits[i]
             const count = kit.count || 0
             
@@ -1823,22 +1956,22 @@ export default function SimpleGame() {
             ctx.fillText(kit.emoji, x, y)
             
             // Count below icon
-            ctx.font = 'bold 10px monospace'
+            ctx.font = 'bold 9px monospace'
             ctx.fillStyle = count > 0 ? '#00ff00' : '#555555'
-            ctx.fillText(`${count}`, x + 6, y + 15)
-            ctx.font = '18px monospace'
+            ctx.fillText(`${count}`, x + 5, y + 12)
+            ctx.font = '16px monospace'
           }
           
           // Zone indicator
           const currentZone = getCurrentZone(currentLevel)
-          ctx.font = '20px monospace'
+          ctx.font = `20px ${EMOJI_FONT_STACK}`
           ctx.fillStyle = currentZone.colorScheme.accent
-          ctx.fillText(currentZone.icon, hudX + 50, hudY + 70)
+          ctx.fillText(currentZone.icon, hudX + 50, hudY + 92)
           
           // Collapse indicator
           ctx.font = 'bold 11px monospace'
           ctx.fillStyle = '#00ffff'
-          ctx.fillText('▲', hudX + 425, hudY + 20)
+          ctx.fillText('▲', hudX + hudWidth - 18, hudY + 20)
         }
       }
       
@@ -2041,7 +2174,7 @@ export default function SimpleGame() {
             fontSize = 11
           }
           
-          ctx.font = `bold ${fontSize}px monospace`
+          ctx.font = `bold ${fontSize}px ${EMOJI_FONT_STACK}`
           ctx.fillStyle = `rgba(${parseInt(nameColor.slice(1, 3), 16)}, ${parseInt(nameColor.slice(3, 5), 16)}, ${parseInt(nameColor.slice(5, 7), 16)}, ${opacity})`
           ctx.textAlign = 'center'
           ctx.shadowBlur = 8
@@ -2160,15 +2293,12 @@ export default function SimpleGame() {
         ctx.shadowBlur = 30 * pulse
         ctx.shadowColor = kit.color
         
-        // Kit icon based on type - ALL 8 KITS
-        let icon = '🔐' // password-manager
-        if (kit.type.includes('link-analyzer')) icon = '🔗'
-        else if (kit.type.includes('patch-manager')) icon = '🛡️'
-        else if (kit.type.includes('privacy-optimizer')) icon = '🕵️'
-        else if (kit.type.includes('vpn-shield')) icon = '🔒'
-        else if (kit.type.includes('mfa-authenticator')) icon = '🔑'
-        else if (kit.type.includes('backup-system')) icon = '💾'
-        else if (kit.type.includes('social-engineering-defense')) icon = '🎭'
+        // Kit icon based on type
+        let icon = '🔐'
+        if (!isQuizItem && kit.type.startsWith('kit-')) {
+          const kitId = kit.type.replace('kit-', '')
+          icon = getKitIcon(kitId)
+        }
         
         // Draw kit box
         ctx.fillStyle = kit.color + '88'
@@ -2179,7 +2309,7 @@ export default function SimpleGame() {
         ctx.strokeRect(kit.x - size / 2, kit.y - size / 2, size, size)
         
         // Draw icon; for quiz items, overlay password text on top
-        ctx.font = 'bold 24px monospace'
+        ctx.font = `bold 24px ${EMOJI_FONT_STACK}`
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'center'
         ctx.fillText(icon, kit.x, kit.y + 8)
@@ -2288,16 +2418,8 @@ export default function SimpleGame() {
       // No boss mode anymore - continuous gameplay!
       
       // Draw player LAST so it's always visible on top of everything
-      // Dynamic glow based on kits collected - ALL 8 KITS
-      const totalKitsInInventory = 
-        (kitInventory['password-manager'] || 0) + 
-        (kitInventory['link-analyzer'] || 0) + 
-        (kitInventory['patch-manager'] || 0) + 
-        (kitInventory['privacy-optimizer'] || 0) + 
-        (kitInventory['vpn-shield'] || 0) +
-        (kitInventory['mfa-authenticator'] || 0) +
-        (kitInventory['backup-system'] || 0) +
-        (kitInventory['social-engineering-defense'] || 0)
+      // Dynamic glow based on kits collected
+      const totalKitsInInventory = calculateTotalKits(kitInventory)
       const glowIntensity = 20 + (totalKitsInInventory * 10) + (totalKitsCollected * 2)
       const glowSize = 30 + (totalKitsInInventory * 5)
       
@@ -2625,21 +2747,15 @@ export default function SimpleGame() {
       const kit = getProtectionKitForThreat(lastThreatType)
       if (kit) trackQuizFail(kit.id)
     }
-    // Restart but keep 50% of kits (rounded down) - ALL 8 TYPES
+    // Restart but keep 50% of kits (rounded down)
     setShowQuiz(false)
     
     if (savedGameState) {
       // Calculate 50% of each kit type
-      const partialKits = {
-        'password-manager': Math.floor(savedGameState.kits['password-manager'] / 2),
-        'link-analyzer': Math.floor(savedGameState.kits['link-analyzer'] / 2),
-        'patch-manager': Math.floor(savedGameState.kits['patch-manager'] / 2),
-        'privacy-optimizer': Math.floor(savedGameState.kits['privacy-optimizer'] / 2),
-        'vpn-shield': Math.floor(savedGameState.kits['vpn-shield'] / 2),
-        'mfa-authenticator': Math.floor(savedGameState.kits['mfa-authenticator'] / 2),
-        'backup-system': Math.floor(savedGameState.kits['backup-system'] / 2),
-        'social-engineering-defense': Math.floor(savedGameState.kits['social-engineering-defense'] / 2)
-      }
+      const partialKits = ALL_KIT_TYPES.reduce((acc, kitId) => {
+        acc[kitId] = Math.floor((savedGameState.kits[kitId] || 0) / 2)
+        return acc
+      }, {} as Record<string, number>)
       
       // Save partial kits for initialization
       setSavedGameState({

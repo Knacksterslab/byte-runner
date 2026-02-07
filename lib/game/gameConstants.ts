@@ -41,6 +41,21 @@ export const ALL_KIT_TYPES = [
   'mfa-authenticator',
   'backup-system',
   'social-engineering-defense',
+  'badge-tap',
+  'secure-shred',
+  'policy-knowledge',
+  'ethics-reporting',
+  'compliance-kit',
+  'remote-work-guard',
+  'waiting-room',
+  'travel-vpn',
+  'encryption-kit',
+  'sbom-toolkit',
+  'insider-monitor',
+  'email-gateway',
+  'classification-labeler',
+  'privacy-check',
+  'device-control',
 ] as const
 
 export type KitType = typeof ALL_KIT_TYPES[number]
@@ -55,6 +70,21 @@ export const KIT_ICONS: Record<string, string> = {
   'mfa-authenticator': '🔑',
   'backup-system': '💾',
   'social-engineering-defense': '🎭',
+  'badge-tap': '🪪',
+  'secure-shred': '🗑️',
+  'policy-knowledge': '📘',
+  'ethics-reporting': '📣',
+  'compliance-kit': '⚖️',
+  'remote-work-guard': '🏡',
+  'waiting-room': '🛎️',
+  'travel-vpn': '🧳',
+  'encryption-kit': '🔏',
+  'sbom-toolkit': '📦',
+  'insider-monitor': '👁️',
+  'email-gateway': '📧',
+  'classification-labeler': '🏷️',
+  'privacy-check': '🕶️',
+  'device-control': '🔌',
 } as const
 
 /**
@@ -97,7 +127,7 @@ export const QUIZ_CONFIG = {
 
 // Level progression
 export const LEVEL_CONFIG = {
-  BASE_KITS_NEEDED: 8,
+  BASE_KITS_NEEDED: ALL_KIT_TYPES.length,
   KITS_INCREMENT_PER_LEVEL: 2,
 } as const
 

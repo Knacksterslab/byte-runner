@@ -43,7 +43,7 @@ export function StartScreen({ onStart, onShowTutorial }: StartScreenProps) {
           </div>
           
           <div className="border-t-2 border-cyan-800 pt-2 mt-2">
-            <h4 className="text-green-400 font-bold mb-1 text-sm">8 KITS • 4 ZONES • 15 THREATS</h4>
+            <h4 className="text-green-400 font-bold mb-1 text-sm">23 KITS • 5 ZONES • 60 THREATS</h4>
             <p className="text-yellow-400 text-xs">💡 Learn real cybersecurity while playing!</p>
             <p className="text-green-400 text-xs">💾 Backup Kit = Extra Life!</p>
           </div>

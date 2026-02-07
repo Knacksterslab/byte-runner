@@ -139,7 +139,7 @@ const playerEmojis = [
   '🐉', '🦊', '🐺', '🦅', '🐍', '🕷️', '🦂', '🔥'
 ]
 
-// Speciality titles based on category - ALL 8 CATEGORIES
+// Speciality titles based on category - ALL CATEGORIES
 const specialities: { [key in ThreatCategory]: string[] } = {
   password: ['The Password Cracker', 'The Credential Stuffer', 'The Brute Forcer', 'The Dictionary Attacker'],
   phishing: ['The Phisher', 'The Social Engineer', 'The Impersonator', 'The Link Spammer'],
@@ -148,7 +148,22 @@ const specialities: { [key in ThreatCategory]: string[] } = {
   wifi: ['The WiFi Hijacker', 'The Network Sniffer', 'The Evil Twin', 'The Packet Interceptor'],
   authentication: ['The Session Hijacker', 'The Token Thief', 'The Account Taker', 'The Credential Stuffer'],
   'data-loss': ['The Ransomware Operator', 'The File Encryptor', 'The Crypto Locker', 'The Data Destroyer'],
-  'social-engineering': ['The Manipulator', 'The Impersonator', 'The Pretexting Pro', 'The Baiting Master']
+  'social-engineering': ['The Manipulator', 'The Impersonator', 'The Pretexting Pro', 'The Baiting Master'],
+  'physical-security': ['The Tailgater', 'The Badge Dodger', 'The Door Lurker', 'The Shoulder Surfer'],
+  'secure-disposal': ['The Dumpster Diver', 'The Paper Snatcher', 'The Shred Dodger', 'The Bin Raider'],
+  policy: ['The Rule Breaker', 'The Shadow IT User', 'The Shortcut Taker', 'The Policy Dodger'],
+  'incident-reporting': ['The Delayer', 'The Misrouter', 'The Silent Witness', 'The Details Skipper'],
+  compliance: ['The Compliance Dodger', 'The Audit Avoider', 'The Data Misuser', 'The Regulator Bait'],
+  'remote-work': ['The Home Hacker', 'The Router Raider', 'The Guest Leaker', 'The Remote Snooper'],
+  'meeting-security': ['The Meeting Crasher', 'The Link Leaker', 'The Zoom Bomber', 'The Invite Hijacker'],
+  'travel-security': ['The Hotel Hopper', 'The WiFi Trapper', 'The Kiosk Snooper', 'The Travel Sniffer'],
+  'data-protection': ['The Data Leaker', 'The Encryption Dodger', 'The Share Sprayer', 'The Storage Snooper'],
+  'supply-chain': ['The Dependency Trap', 'The Update Poisoner', 'The Vendor Intruder', 'The Package Faker'],
+  'insider-threats': ['The Privilege Abuser', 'The Accidental Leaker', 'The Data Runner', 'The Insider Risk'],
+  'email-security': ['The Attachment Tricker', 'The Spoof Artist', 'The BEC Impersonator', 'The Mail Forger'],
+  'data-classification': ['The Label Skipper', 'The Misclassifier', 'The Channel Leaker', 'The Data Mislabeler'],
+  'social-media': ['The Oversharer', 'The Tagger', 'The Recon Poster', 'The Profile Leaker'],
+  'removable-media': ['The USB Dropper', 'The Device Plugger', 'The Data Copier', 'The Port Prowler']
 }
 
 // Generate a random ghost player
@@ -177,8 +192,32 @@ export function getRandomGhostPlayer(preferredCategory?: ThreatCategory): GhostP
     level = Math.floor(Math.random() * 51) + 100
   }
   
-  // If category specified, use it; otherwise random from all 8 categories
-  const allCategories: ThreatCategory[] = ['password', 'phishing', 'updates', 'privacy', 'wifi', 'authentication', 'data-loss', 'social-engineering']
+  // If category specified, use it; otherwise random from all categories
+  const allCategories: ThreatCategory[] = [
+    'password',
+    'phishing',
+    'updates',
+    'privacy',
+    'wifi',
+    'authentication',
+    'data-loss',
+    'social-engineering',
+    'physical-security',
+    'secure-disposal',
+    'policy',
+    'incident-reporting',
+    'compliance',
+    'remote-work',
+    'meeting-security',
+    'travel-security',
+    'data-protection',
+    'supply-chain',
+    'insider-threats',
+    'email-security',
+    'data-classification',
+    'social-media',
+    'removable-media'
+  ]
   const category: ThreatCategory = preferredCategory || getRandomItem(allCategories)
   
   const categorySpecialities = specialities[category]

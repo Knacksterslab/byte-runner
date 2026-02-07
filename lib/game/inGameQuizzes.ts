@@ -4,7 +4,7 @@ import { getRandomItem } from './utils'
 
 export interface QuizChallenge {
   id: string
-  type: 'email' | 'password' | 'wifi' | 'link' | 'update'
+  type: 'email' | 'password' | 'wifi' | 'link' | 'update' | 'classification' | 'disposal' | 'meeting'
   question: string
   instructions: string // What to do
   educationalNote: string // Why this matters
@@ -302,6 +302,66 @@ export const updatePriorityQuiz: QuizChallenge = {
   correctAnswers: ['update-1', 'update-3', 'update-5']
 }
 
+// Data Classification Challenge
+export const dataClassificationQuiz: QuizChallenge = {
+  id: 'data-classification',
+  type: 'classification',
+  question: 'DATA CLASSIFICATION CHALLENGE',
+  instructions: 'Collect CONFIDENTIAL data. Avoid PUBLIC data.',
+  educationalNote: 'Label data correctly before sharing or storing it.',
+  duration: 20,
+  speedBonus: 1.2,
+  items: [
+    { id: 'class-1', visual: '', label: 'HR Records', color: '#00ff00', isCorrect: true },
+    { id: 'class-2', visual: '', label: 'Press Release', color: '#ff0000', isCorrect: false },
+    { id: 'class-3', visual: '', label: 'Customer PII', color: '#00ff00', isCorrect: true },
+    { id: 'class-4', visual: '', label: 'Public Blog', color: '#ff0000', isCorrect: false },
+    { id: 'class-5', visual: '', label: 'Payroll Data', color: '#00ff00', isCorrect: true },
+    { id: 'class-6', visual: '', label: 'Event Flyer', color: '#ff0000', isCorrect: false }
+  ],
+  correctAnswers: ['class-1', 'class-3', 'class-5']
+}
+
+// Secure Disposal Challenge
+export const secureDisposalQuiz: QuizChallenge = {
+  id: 'secure-disposal',
+  type: 'disposal',
+  question: 'SECURE DISPOSAL CHALLENGE',
+  instructions: 'Collect SHRED items. Avoid TRASH items.',
+  educationalNote: 'Shred or securely destroy sensitive documents.',
+  duration: 20,
+  speedBonus: 1.2,
+  items: [
+    { id: 'disp-1', visual: '', label: 'Old ID Badge', color: '#00ff00', isCorrect: true },
+    { id: 'disp-2', visual: '', label: 'Lunch Menu', color: '#ff0000', isCorrect: false },
+    { id: 'disp-3', visual: '', label: 'Client Contract', color: '#00ff00', isCorrect: true },
+    { id: 'disp-4', visual: '', label: 'Public Flyer', color: '#ff0000', isCorrect: false },
+    { id: 'disp-5', visual: '', label: 'Pay Stubs', color: '#00ff00', isCorrect: true },
+    { id: 'disp-6', visual: '', label: 'Movie Ticket', color: '#ff0000', isCorrect: false }
+  ],
+  correctAnswers: ['disp-1', 'disp-3', 'disp-5']
+}
+
+// Meeting Security Challenge
+export const meetingSecurityQuiz: QuizChallenge = {
+  id: 'meeting-security',
+  type: 'meeting',
+  question: 'MEETING SECURITY CHALLENGE',
+  instructions: 'Collect APPROVED attendees. Avoid UNKNOWN guests.',
+  educationalNote: 'Use waiting rooms and passwords to keep meetings safe.',
+  duration: 20,
+  speedBonus: 1.2,
+  items: [
+    { id: 'meet-1', visual: '', label: 'invited@team', color: '#00ff00', isCorrect: true },
+    { id: 'meet-2', visual: '', label: 'unknown@guest', color: '#ff0000', isCorrect: false },
+    { id: 'meet-3', visual: '', label: 'partner@vendor', color: '#00ff00', isCorrect: true },
+    { id: 'meet-4', visual: '', label: 'random@link', color: '#ff0000', isCorrect: false },
+    { id: 'meet-5', visual: '', label: 'pm@company', color: '#00ff00', isCorrect: true },
+    { id: 'meet-6', visual: '', label: 'anon@user', color: '#ff0000', isCorrect: false }
+  ],
+  correctAnswers: ['meet-1', 'meet-3', 'meet-5']
+}
+
 // Get random quiz challenge
 export function getRandomQuizChallenge(): QuizChallenge {
   const quizzes = [
@@ -309,7 +369,10 @@ export function getRandomQuizChallenge(): QuizChallenge {
     passwordStrengthQuiz,
     wifiSecurityQuiz,
     linkSafetyQuiz,
-    updatePriorityQuiz
+    updatePriorityQuiz,
+    dataClassificationQuiz,
+    secureDisposalQuiz,
+    meetingSecurityQuiz
   ]
   return getRandomItem(quizzes)
 }
@@ -323,7 +386,10 @@ export function getQuizForLevel(level: number): QuizChallenge | null {
   if (level === 5 || level === 6) return emailSecurityQuiz
   if (level === 7 || level === 8) return wifiSecurityQuiz
   if (level === 9 || level === 10) return linkSafetyQuiz
+  if (level === 11 || level === 12) return dataClassificationQuiz
+  if (level === 13 || level === 14) return secureDisposalQuiz
+  if (level === 15 || level === 16) return meetingSecurityQuiz
   
-  // After level 10, random quiz
+  // After level 16, random quiz
   return getRandomQuizChallenge()
 }

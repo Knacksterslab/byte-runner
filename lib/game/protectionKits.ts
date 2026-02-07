@@ -458,6 +458,561 @@ export const protectionKits: ProtectionKit[] = [
         ]
       }
     ]
+  },
+  {
+    id: 'badge-tap',
+    name: 'Badge Tap',
+    protectsAgainst: 'physical-security',
+    emoji: '🪪',
+    color: '#ffaa33',
+    description: 'Controls physical access to secure areas',
+    learningPoints: [
+      'Never allow tailgating',
+      'Challenge unfamiliar people',
+      'Badge access is personal',
+      'Use visitor escort policies'
+    ],
+    whatItIs: 'Badge access uses physical credentials to unlock doors and track entry to secure spaces.',
+    whyItMatters: 'Physical access bypasses many digital defenses. If an attacker gets inside, they can access devices, documents, and networks.',
+    howToGetIt: [
+      'Company-issued badge with access control',
+      'Visitor badge and escort system',
+      'Security awareness training'
+    ],
+    howItWorks: 'Access control systems verify badge credentials at the door and log entries. Alerts trigger on invalid attempts or unusual access.',
+    realWorldExample: {
+      title: 'Tailgating in Office Lobbies',
+      description: 'Attackers pretend to be delivery staff or hold doors to gain entry.',
+      impact: 'Unauthorized entry leads to device theft, planted malware, and document access.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Office Access',
+        steps: [
+          'Carry your badge at all times',
+          'Do not hold secure doors for strangers',
+          'Report lost badges immediately'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'secure-shred',
+    name: 'Secure Shred',
+    protectsAgainst: 'secure-disposal',
+    emoji: '🗑️',
+    color: '#cc5555',
+    description: 'Destroys sensitive paper and media before disposal',
+    learningPoints: [
+      'Shred sensitive documents',
+      'Use locked disposal bins',
+      'Destroy old drives securely',
+      'Follow retention policies'
+    ],
+    whatItIs: 'Secure disposal ensures sensitive information is destroyed before it leaves your control.',
+    whyItMatters: 'Trash and recycling are common sources of leaks. A single discarded printout can expose credentials or customer data.',
+    howToGetIt: [
+      'Cross-cut shredder for paper',
+      'Secure bins for pickup',
+      'Certified media destruction services'
+    ],
+    howItWorks: 'Documents are shredded and media is wiped or physically destroyed, making data recovery impractical.',
+    realWorldExample: {
+      title: 'Dumpster Diving Incidents',
+      description: 'Attackers retrieve passwords and invoices from office trash.',
+      impact: 'Leaked data leads to account compromise and reputational damage.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Office Disposal',
+        steps: [
+          'Place sensitive papers in locked bins',
+          'Use cross-cut shredders for immediate disposal',
+          'Schedule certified media destruction'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'policy-knowledge',
+    name: 'Policy Knowledge',
+    protectsAgainst: 'policy',
+    emoji: '📘',
+    color: '#7766ff',
+    description: 'Ensures users follow acceptable use rules',
+    learningPoints: [
+      'Know the acceptable use policy',
+      'Use approved tools only',
+      'Avoid sharing accounts',
+      'Report policy concerns early'
+    ],
+    whatItIs: 'Security policies define what is allowed and how to handle data, devices, and access.',
+    whyItMatters: 'Policy violations often create the gaps attackers exploit. Clear rules reduce risky behavior.',
+    howToGetIt: [
+      'Complete required security training',
+      'Read the acceptable use policy',
+      'Ask IT or security for clarification'
+    ],
+    howItWorks: 'Policy knowledge helps employees recognize and avoid risky actions like installing unauthorized software or sharing credentials.',
+    realWorldExample: {
+      title: 'Shadow IT Exposure',
+      description: 'Employees use unapproved apps to store company files.',
+      impact: 'Data is exposed in tools that lack enterprise security controls.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Company Policy',
+        steps: [
+          'Review the acceptable use policy quarterly',
+          'Use only approved apps and services',
+          'Report violations without delay'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'ethics-reporting',
+    name: 'Ethics Reporting',
+    protectsAgainst: 'incident-reporting',
+    emoji: '📣',
+    color: '#ff9900',
+    description: 'Promotes fast, correct incident reporting',
+    learningPoints: [
+      'Report incidents immediately',
+      'Use official channels',
+      'Provide clear details',
+      'Know whistleblower protections'
+    ],
+    whatItIs: 'Incident reporting channels let employees raise security and ethics concerns safely.',
+    whyItMatters: 'Fast reporting reduces damage. Silence or delays allow attacks to spread.',
+    howToGetIt: [
+      'Security hotline or ticketing system',
+      'Anonymous reporting options',
+      'Incident response playbooks'
+    ],
+    howItWorks: 'Reporting channels route incidents to responders, who can contain threats and preserve evidence.',
+    realWorldExample: {
+      title: 'Delayed Breach Reports',
+      description: 'Employees notice suspicious activity but do not report it quickly.',
+      impact: 'Attackers remain active longer, increasing losses.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Incident Reporting',
+        steps: [
+          'Save the incident hotline and URL',
+          'Report immediately with time and details',
+          'Follow responder instructions'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'compliance-kit',
+    name: 'Compliance Kit',
+    protectsAgainst: 'compliance',
+    emoji: '⚖️',
+    color: '#33aaff',
+    description: 'Applies required controls for regulated data',
+    learningPoints: [
+      'Know which data is regulated',
+      'Use approved storage and encryption',
+      'Limit access and sharing',
+      'Report compliance incidents'
+    ],
+    whatItIs: 'Compliance controls protect regulated data like PII, PHI, and cardholder information.',
+    whyItMatters: 'Noncompliance leads to fines, legal exposure, and loss of customer trust.',
+    howToGetIt: [
+      'Compliance training and policies',
+      'Approved tools for storage and sharing',
+      'Regular audits and reviews'
+    ],
+    howItWorks: 'Compliance tools enforce encryption, access controls, and audit logs to meet regulatory requirements.',
+    realWorldExample: {
+      title: 'PCI DSS Fines',
+      description: 'Card data stored without required controls.',
+      impact: 'Costly fines and mandatory remediation programs.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Compliance Basics',
+        steps: [
+          'Label regulated data correctly',
+          'Use approved systems only',
+          'Follow retention and deletion rules'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'remote-work-guard',
+    name: 'Remote Work Guard',
+    protectsAgainst: 'remote-work',
+    emoji: '🏡',
+    color: '#55cc99',
+    description: 'Hardens home networks and remote access',
+    learningPoints: [
+      'Secure home routers',
+      'Separate work and personal devices',
+      'Use VPN for sensitive work',
+      'Keep devices updated'
+    ],
+    whatItIs: 'Remote work security protects devices and networks outside the office.',
+    whyItMatters: 'Home networks lack enterprise protections, making them common targets.',
+    howToGetIt: [
+      'Home router security checklist',
+      'Company VPN access',
+      'Endpoint protection tools'
+    ],
+    howItWorks: 'Remote work guard combines secure WiFi, device hardening, and VPN use to reduce exposure.',
+    realWorldExample: {
+      title: 'Home Network Breach',
+      description: 'Weak router password lets attackers intercept traffic.',
+      impact: 'Credentials stolen and accounts compromised.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Home Setup',
+        steps: [
+          'Change router default password',
+          'Enable WPA3 or WPA2',
+          'Use a guest network for personal devices'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'waiting-room',
+    name: 'Waiting Room',
+    protectsAgainst: 'meeting-security',
+    emoji: '🛎️',
+    color: '#aa77ff',
+    description: 'Controls who can join online meetings',
+    learningPoints: [
+      'Enable waiting rooms or lobbies',
+      'Require meeting passwords',
+      'Lock meetings once started',
+      'Avoid public links'
+    ],
+    whatItIs: 'Meeting controls limit access to approved participants.',
+    whyItMatters: 'Meeting intrusion can expose sensitive discussions and documents.',
+    howToGetIt: [
+      'Zoom, Teams, or Meet waiting rooms',
+      'Unique meeting links',
+      'Host controls and locks'
+    ],
+    howItWorks: 'Hosts approve attendees and restrict access until verified.',
+    realWorldExample: {
+      title: 'Meeting Bombing',
+      description: 'Public links allow unknown users into meetings.',
+      impact: 'Disruption, data exposure, and reputational harm.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Video Meetings',
+        steps: [
+          'Enable waiting room by default',
+          'Require passwords for external attendees',
+          'Lock meeting after start'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'travel-vpn',
+    name: 'Travel VPN',
+    protectsAgainst: 'travel-security',
+    emoji: '🧳',
+    color: '#00bbff',
+    description: 'Protects traffic on hotel and public networks',
+    learningPoints: [
+      'Use VPN on all travel WiFi',
+      'Avoid public kiosks for sensitive tasks',
+      'Disable auto-join networks',
+      'Use mobile hotspots when possible'
+    ],
+    whatItIs: 'A travel VPN encrypts traffic when you use untrusted networks.',
+    whyItMatters: 'Travel networks are often monitored or spoofed.',
+    howToGetIt: [
+      'Company VPN client',
+      'Reputable consumer VPN',
+      'Mobile hotspot backup'
+    ],
+    howItWorks: 'VPNs create an encrypted tunnel so local networks cannot read your traffic.',
+    realWorldExample: {
+      title: 'Hotel WiFi Spoofing',
+      description: 'Attackers create fake hotel hotspots.',
+      impact: 'Credentials are stolen from travelers.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Travel Setup',
+        steps: [
+          'Install VPN on all devices',
+          'Connect before opening apps',
+          'Disable auto-join for unknown networks'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'encryption-kit',
+    name: 'Encryption Kit',
+    protectsAgainst: 'data-protection',
+    emoji: '🔏',
+    color: '#00cc66',
+    description: 'Encrypts sensitive data at rest and in transit',
+    learningPoints: [
+      'Use full-disk encryption',
+      'Encrypt files before sharing',
+      'Protect encryption keys',
+      'Use secure file transfer'
+    ],
+    whatItIs: 'Encryption turns readable data into ciphertext that only authorized users can access.',
+    whyItMatters: 'Lost devices or leaked files are useless without decryption keys.',
+    howToGetIt: [
+      'BitLocker or FileVault',
+      'Encrypted file-sharing tools',
+      'Key management policies'
+    ],
+    howItWorks: 'Encryption uses strong algorithms to protect data at rest and in transit. Keys are required to decrypt.',
+    realWorldExample: {
+      title: 'Lost Laptop Incident',
+      description: 'Unencrypted laptop lost during travel.',
+      impact: 'Sensitive data exposure and regulatory risk.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Device Encryption',
+        steps: [
+          'Enable full-disk encryption',
+          'Use strong passwords for keys',
+          'Back up recovery keys securely'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'sbom-toolkit',
+    name: 'SBOM Toolkit',
+    protectsAgainst: 'supply-chain',
+    emoji: '📦',
+    color: '#ff3366',
+    description: 'Tracks and verifies software components',
+    learningPoints: [
+      'Know your dependencies',
+      'Verify update signatures',
+      'Scan for known vulnerabilities',
+      'Use trusted sources'
+    ],
+    whatItIs: 'An SBOM lists software components to help detect risky dependencies.',
+    whyItMatters: 'Supply chain attacks hide in dependencies and updates.',
+    howToGetIt: [
+      'SBOM tools like Syft or CycloneDX',
+      'Dependency scanning services',
+      'Update verification policies'
+    ],
+    howItWorks: 'SBOM tools inventory packages and check them against vulnerability databases.',
+    realWorldExample: {
+      title: 'Compromised Dependency',
+      description: 'Malicious package published with a similar name.',
+      impact: 'Secrets stolen through infected builds.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Software Supply Chain',
+        steps: [
+          'Generate SBOMs for builds',
+          'Scan for vulnerabilities',
+          'Pin and verify dependencies'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'insider-monitor',
+    name: 'Insider Monitor',
+    protectsAgainst: 'insider-threats',
+    emoji: '👁️',
+    color: '#ffbb55',
+    description: 'Detects risky or abusive internal behavior',
+    learningPoints: [
+      'Use least privilege access',
+      'Audit privileged actions',
+      'Monitor data movement',
+      'Separate duties'
+    ],
+    whatItIs: 'Insider monitoring detects unusual access or data movement.',
+    whyItMatters: 'Insider incidents can be accidental or malicious and are costly to detect.',
+    howToGetIt: [
+      'DLP tools and audit logs',
+      'Privileged access management',
+      'Behavior analytics'
+    ],
+    howItWorks: 'Monitoring tools flag unusual access patterns and large transfers for review.',
+    realWorldExample: {
+      title: 'Privilege Abuse Case',
+      description: 'Admin accessed data without approval.',
+      impact: 'Unauthorized exposure and compliance issues.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Access Monitoring',
+        steps: [
+          'Enable audit logs',
+          'Review privilege changes',
+          'Set alerts for unusual access'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'email-gateway',
+    name: 'Email Gateway',
+    protectsAgainst: 'email-security',
+    emoji: '📧',
+    color: '#ff55bb',
+    description: 'Filters malicious attachments and spoofed emails',
+    learningPoints: [
+      'Scan attachments before opening',
+      'Verify sender identity',
+      'Use DMARC and SPF',
+      'Report suspicious emails'
+    ],
+    whatItIs: 'Email gateways filter malicious content before it reaches users.',
+    whyItMatters: 'Email remains the top delivery vector for attacks.',
+    howToGetIt: [
+      'Gmail and Outlook filtering',
+      'Enterprise secure email gateways',
+      'Attachment sandboxing tools'
+    ],
+    howItWorks: 'Gateways scan for malware, spoofing, and risky links and quarantine suspicious messages.',
+    realWorldExample: {
+      title: 'Malicious Attachment Campaign',
+      description: 'Invoice attachments deliver ransomware.',
+      impact: 'Encrypted files and business downtime.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Email Security',
+        steps: [
+          'Enable advanced email filtering',
+          'Block macros by default',
+          'Report suspicious messages'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'classification-labeler',
+    name: 'Classification Labeler',
+    protectsAgainst: 'data-classification',
+    emoji: '🏷️',
+    color: '#66aa00',
+    description: 'Labels data to enforce correct handling',
+    learningPoints: [
+      'Apply correct labels',
+      'Use secure channels for sensitive data',
+      'Review sharing permissions',
+      'Follow classification policy'
+    ],
+    whatItIs: 'Classification labels signal how data should be stored and shared.',
+    whyItMatters: 'Mislabeling leads to accidental exposure of sensitive data.',
+    howToGetIt: [
+      'Built-in labels in Microsoft or Google',
+      'Data classification policies',
+      'Training and tooling'
+    ],
+    howItWorks: 'Labels trigger policy rules like encryption, access limits, and sharing restrictions.',
+    realWorldExample: {
+      title: 'Public Sharing Incident',
+      description: 'Confidential file shared in a public channel.',
+      impact: 'Data exposure and compliance risk.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Labeling',
+        steps: [
+          'Choose a classification label',
+          'Apply label before sharing',
+          'Review access lists'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'privacy-check',
+    name: 'Privacy Check',
+    protectsAgainst: 'social-media',
+    emoji: '🕶️',
+    color: '#bb66ff',
+    description: 'Audits social posts for risky oversharing',
+    learningPoints: [
+      'Avoid posting sensitive work info',
+      'Disable location tagging',
+      'Review followers and visibility',
+      'Remove photo metadata'
+    ],
+    whatItIs: 'Privacy checks help users review social posts before publishing.',
+    whyItMatters: 'Public posts are used for reconnaissance and targeted attacks.',
+    howToGetIt: [
+      'Platform privacy settings',
+      'Social media privacy tools',
+      'Security awareness training'
+    ],
+    howItWorks: 'Tools and checklists flag risky content and suggest safer sharing options.',
+    realWorldExample: {
+      title: 'Oversharing Leads to Phishing',
+      description: 'Attackers use public profiles to craft targeted emails.',
+      impact: 'Higher success rates for spear phishing.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'Social Profiles',
+        steps: [
+          'Set profiles to private',
+          'Disable location sharing',
+          'Review posts before publishing'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'device-control',
+    name: 'Device Control',
+    protectsAgainst: 'removable-media',
+    emoji: '🔌',
+    color: '#ff4455',
+    description: 'Blocks unsafe USB and removable media',
+    learningPoints: [
+      'Block unknown USB devices',
+      'Disable auto-run features',
+      'Encrypt approved removable media',
+      'Monitor data transfers'
+    ],
+    whatItIs: 'Device control prevents unauthorized USB and removable media access.',
+    whyItMatters: 'Removable media is a common malware and data exfiltration path.',
+    howToGetIt: [
+      'Endpoint device control tools',
+      'Group policy settings',
+      'DLP and logging'
+    ],
+    howItWorks: 'Policies allow only approved devices and log all transfers.',
+    realWorldExample: {
+      title: 'USB Data Theft',
+      description: 'Sensitive data copied to removable drives.',
+      impact: 'Data leaks and legal exposure.'
+    },
+    stepByStepSetup: [
+      {
+        platform: 'USB Control',
+        steps: [
+          'Allow only approved devices',
+          'Encrypt removable storage',
+          'Alert on large file transfers'
+        ]
+      }
+    ]
   }
 ]
 

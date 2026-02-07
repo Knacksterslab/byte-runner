@@ -27,7 +27,22 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
       'vpn-shield': 'NETWORK SAFETY',
       'mfa-authenticator': 'VERIFY IDENTITY',
       'backup-system': 'BACKUP DATA',
-      'social-engineering-defense': 'DETECT SCAMS'
+      'social-engineering-defense': 'DETECT SCAMS',
+      'badge-tap': 'PHYSICAL ACCESS',
+      'secure-shred': 'SECURE DISPOSAL',
+      'policy-knowledge': 'POLICY CHECK',
+      'ethics-reporting': 'REPORT INCIDENT',
+      'compliance-kit': 'COMPLIANCE BASICS',
+      'remote-work-guard': 'REMOTE WORK',
+      'waiting-room': 'MEETING SECURITY',
+      'travel-vpn': 'TRAVEL SAFETY',
+      'encryption-kit': 'DATA ENCRYPTION',
+      'sbom-toolkit': 'SUPPLY CHAIN',
+      'insider-monitor': 'INSIDER RISK',
+      'email-gateway': 'EMAIL SECURITY',
+      'classification-labeler': 'DATA LABELS',
+      'privacy-check': 'SOCIAL PRIVACY',
+      'device-control': 'USB SAFETY'
     }
     return headers[kit] || 'KNOWLEDGE CHECK'
   }

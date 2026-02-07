@@ -49,9 +49,9 @@ export function TutorialOverlay({ showing, onClose }: TutorialOverlayProps) {
           <div className="bg-black/50 border-2 border-yellow-600 rounded-lg p-2 md:col-span-2">
             <h3 className="text-yellow-400 font-bold text-sm mb-1">⚡ Key Mechanics</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-1 text-xs text-gray-300">
-              <div>🔐 8 Kits</div>
-              <div>🦠 15 Threats</div>
-              <div>📈 4 Zones</div>
+              <div>🔐 23 Kits</div>
+              <div>🦠 60 Threats</div>
+              <div>📈 5 Zones</div>
               <div>🧠 Quiz</div>
               <div>💾 Backup = Life</div>
               <div>📚 Real Tools</div>

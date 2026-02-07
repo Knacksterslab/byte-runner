@@ -52,7 +52,7 @@ export const gameZones: GameZone[] = [
       '🔐 Lock down smart home devices'
     ],
     primaryThreats: ['password', 'wifi', 'privacy'],
-    secondaryThreats: ['phishing', 'updates'],
+    secondaryThreats: ['phishing', 'updates', 'remote-work', 'social-media'],
     environmentalElements: [
       { type: 'icon', content: '📱', frequency: 0.3 },
       { type: 'icon', content: '💻', frequency: 0.3 },
@@ -82,8 +82,8 @@ export const gameZones: GameZone[] = [
       '🚫 Never plug in unknown USB drives at work',
       '👥 Social engineering targets employees'
     ],
-    primaryThreats: ['phishing', 'social-engineering', 'updates'],
-    secondaryThreats: ['password', 'authentication'],
+    primaryThreats: ['phishing', 'social-engineering', 'updates', 'physical-security', 'policy'],
+    secondaryThreats: ['password', 'authentication', 'incident-reporting', 'secure-disposal', 'insider-threats', 'email-security'],
     environmentalElements: [
       { type: 'icon', content: '📧', frequency: 0.4 },
       { type: 'icon', content: '💼', frequency: 0.3 },
@@ -93,10 +93,42 @@ export const gameZones: GameZone[] = [
     ]
   },
   {
+    id: 'remote-work',
+    name: '🏠 REMOTE WORK',
+    description: 'Home networks, video meetings, and travel security',
+    levelRange: { start: 7, end: 9 },
+    colorScheme: {
+      name: 'REMOTE BLUE SECTOR',
+      primary: '#1a2f3a',
+      secondary: '#2d4f5a',
+      accent: '#33ccff',
+      gridColor: '#33ccff11',
+      particleColor: '#88ddff',
+      glowColor: '#33ccff'
+    },
+    icon: '🏠',
+    contextualTips: [
+      '🏠 Secure your home router and WiFi',
+      '🎥 Use waiting rooms for meetings',
+      '🧳 Use VPN while traveling',
+      '🛜 Separate work and personal devices',
+      '📣 Report incidents quickly'
+    ],
+    primaryThreats: ['remote-work', 'meeting-security', 'travel-security', 'wifi'],
+    secondaryThreats: ['phishing', 'authentication', 'policy', 'incident-reporting', 'email-security'],
+    environmentalElements: [
+      { type: 'icon', content: '🏠', frequency: 0.3 },
+      { type: 'icon', content: '🎥', frequency: 0.25 },
+      { type: 'icon', content: '🧳', frequency: 0.2 },
+      { type: 'icon', content: '🛜', frequency: 0.2 },
+      { type: 'icon', content: '📣', frequency: 0.15 }
+    ]
+  },
+  {
     id: 'mobile-zone',
     name: '📱 MOBILE ZONE',
     description: 'Smartphones, public WiFi, and mobile apps',
-    levelRange: { start: 7, end: 9 },
+    levelRange: { start: 10, end: 12 },
     colorScheme: {
       name: 'DANGER RED SECTOR',
       primary: '#3a1a1a',
@@ -114,8 +146,8 @@ export const gameZones: GameZone[] = [
       '🔐 Enable biometric locks on all apps',
       '🚫 Review app permissions regularly'
     ],
-    primaryThreats: ['wifi', 'privacy', 'authentication'],
-    secondaryThreats: ['phishing', 'social-engineering'],
+    primaryThreats: ['wifi', 'privacy', 'authentication', 'social-media', 'removable-media'],
+    secondaryThreats: ['phishing', 'meeting-security', 'travel-security'],
     environmentalElements: [
       { type: 'icon', content: '📱', frequency: 0.4 },
       { type: 'icon', content: '☕', frequency: 0.3 },
@@ -128,7 +160,7 @@ export const gameZones: GameZone[] = [
     id: 'cloud-zone',
     name: '☁️ CLOUD ZONE',
     description: 'Cloud services, SaaS apps, and advanced threats',
-    levelRange: { start: 10, end: 999 },
+    levelRange: { start: 13, end: 999 },
     colorScheme: {
       name: 'ELITE PURPLE SECTOR',
       primary: '#2a1a3a',
@@ -146,8 +178,8 @@ export const gameZones: GameZone[] = [
       '🔐 Use zero-trust architecture',
       '🎯 APT groups target cloud infrastructure'
     ],
-    primaryThreats: ['authentication', 'data-loss', 'updates'],
-    secondaryThreats: ['phishing', 'social-engineering'],
+    primaryThreats: ['authentication', 'data-loss', 'updates', 'compliance', 'data-protection', 'supply-chain', 'data-classification'],
+    secondaryThreats: ['phishing', 'social-engineering', 'email-security', 'insider-threats', 'policy'],
     environmentalElements: [
       { type: 'icon', content: '☁️', frequency: 0.4 },
       { type: 'icon', content: '🌐', frequency: 0.3 },
@@ -167,7 +199,7 @@ export function getCurrentZone(level: number): GameZone {
 
 // Check if level is a zone transition
 export function isZoneTransition(level: number): boolean {
-  return level === 4 || level === 7 || level === 10
+  return level === 4 || level === 7 || level === 10 || level === 13
 }
 
 // Get zone by ID
