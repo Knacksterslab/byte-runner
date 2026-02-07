@@ -1,16 +1,6 @@
 import type { GameObject } from './objectPool';
 import { VISUAL_CONFIG } from './gameConstants';
 
-const isDev = process.env.NODE_ENV !== 'production';
-const debugIngest = (payload: Record<string, unknown>) => {
-  if (!isDev) return;
-  fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  }).catch(() => {});
-};
-
 export function drawGameObjects(
   ctx: CanvasRenderingContext2D,
   objects: GameObject[]
@@ -49,9 +39,6 @@ function drawKit(ctx: CanvasRenderingContext2D, obj: GameObject): void {
 }
 
 function drawQuizItem(ctx: CanvasRenderingContext2D, obj: GameObject): void {
-  // #region agent log
-  debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H6',location:'objectRenderer.ts:drawQuizItem',message:'objectRenderer quiz item draw',data:{label:obj.label,icon:obj.icon,isCorrect:obj.isCorrect,hasNonAscii:typeof obj.label === 'string' ? /[^\x20-\x7E]/.test(obj.label) : false},timestamp:Date.now()});
-  // #endregion
   const isCorrect = obj.isCorrect ?? false;
   ctx.fillStyle = isCorrect
     ? VISUAL_CONFIG.QUIZ_CORRECT_COLOR

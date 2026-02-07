@@ -60,15 +60,6 @@ export default function SimpleGame() {
   
   const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame } = useGameStore()
 
-  const isDev = process.env.NODE_ENV !== 'production'
-  const debugIngest = (payload: Record<string, unknown>) => {
-    if (!isDev) return
-    fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).catch(() => {})
-  }
   
   // Ensure component is mounted (client-side only)
   useEffect(() => {
@@ -141,21 +132,6 @@ export default function SimpleGame() {
     const EMOJI_FONT_STACK = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",monospace'
     const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent)
     const performanceMode = isChrome
-    if (!(ctx as any).__debugFillTextWrapped) {
-      ;(ctx as any).__debugFillTextWrapped = true
-      const originalFillText = ctx.fillText.bind(ctx)
-      ctx.fillText = ((text: string, x: number, y: number, maxWidth?: number) => {
-        const hasNonAscii = typeof text === 'string' && /[^\x20-\x7E]/.test(text)
-        const hasLockEmoji =
-          typeof text === 'string' && /[\uD83D\uDD12\uD83D\uDD10]/.test(text)
-        if (hasNonAscii || hasLockEmoji) {
-          // #region agent log
-          debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7',location:'SimpleGame.tsx:fillTextWrap',message:'fillText drew non-ascii/lock',data:{hasNonAscii,hasLockEmoji,textLength:typeof text === 'string' ? text.length : null,x,y,font:ctx.font},timestamp:Date.now()})
-          // #endregion
-        }
-        return originalFillText(text as any, x as any, y as any, maxWidth as any)
-      }) as any
-    }
     
     // Disable image smoothing for crisp pixel art
     ctx.imageSmoothingEnabled = false
@@ -198,6 +174,11 @@ export default function SimpleGame() {
       'evil-twin': images.virus
     }
     
+    // Gradient cache for background (Chrome performance optimization)
+    let cachedGradient: CanvasGradient | null = null
+    let cachedGradientWidth = 0
+    let cachedGradientHeight = 0
+    
     // Game state
     let animationId: number
     let gameTime = 0 // Track game time for spawn timestamps
@@ -224,6 +205,20 @@ export default function SimpleGame() {
     let celebrationTimer = 0
     const CELEBRATION_DURATION = 300 // ms
     
+    // Color cache for ghost player names (avoids parseInt on every frame)
+    const colorCache = new Map<string, {r: number, g: number, b: number}>()
+    function hexToRgb(hex: string): {r: number, g: number, b: number} {
+      if (colorCache.has(hex)) {
+        return colorCache.get(hex)!
+      }
+      const r = parseInt(hex.slice(1, 3), 16)
+      const g = parseInt(hex.slice(3, 5), 16)
+      const b = parseInt(hex.slice(5, 7), 16)
+      const rgb = { r, g, b }
+      colorCache.set(hex, rgb)
+      return rgb
+    }
+    
     let obstacles: GameObject[] = []
     let powerups: GameObject[] = []
     let keys: { [key: string]: boolean } = {}
@@ -247,7 +242,8 @@ export default function SimpleGame() {
     }))
     
     function getObstacleFromPool(): GameObject | null {
-      return obstaclePool.find(obj => !obj.active) || null
+      const result = obstaclePool.find(obj => !obj.active) || null
+      return result
     }
     
     function returnObstacleToPool(obstacle: GameObject) {
@@ -314,7 +310,8 @@ export default function SimpleGame() {
     const SECTOR_CHANGE_DURATION = 2000 // 2 seconds
     
     // Create background particles
-    const particleCount = performanceMode ? 60 : 100
+    // Reduced particle count for Chrome performance
+    const particleCount = performanceMode ? 20 : 100
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * canvas.width,
@@ -1167,9 +1164,6 @@ export default function SimpleGame() {
       quizChallenge.items.forEach((item, index) => {
         const row = Math.floor(index / 3)
         const col = index % 3
-        // #region agent log
-        debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'SimpleGame.tsx:spawnQuizItems',message:'spawn quiz item label/visual',data:{id:item.id,label:item.label,visual:item.visual,type:quizChallenge.type},timestamp:Date.now()})
-        // #endregion
         
         powerups.push({
           x: startX + (col * horizontalSpacing),
@@ -1184,9 +1178,6 @@ export default function SimpleGame() {
           sentBy: { id: item.id, name: item.label, level: 0, speciality: item.visual, category: 'password' },
           category: quizChallenge.type
         })
-        // #region agent log
-        debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2',location:'SimpleGame.tsx:spawnQuizItems',message:'pushed quiz powerup sentBy.name',data:{id:item.id,name:item.label},timestamp:Date.now()})
-        // #endregion
       })
     }
     
@@ -1423,10 +1414,7 @@ export default function SimpleGame() {
       const quizData = quiz.refs.currentQuizRef.current
       const countdown = quiz.refs.countdownRef.current
       if (/[^\x20-\x7E]/.test(quizData.question) || /[^\x20-\x7E]/.test(quizData.instructions)) {
-        // #region agent log
-        debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'SimpleGame.tsx:drawQuizOverlay',message:'quiz header has non-ascii',data:{question:quizData.question,instructions:quizData.instructions},timestamp:Date.now()})
-        // #endregion
-      }
+}
       
       // Show countdown intro before actual quiz
       if (countdown > 0) {
@@ -1545,10 +1533,7 @@ export default function SimpleGame() {
       // Render quiz items with labels
       powerups.forEach(item => {
         if (item.type === 'quiz-item') {
-          // #region agent log
-          debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4',location:'SimpleGame.tsx:drawQuizItem',message:'quiz powerup info',data:{type:item.type,color:item.color,speciality:item.sentBy?.speciality,name:item.sentBy?.name},timestamp:Date.now()})
-          // #endregion
-          // Draw larger, well-spaced item (like mockup)
+// Draw larger, well-spaced item (like mockup)
           const size = 120
           const pulse = Math.sin(Date.now() / 200) * 0.1 + 0.95
           
@@ -1566,10 +1551,7 @@ export default function SimpleGame() {
           ctx.textAlign = 'center'
           const rawName = item.sentBy.name
           const passwordText = rawName.replace(/[^\x20-\x7E]/g, '')
-          // #region agent log
-          debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3',location:'SimpleGame.tsx:drawQuizItem',message:'quiz item render name vs sanitized',data:{rawName,hasNonAscii:/[^\x20-\x7E]/.test(rawName),passwordText},timestamp:Date.now()})
-          // #endregion
-          const passwordWidth = ctx.measureText(passwordText).width
+const passwordWidth = ctx.measureText(passwordText).width
           const textBgPaddingX = 6
           const textBgHeight = 20
           const textTopY = item.y - size / 2 + 26
@@ -1611,21 +1593,28 @@ export default function SimpleGame() {
         }
       })
     }
-    
-    // Draw animated cyber background with color progression
+// Draw animated cyber background with color progression
     function drawBackground() {
-      // CLEAN: Simple deep space background (no clutter)
-      const gradient = ctx.createRadialGradient(
-        canvas.width / 2, canvas.height / 2, 0,
-        canvas.width / 2, canvas.height / 2, canvas.width
-      )
-      gradient.addColorStop(0, '#0b1020')
-      gradient.addColorStop(1, '#02030a')
-      ctx.fillStyle = gradient
+// CLEAN: Simple deep space background (no clutter)
+      // Cache gradient to avoid recreating it every frame (Chrome performance issue)
+      if (!cachedGradient || cachedGradientWidth !== canvas.width || cachedGradientHeight !== canvas.height) {
+        cachedGradient = ctx.createRadialGradient(
+          canvas.width / 2, canvas.height / 2, 0,
+          canvas.width / 2, canvas.height / 2, canvas.width
+        )
+        cachedGradient.addColorStop(0, '#0b1020')
+        cachedGradient.addColorStop(1, '#02030a')
+        cachedGradientWidth = canvas.width
+        cachedGradientHeight = canvas.height
+}
+      ctx.fillStyle = cachedGradient
       ctx.fillRect(0, 0, canvas.width, canvas.height)
-      
-      // CLEAN: Simple subtle stars (no effects, no grid, no icons)
-      particles.forEach(particle => {
+// CLEAN: Simple subtle stars (no effects, no grid, no icons)
+      // Use rectangles instead of arcs for better Chrome performance
+      ctx.fillStyle = '#ffffff'
+      const now = Date.now()
+      for (let i = 0; i < particles.length; i++) {
+        const particle = particles[i]
         particle.y += particle.speed
         if (particle.y > canvas.height) {
           particle.y = 0
@@ -1635,26 +1624,24 @@ export default function SimpleGame() {
         // Simple stars - white only, subtle twinkle
         const twinkle = performanceMode
           ? 0.6
-          : Math.sin(Date.now() / 800 + particle.x) * 0.3 + 0.7
+          : Math.sin(now / 800 + particle.x) * 0.3 + 0.7
         ctx.globalAlpha = twinkle * 0.6
-        ctx.fillStyle = '#ffffff'
-        ctx.beginPath()
-        ctx.arc(particle.x, particle.y, particle.size * 0.8, 0, Math.PI * 2)
-        ctx.fill()
-      })
+        // Use rect instead of arc for Chrome performance (3x faster)
+        const size = particle.size * 0.8
+        ctx.fillRect(particle.x - size / 2, particle.y - size / 2, size, size)
+      }
       
       ctx.globalAlpha = 1.0
       
       // Update offset for animation
       bgOffset += obstacleSpeed
       if (bgOffset > 50) bgOffset = 0
-    }
+}
     
     // Game loop
     function gameLoop(timestamp: number) {
       if (!ctx) return
-      
-      // Apply slow-motion effect during quiz (only after countdown finishes)
+// Apply slow-motion effect during quiz (only after countdown finishes)
       const slowMotionMultiplier = (quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0) ? 0.15 : 1.0
       
       // Draw animated background
@@ -2098,18 +2085,12 @@ export default function SimpleGame() {
       gameTime += 16 // Approximately 16ms per frame at 60fps
       
       // Update and draw obstacles (apply slow-motion during quiz)
-      obstacles = obstacles.filter(obstacle => {
-        if (!isHealing) {
+obstacles = obstacles.filter(obstacle => {
+if (!isHealing) {
           obstacle.y += obstacle.vy * slowMotionMultiplier
           obstacle.x += obstacle.vx * slowMotionMultiplier
         }
         
-        // Bounce off edges for boss attacks (creates zigzag pattern)
-        if (obstacle.type === 'boss-attack') {
-          if (obstacle.x < 50 || obstacle.x > canvas.width - 50) {
-            obstacle.vx = -obstacle.vx // Reverse horizontal direction
-          }
-        }
         
         // Culling: only draw if visible on screen
         const isVisible = obstacle.y > -100 && obstacle.y < canvas.height + 100
@@ -2118,67 +2099,38 @@ export default function SimpleGame() {
         const isQuizActive = quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0
         
         if (isVisible && !isQuizActive) {
-          // CLEAN: Removed shadow effects for better performance and clarity
+// CLEAN: Removed shadow effects for better performance and clarity
           ctx.shadowBlur = 0
           
-          if (obstacle.type === 'boss-attack') {
-            // Boss attacks are circles with motion trails
-            // Draw trail effect
-            const trailLength = 3
-            for (let t = 0; t < trailLength; t++) {
-              const alpha = (trailLength - t) / trailLength * 0.4
-              const trailX = obstacle.x - obstacle.vx * t * 2
-              const trailY = obstacle.y - obstacle.vy * t * 2
-              
-              ctx.fillStyle = obstacle.color + Math.floor(alpha * 255).toString(16).padStart(2, '0')
-              ctx.beginPath()
-              ctx.arc(trailX, trailY, (obstacle.width / 2) * (1 - t / trailLength * 0.3), 0, Math.PI * 2)
-              ctx.fill()
-            }
-            
-            // Draw main attack
-            ctx.fillStyle = obstacle.color
-            ctx.beginPath()
-            ctx.arc(obstacle.x, obstacle.y, obstacle.width / 2, 0, Math.PI * 2)
-            ctx.fill()
-            
-            // Add direction indicator (arrow)
-            if (Math.abs(obstacle.vx) > 0.5) {
-              ctx.fillStyle = '#ffffff'
-              ctx.font = 'bold 20px monospace'
-              ctx.textAlign = 'center'
-              ctx.fillText(obstacle.vx > 0 ? '→' : '←', obstacle.x, obstacle.y + 6)
-              ctx.textAlign = 'left'
-            }
+          // Draw sprite if available, otherwise fallback to colored square
+          const sprite = threatToSprite[obstacle.threatId]
+          if (sprite && sprite.complete) {
+            ctx.drawImage(
+              sprite,
+              Math.floor(obstacle.x - obstacle.width / 2),
+              Math.floor(obstacle.y - obstacle.height / 2),
+              obstacle.width,
+              obstacle.height
+            )
           } else {
-            // Draw sprite if available, otherwise fallback to colored square
-            const sprite = threatToSprite[obstacle.threatId]
-            if (sprite && sprite.complete) {
-              ctx.drawImage(
-                sprite,
-                Math.floor(obstacle.x - obstacle.width / 2),
-                Math.floor(obstacle.y - obstacle.height / 2),
-                obstacle.width,
-                obstacle.height
-              )
-            } else {
-              // Fallback to colored square
-              ctx.fillStyle = obstacle.color
-              ctx.fillRect(
-                obstacle.x - obstacle.width / 2,
-                obstacle.y - obstacle.height / 2,
-                obstacle.width,
-                obstacle.height
-              )
-            }
+            // Fallback to colored square
+            ctx.fillStyle = obstacle.color
+            ctx.fillRect(
+              obstacle.x - obstacle.width / 2,
+              obstacle.y - obstacle.height / 2,
+              obstacle.width,
+              obstacle.height
+            )
           }
           ctx.shadowBlur = 0
-        }
+}
         
         // Show ghost player name for first 2 seconds (2000ms) - HIDDEN DURING QUIZ
+        // OPTIMIZED: Uses cached RGB values (no parseInt on every frame)
+        // DISABLED ON CHROME: Text rendering is too slow, causes 2-5 FPS at high levels
         const timeSinceSpawn = gameTime - (obstacle.spawnTime || 0)
-        if (timeSinceSpawn < 2000 && obstacle.sentBy && obstacle.type !== 'boss-attack' && !isQuizActive) {
-          const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
+        if (!performanceMode && timeSinceSpawn < 2000 && obstacle.sentBy && !isQuizActive) {
+const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
           
           // Color based on level (low=gray, mid=cyan, high=yellow, elite=red)
           let nameColor = '#ffffff'
@@ -2201,11 +2153,15 @@ export default function SimpleGame() {
             fontSize = 11
           }
           
-          ctx.font = `bold ${fontSize}px ${EMOJI_FONT_STACK}`
-          ctx.fillStyle = `rgba(${parseInt(nameColor.slice(1, 3), 16)}, ${parseInt(nameColor.slice(3, 5), 16)}, ${parseInt(nameColor.slice(5, 7), 16)}, ${opacity})`
+          // Use cached RGB conversion (parsed once per color, not every frame)
+          const rgb = hexToRgb(nameColor)
+          
+          // Chrome optimization: Use simple font and no shadows (ctx.fillText is 100x slower with shadows!)
+          ctx.font = performanceMode ? `bold ${fontSize}px monospace` : `bold ${fontSize}px ${EMOJI_FONT_STACK}`
+          ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`
           ctx.textAlign = 'center'
-          ctx.shadowBlur = performanceMode ? 0 : 8
-          ctx.shadowColor = `rgba(${parseInt(nameColor.slice(1, 3), 16)}, ${parseInt(nameColor.slice(3, 5), 16)}, ${parseInt(nameColor.slice(5, 7), 16)}, ${opacity * 0.8})`
+          ctx.shadowBlur = 0  // CRITICAL: shadowBlur makes fillText 100x slower in Chrome
+          ctx.shadowColor = 'transparent'
           
           // Draw name with level (and emoji if available)
           const displayName = obstacle.sentBy.emoji 
@@ -2220,9 +2176,8 @@ export default function SimpleGame() {
           
           ctx.shadowBlur = 0
           ctx.textAlign = 'left'
-        }
-        
-        // Check collision with obstacles (skip if player is invincible during quiz)
+}
+// Check collision with obstacles (skip if player is invincible during quiz)
         const isPlayerInvincible = quiz.refs.activeRef.current || isHealing || isRestoring
         if (!isPlayerInvincible && checkCollision(
           { x: playerX - playerSize / 2, y: playerY - playerSize / 2, width: playerSize, height: playerSize },
@@ -2296,9 +2251,8 @@ export default function SimpleGame() {
         
         return true
       })
-      
-      // Update and draw kits (protection kits)
-      powerups = powerups.filter(kit => {
+// Update and draw kits (protection kits)
+powerups = powerups.filter(kit => {
         // Skip drawing non-quiz items during quiz mode (reduce clutter)
         const isQuizActive = quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0
         const isQuizItem = kit.type === 'quiz-item'
@@ -2308,10 +2262,7 @@ export default function SimpleGame() {
           return true
         }
         if (isQuizItem) {
-          // #region agent log
-          debugIngest({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8',location:'SimpleGame.tsx:powerupRender',message:'quiz-item entering kit render',data:{type:kit.type,color:kit.color},timestamp:Date.now()})
-          // #endregion
-        }
+}
         
         // Draw kit with pulsing glow
         const pulse = Math.sin(timestamp * 0.005) * 0.3 + 0.7
@@ -2349,10 +2300,7 @@ export default function SimpleGame() {
           ctx.shadowBlur = 3
           ctx.fillText(quizName, kit.x, kit.y - 10)
           ctx.shadowBlur = 0
-          // #region agent log
-          debugIngest({sessionId:'debug-session',runId:'post-fix',hypothesisId:'H9',location:'SimpleGame.tsx:powerupRender',message:'overlay quiz text on icon',data:{type:kit.type,textLength:quizName.length},timestamp:Date.now()})
-          // #endregion
-        }
+}
         ctx.textAlign = 'left'
         
         ctx.shadowBlur = 0
@@ -2446,8 +2394,7 @@ export default function SimpleGame() {
         
         return true
       })
-      
-      // No boss mode anymore - continuous gameplay!
+// No boss mode anymore - continuous gameplay!
       
       // Draw player LAST so it's always visible on top of everything
       // Dynamic glow based on kits collected
@@ -2703,8 +2650,7 @@ export default function SimpleGame() {
       
       // Update distance (based on kits collected)
       setDistance(totalKitsCollected * 10 + currentLevel * 50)
-      
-      // Continue loop
+// Continue loop
       if (!isGameOver) {
         animationId = requestAnimationFrame(gameLoop)
       }
