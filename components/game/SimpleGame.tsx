@@ -203,6 +203,10 @@ export default function SimpleGame() {
     let powerupsCollected = 0
     let isAdvancingLevel = false // Prevent multiple level advances
     let spawnFrequency = 650 // ms between obstacle spawns
+    let speedFactor = 0.55
+    let effectiveObstacleSpeed = obstacleSpeed
+    let effectivePlayerSpeed = playerSpeed
+    let effectiveSpawnFrequency = spawnFrequency
     
     // Animation state for running character
     let animationTime = 0
@@ -1347,24 +1351,24 @@ export default function SimpleGame() {
           obstacle.x = Math.random() * canvas.width
           obstacle.y = -50
           obstacle.vx = (Math.random() - 0.5) * 2 // Slight horizontal drift
-          obstacle.vy = obstacleSpeed * speedMultiplier
+          obstacle.vy = effectiveObstacleSpeed * speedMultiplier
           break
         case 'bottom':
           obstacle.x = Math.random() * canvas.width
           obstacle.y = canvas.height + 50
           obstacle.vx = (Math.random() - 0.5) * 2
-          obstacle.vy = -obstacleSpeed * speedMultiplier // Move upward
+          obstacle.vy = -effectiveObstacleSpeed * speedMultiplier // Move upward
           break
         case 'right':
           obstacle.x = canvas.width + 50
           obstacle.y = Math.random() * canvas.height
-          obstacle.vx = -obstacleSpeed * speedMultiplier // Move leftward
+          obstacle.vx = -effectiveObstacleSpeed * speedMultiplier // Move leftward
           obstacle.vy = (Math.random() - 0.5) * 2
           break
         case 'left':
           obstacle.x = -50
           obstacle.y = Math.random() * canvas.height
-          obstacle.vx = obstacleSpeed * speedMultiplier // Move rightward
+          obstacle.vx = effectiveObstacleSpeed * speedMultiplier // Move rightward
           obstacle.vy = (Math.random() - 0.5) * 2
           break
       }
@@ -1624,7 +1628,7 @@ const passwordWidth = ctx.measureText(passwordText).width
       const now = Date.now()
       for (let i = 0; i < particles.length; i++) {
         const particle = particles[i]
-        particle.y += particle.speed
+        particle.y += particle.speed * frameScale
         if (particle.y > canvas.height) {
           particle.y = 0
           particle.x = Math.random() * canvas.width
@@ -1643,29 +1647,42 @@ const passwordWidth = ctx.measureText(passwordText).width
       ctx.globalAlpha = 1.0
       
       // Update offset for animation
-      bgOffset += obstacleSpeed
+      bgOffset += effectiveObstacleSpeed * frameScale
       if (bgOffset > 50) bgOffset = 0
 }
     
     let lastGameFrameTs = 0
     let gameFrameCount = 0
     let gameLogBurst = 0
+    let endLogCount = 0
+    let frameScale = 1
     const loopId = loopIdRef.current
     // Game loop
     function gameLoop(timestamp: number) {
       if (!ctx) return
+      const loopStart = performance.now()
       const gameDelta = lastGameFrameTs ? timestamp - lastGameFrameTs : 0
       lastGameFrameTs = timestamp
       gameFrameCount += 1
+      const frameMs = gameDelta || 16.67
+      frameScale = Math.min(frameMs / 16.67, 10)
 // Apply slow-motion effect during quiz (only after countdown finishes)
       const slowMotionMultiplier = (quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0) ? 0.15 : 1.0
+      speedFactor = Math.min(1.6, Math.max(0.55, 0.55 + (currentLevel - 1) * 0.08))
+      effectiveObstacleSpeed = obstacleSpeed * speedFactor
+      effectivePlayerSpeed = playerSpeed * speedFactor
+      effectiveSpawnFrequency = spawnFrequency / speedFactor
+      if (gameFrameCount % 120 === 0) {
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'E',location:'SimpleGame.tsx:1668',message:'speed baseline',data:{level,currentLevel,playerSpeed,obstacleSpeed,spawnFrequency,speedFactor,effectivePlayerSpeed,effectiveObstacleSpeed,effectiveSpawnFrequency,frameScale,slowMotionMultiplier,gameDelta},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion agent log
+      }
       if (gameLogBurst < 5) {
         gameLogBurst += 1
         // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-2',hypothesisId:'A',location:'SimpleGame.tsx:1652',message:'game loop burst timing',data:{gameDelta,slowMotionMultiplier,quizActive:quiz.refs.activeRef.current,quizCountdown:quiz.refs.countdownRef.current,canvasW:canvas.width,canvasH:canvas.height},timestamp:Date.now()})}).catch(()=>{});
+        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-5',hypothesisId:'A',location:'SimpleGame.tsx:1652',message:'game loop burst timing',data:{gameDelta,frameScale,slowMotionMultiplier,quizActive:quiz.refs.activeRef.current,quizCountdown:quiz.refs.countdownRef.current,canvasW:canvas.width,canvasH:canvas.height},timestamp:Date.now()})}).catch(()=>{});
         // #endregion agent log
       }
-      const loopStart = performance.now()
       // Draw animated background
       const bgStart = performance.now()
       drawBackground()
@@ -1674,7 +1691,7 @@ const passwordWidth = ctx.measureText(passwordText).width
       if (gameFrameCount % 120 === 0) {
         // #region agent log
         const loopEnd = performance.now()
-        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-4',hypothesisId:'A',location:'SimpleGame.tsx:1674',message:'game loop timing',data:{gameDelta,slowMotionMultiplier,quizActive:quiz.refs.activeRef.current,quizCountdown:quiz.refs.countdownRef.current,canvasW:canvas.width,canvasH:canvas.height,bgDrawMs:bgEnd-bgStart,loopMs:loopEnd-loopStart,performanceMode,isChrome,visibility:document.visibilityState,loopId},timestamp:Date.now()})}).catch(()=>{});
+        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-5',hypothesisId:'A',location:'SimpleGame.tsx:1674',message:'game loop timing start',data:{gameDelta,frameScale,slowMotionMultiplier,quizActive:quiz.refs.activeRef.current,quizCountdown:quiz.refs.countdownRef.current,canvasW:canvas.width,canvasH:canvas.height,bgDrawMs:bgEnd-bgStart,loopMs:loopEnd-loopStart,performanceMode,isChrome,visibility:document.visibilityState,loopId},timestamp:Date.now()})}).catch(()=>{});
         // #endregion agent log
       }
       
@@ -1691,16 +1708,16 @@ const passwordWidth = ctx.measureText(passwordText).width
       // Handle player movement (WASD) - frozen during healing OR restoration
       if (!isHealing && !isRestoring) {
         if (keys['w'] || keys['W'] || keys['ArrowUp']) {
-          playerY -= playerSpeed
+          playerY -= effectivePlayerSpeed * frameScale
         }
         if (keys['s'] || keys['S'] || keys['ArrowDown']) {
-          playerY += playerSpeed
+          playerY += effectivePlayerSpeed * frameScale
         }
         if (keys['a'] || keys['A'] || keys['ArrowLeft']) {
-          playerX -= playerSpeed
+          playerX -= effectivePlayerSpeed * frameScale
         }
         if (keys['d'] || keys['D'] || keys['ArrowRight']) {
-          playerX += playerSpeed
+          playerX += effectivePlayerSpeed * frameScale
         }
       }
       
@@ -1724,7 +1741,7 @@ const passwordWidth = ctx.measureText(passwordText).width
       
       // 4. Update celebration timer
       if (celebrationTimer > 0) {
-        celebrationTimer -= 16 // Decrease by frame time
+        celebrationTimer -= frameMs // Decrease by frame time
       }
       
       // Update previous position for next frame
@@ -2101,7 +2118,7 @@ const passwordWidth = ctx.measureText(passwordText).width
       
       // Spawn obstacles and kits (pause during healing)
       if (!isHealing) {
-        if (timestamp - lastSpawn > spawnFrequency) {
+        if (timestamp - lastSpawn > effectiveSpawnFrequency) {
           spawnObstacle()
           lastSpawn = timestamp
         }
@@ -2113,13 +2130,13 @@ const passwordWidth = ctx.measureText(passwordText).width
       }
       
       // Update game time
-      gameTime += 16 // Approximately 16ms per frame at 60fps
+      gameTime += frameMs // Approximately 16ms per frame at 60fps
       
       // Update and draw obstacles (apply slow-motion during quiz)
 obstacles = obstacles.filter(obstacle => {
 if (!isHealing) {
-          obstacle.y += obstacle.vy * slowMotionMultiplier
-          obstacle.x += obstacle.vx * slowMotionMultiplier
+          obstacle.y += obstacle.vy * slowMotionMultiplier * frameScale
+          obstacle.x += obstacle.vx * slowMotionMultiplier * frameScale
         }
         
         
@@ -2595,7 +2612,7 @@ powerups = powerups.filter(kit => {
       ctx.shadowBlur = 0
       
       // Update animation time (speed up when moving!)
-      animationTime += animationSpeed
+      animationTime += animationSpeed * frameScale
       
       // Calculate limb angles (swinging back and forth)
       // If celebrating, arms go up! Otherwise normal swing
@@ -2681,6 +2698,13 @@ powerups = powerups.filter(kit => {
       
       // Update distance (based on kits collected)
       setDistance(totalKitsCollected * 10 + currentLevel * 50)
+      if (endLogCount < 5) {
+        endLogCount += 1
+        const loopEndTotal = performance.now()
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'A',location:'SimpleGame.tsx:2655',message:'game loop total timing',data:{loopTotalMs:loopEndTotal-loopStart,gameDelta,frameScale,performanceMode,isChrome,visibility:document.visibilityState,loopId},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion agent log
+      }
 // Continue loop
       if (!isGameOver) {
         animationId = requestAnimationFrame(gameLoop)
@@ -2695,6 +2719,9 @@ powerups = powerups.filter(kit => {
     animationId = requestAnimationFrame(gameLoop)
     
     return () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-5',hypothesisId:'D',location:'SimpleGame.tsx:2668',message:'game loop cleanup',data:{loopId},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
       cancelAnimationFrame(animationId)
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
