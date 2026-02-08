@@ -33,8 +33,16 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
         <span className="question-frame" aria-hidden="true" />
         <span className="relative z-10 text-cyan-100 drop-shadow-[0_0_8px_rgba(0,255,255,0.9)]">?</span>
       </button>
+
+      <div className="absolute bottom-5 right-6 z-20 flex gap-2 text-xs text-cyan-100/70">
+        <a href="/privacy" className="hover:text-cyan-200 transition-colors">Privacy</a>
+        <span className="text-cyan-100/40">•</span>
+        <a href="/terms" className="hover:text-cyan-200 transition-colors">Terms</a>
+        <span className="text-cyan-100/40">•</span>
+        <a href="/faq" className="hover:text-cyan-200 transition-colors">FAQ</a>
+      </div>
  
-      <div className="relative z-10 mx-auto flex w-full max-w-[740px] flex-col items-center px-6 pb-12 pt-6 text-center">
+      <div className="relative z-10 mx-auto flex w-full max-w-[740px] flex-col items-center px-6 pb-10 pt-4 text-center">
         <img
           src="/logo.png"
           alt="Byte Runner"
@@ -50,7 +58,7 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
            </p>
          </div>
  
-        <div className="panel mt-5 w-full max-w-[700px] px-8 py-5 text-left">
+        <div className="panel mt-4 w-full max-w-[700px] px-8 py-5 text-left">
           <span className="panel-outline" aria-hidden="true" />
           <div className="panel-title">
             <span className="title-line" aria-hidden="true" />
@@ -116,7 +124,7 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
  
         <button
           onClick={onStart}
-          className="start-btn mt-5 mb-1"
+          className="start-btn mt-4 mb-1"
         >
           <span className="btn-glow" aria-hidden="true" />
           <span className="btn-inner">
