@@ -18,6 +18,17 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
    useEffect(() => {
      ensureLeaderboardSeeded()
    }, [ensureLeaderboardSeeded])
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-4',hypothesisId:'D',location:'StartScreenPixel.tsx:25',message:'startscreen mounted',data:{visibility:document.visibilityState},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
+    return () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-4',hypothesisId:'D',location:'StartScreenPixel.tsx:29',message:'startscreen unmounted',data:{visibility:document.visibilityState},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
+    }
+  }, [])
  
    return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#05070d] text-white">

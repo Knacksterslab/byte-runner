@@ -51,6 +51,7 @@ export default function SimpleGame() {
   const [isFirstDeath, setIsFirstDeath] = useState(true)
   const [deathAction, setDeathAction] = useState<'restart' | 'quiz'>('restart')
   const [showLeaderboardMobile, setShowLeaderboardMobile] = useState(false)
+  const loopIdRef = useRef(Math.random().toString(36).slice(2))
   
   // Track all timeouts for cleanup to prevent memory leaks
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -76,6 +77,12 @@ export default function SimpleGame() {
       timeoutRefs.current.push(tid)
     }
   }, [bonusKitType])
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-4',hypothesisId:'D',location:'SimpleGame.tsx:82',message:'gameStarted state',data:{gameStarted,visibility:document.visibilityState,loopId:loopIdRef.current},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
+  }, [gameStarted])
   
   // Preload sprites and show loading screen
   useEffect(() => {
@@ -1640,14 +1647,36 @@ const passwordWidth = ctx.measureText(passwordText).width
       if (bgOffset > 50) bgOffset = 0
 }
     
+    let lastGameFrameTs = 0
+    let gameFrameCount = 0
+    let gameLogBurst = 0
+    const loopId = loopIdRef.current
     // Game loop
     function gameLoop(timestamp: number) {
       if (!ctx) return
+      const gameDelta = lastGameFrameTs ? timestamp - lastGameFrameTs : 0
+      lastGameFrameTs = timestamp
+      gameFrameCount += 1
 // Apply slow-motion effect during quiz (only after countdown finishes)
       const slowMotionMultiplier = (quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0) ? 0.15 : 1.0
-      
+      if (gameLogBurst < 5) {
+        gameLogBurst += 1
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-2',hypothesisId:'A',location:'SimpleGame.tsx:1652',message:'game loop burst timing',data:{gameDelta,slowMotionMultiplier,quizActive:quiz.refs.activeRef.current,quizCountdown:quiz.refs.countdownRef.current,canvasW:canvas.width,canvasH:canvas.height},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion agent log
+      }
+      const loopStart = performance.now()
       // Draw animated background
+      const bgStart = performance.now()
       drawBackground()
+      const bgEnd = performance.now()
+      
+      if (gameFrameCount % 120 === 0) {
+        // #region agent log
+        const loopEnd = performance.now()
+        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-4',hypothesisId:'A',location:'SimpleGame.tsx:1674',message:'game loop timing',data:{gameDelta,slowMotionMultiplier,quizActive:quiz.refs.activeRef.current,quizCountdown:quiz.refs.countdownRef.current,canvasW:canvas.width,canvasH:canvas.height,bgDrawMs:bgEnd-bgStart,loopMs:loopEnd-loopStart,performanceMode,isChrome,visibility:document.visibilityState,loopId},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion agent log
+      }
       
       // Render quiz UI overlay if active
       if (quiz.refs.activeRef.current && quiz.refs.currentQuizRef.current) {
@@ -2659,6 +2688,9 @@ powerups = powerups.filter(kit => {
     }
     
     // Start game
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'C',location:'SimpleGame.tsx:2662',message:'game loop start',data:{canvasW:canvas.width,canvasH:canvas.height,performanceMode,isChrome},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
     setRunning(true)
     animationId = requestAnimationFrame(gameLoop)
     
