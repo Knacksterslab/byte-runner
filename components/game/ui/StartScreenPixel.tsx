@@ -1,0 +1,327 @@
+ 'use client'
+ 
+ import { useEffect } from 'react'
+import { Keyboard, AlertTriangle, Shield, Skull, Gamepad2 } from 'lucide-react'
+import CyberspaceBackground from '@/components/CyberspaceBackground'
+ import { useGameStore } from '@/lib/store/gameStore'
+ 
+ export interface StartScreenPixelProps {
+   onStart: () => void
+   onShowTutorial: () => void
+ }
+ 
+ export function StartScreenPixel({ onStart, onShowTutorial }: StartScreenPixelProps) {
+   const leaderboard = useGameStore((state) => state.leaderboard)
+   const ensureLeaderboardSeeded = useGameStore((state) => state.ensureLeaderboardSeeded)
+   const entries = leaderboard.slice(0, 5)
+ 
+   useEffect(() => {
+     ensureLeaderboardSeeded()
+   }, [ensureLeaderboardSeeded])
+ 
+   return (
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#05070d] text-white">
+      <CyberspaceBackground />
+      <div className="absolute inset-0 globe-boost" />
+      <div className="absolute inset-0 vignette" />
+ 
+      <button
+        onClick={onShowTutorial}
+        className="absolute right-6 top-6 z-20 flex h-[54px] w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24] text-2xl font-bold text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105"
+        title="Show tutorial"
+      >
+        <span className="question-frame" aria-hidden="true" />
+        <span className="relative z-10 text-cyan-100 drop-shadow-[0_0_8px_rgba(0,255,255,0.9)]">?</span>
+      </button>
+ 
+      <div className="relative z-10 mx-auto flex w-full max-w-[740px] flex-col items-center px-6 pb-12 pt-6 text-center">
+        <img
+          src="/logo.png"
+          alt="Byte Runner"
+          className="logo h-24 w-auto drop-shadow-[0_0_38px_rgba(0,255,255,0.85)] sm:h-28"
+        />
+ 
+        <div className="mt-3 space-y-1.5">
+          <h1 className="headline text-3xl font-bold tracking-[0.24em] text-red-100 sm:text-4xl md:text-[2.7rem]">
+             THE CYBER STORM IS HERE
+           </h1>
+          <p className="subheadline text-base font-bold tracking-[0.5em] text-orange-200 sm:text-lg md:text-xl">
+             — FORTIFY OR FALL —
+           </p>
+         </div>
+ 
+        <div className="panel mt-5 w-full max-w-[700px] px-8 py-5 text-left">
+          <span className="panel-outline" aria-hidden="true" />
+          <div className="panel-title">
+            <span className="title-line" aria-hidden="true" />
+            <span>HOW TO PLAY</span>
+            <span className="title-line" aria-hidden="true" />
+          </div>
+          <div className="space-y-3 text-[0.95rem] sm:text-base">
+             <div className="flex items-center gap-4">
+              <Keyboard className="h-7 w-7 text-cyan-300" />
+               <div>
+                 <span className="font-bold text-cyan-300">MOVE:</span>{' '}
+                <span className="text-slate-200">WASD / Arrows / Touch</span>
+               </div>
+             </div>
+             <div className="flex items-center gap-4">
+               <AlertTriangle className="h-7 w-7 text-orange-400" />
+               <div>
+                 <span className="font-bold text-orange-300">DODGE THREATS:</span>{' '}
+                <span className="text-slate-200">Avoid enemies</span>
+               </div>
+             </div>
+             <div className="flex items-center gap-4">
+              <Shield className="h-7 w-7 text-emerald-400" />
+               <div>
+                 <span className="font-bold text-emerald-300">COLLECT KITS:</span>{' '}
+                <span className="text-slate-200">Protection items</span>
+               </div>
+             </div>
+             <div className="flex items-center gap-4">
+              <Skull className="h-7 w-7 text-red-400" />
+               <div>
+                 <span className="font-bold text-red-300">NO KIT = GAME OVER:</span>{' '}
+                <span className="text-slate-200">Stay stocked</span>
+               </div>
+             </div>
+           </div>
+         </div>
+ 
+        <div className="panel mt-3 w-full max-w-[700px] px-8 py-5 text-left">
+          <span className="panel-outline" aria-hidden="true" />
+          <div className="panel-title">
+            <span className="title-line" aria-hidden="true" />
+            <span>Top Runs</span>
+            <span className="title-line" aria-hidden="true" />
+          </div>
+           {entries.length === 0 ? (
+             <div className="text-center text-xs text-cyan-100/70">No runs yet. Be the first!</div>
+           ) : (
+            <div className="space-y-2 text-sm text-slate-200 sm:text-[0.95rem]">
+               {entries.map((entry, index) => (
+                 <div key={entry.id} className="flex items-center justify-between gap-3 font-mono">
+                  <span className="w-6 text-cyan-300">#{index + 1}</span>
+                  <span className={`flex-1 ${entry.isPlayer ? 'text-yellow-300' : 'text-cyan-200'}`}>
+                     {entry.name}
+                   </span>
+                  <span className="text-slate-200">{entry.score} pts</span>
+                  <span className="text-slate-400">{entry.distance}m</span>
+                 </div>
+               ))}
+             </div>
+           )}
+         </div>
+ 
+        <button
+          onClick={onStart}
+          className="start-btn mt-5 mb-1"
+        >
+          <span className="btn-glow" aria-hidden="true" />
+          <span className="btn-inner">
+            <Gamepad2 className="h-6 w-6 text-slate-100 drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" />
+            <span>START GAME</span>
+          </span>
+        </button>
+       </div>
+ 
+       <style jsx>{`
+ 
+         .vignette {
+           background: radial-gradient(circle at 50% 40%, transparent 0%, rgba(2, 4, 10, 0.85) 70%);
+         }
+ 
+        .globe-boost {
+          background: radial-gradient(circle at 50% 45%, rgba(0, 255, 140, 0.22), transparent 55%);
+          mix-blend-mode: screen;
+        }
+
+        .headline {
+          text-shadow: 0 0 22px rgba(255, 70, 70, 0.9), 0 0 45px rgba(255, 20, 20, 0.6);
+        }
+
+        .subheadline {
+          text-shadow: 0 0 18px rgba(255, 150, 0, 0.75);
+        }
+
+        .question-frame {
+          position: absolute;
+          inset: 4px;
+          border-radius: 8px;
+          border: 1px solid rgba(120, 240, 255, 0.7);
+          box-shadow: 0 0 10px rgba(0, 255, 255, 0.6), inset 0 0 12px rgba(0, 255, 255, 0.3);
+          background: radial-gradient(circle at 30% 30%, rgba(0, 255, 255, 0.18), transparent 55%);
+          background-image: linear-gradient(rgba(0, 255, 255, 0.18) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 255, 0.18) 1px, transparent 1px);
+          background-size: 10px 10px;
+        }
+
+        .panel {
+          position: relative;
+          border-radius: 14px;
+          border: 2px solid rgba(0, 210, 255, 0.85);
+          background: rgba(4, 10, 16, 0.72);
+          box-shadow: 0 0 36px rgba(0, 220, 255, 0.55), inset 0 0 26px rgba(0, 220, 255, 0.18);
+          backdrop-filter: blur(6px);
+        }
+
+        .panel-outline {
+          position: absolute;
+          inset: 6px;
+          border-radius: 10px;
+          border: 1px solid rgba(0, 255, 255, 0.38);
+          box-shadow: inset 0 0 14px rgba(0, 255, 255, 0.18);
+          pointer-events: none;
+        }
+
+        .panel-title {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          margin-bottom: 14px;
+          font-size: 1rem;
+          font-weight: 700;
+          letter-spacing: 0.55em;
+          color: #7be9ff;
+          text-shadow: 0 0 14px rgba(0, 200, 255, 0.9);
+        }
+
+        .title-line {
+          height: 1px;
+          width: 68px;
+          background: rgba(0, 210, 255, 0.8);
+          box-shadow: 0 0 12px rgba(0, 210, 255, 0.9);
+        }
+
+        .start-btn {
+          position: relative;
+          border-radius: 16px;
+          border: 1px solid rgba(0, 210, 255, 0.95);
+          padding: 10px 56px;
+          background: linear-gradient(180deg, rgba(24, 200, 255, 0.95), rgba(10, 140, 230, 1));
+          box-shadow: 0 0 55px rgba(0, 220, 255, 0.8), inset 0 0 22px rgba(255, 255, 255, 0.22);
+          color: white;
+          font-size: 1.1rem;
+          font-weight: 700;
+          letter-spacing: 0.32em;
+          transition: transform 0.2s ease;
+        }
+
+        .start-btn:hover {
+          transform: scale(1.03);
+        }
+
+        .btn-glow {
+          position: absolute;
+          inset: -8px;
+          border-radius: 18px;
+          background: radial-gradient(circle at 50% 0%, rgba(0, 255, 255, 0.8), transparent 60%);
+          opacity: 0.9;
+          pointer-events: none;
+        }
+
+        .btn-inner {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+ 
+        @media (max-width: 768px) {
+          .logo {
+            height: 88px;
+          }
+
+          .panel {
+            max-width: 600px;
+            padding: 18px 22px;
+          }
+
+          .panel-title {
+            font-size: 0.9rem;
+            letter-spacing: 0.45em;
+          }
+
+          .title-line {
+            width: 52px;
+          }
+
+          .start-btn {
+            padding: 9px 46px;
+            font-size: 1rem;
+            letter-spacing: 0.28em;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .logo {
+            height: 72px;
+          }
+
+          .panel {
+            max-width: 94%;
+            padding: 16px 18px;
+          }
+
+          .panel-outline {
+            inset: 5px;
+          }
+
+          .panel-title {
+            font-size: 0.82rem;
+            letter-spacing: 0.38em;
+            gap: 10px;
+          }
+
+          .title-line {
+            width: 38px;
+          }
+
+          .start-btn {
+            padding: 8px 40px;
+            font-size: 0.95rem;
+            letter-spacing: 0.22em;
+          }
+
+          .btn-inner {
+            gap: 10px;
+          }
+        }
+
+        @media (max-height: 720px) {
+          .logo {
+            height: 80px;
+          }
+
+          .panel {
+            padding: 16px 20px;
+          }
+
+          .panel-title {
+            margin-bottom: 10px;
+          }
+
+          .start-btn {
+            padding: 8px 42px;
+            font-size: 0.98rem;
+          }
+        }
+
+         @keyframes globe-spin {
+           from {
+             transform: rotate(0deg);
+           }
+           to {
+             transform: rotate(360deg);
+           }
+         }
+ 
+        @media (max-width: 640px) {
+        }
+       `}</style>
+     </div>
+   )
+ }

@@ -47,7 +47,7 @@ export default function CyberspaceBackground() {
       color: string
     }> = []
 
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 150; i++) {
       // 70% green particles (safe), 30% red particles (danger!)
       const isRed = Math.random() < 0.3
       particles.push({
@@ -68,11 +68,11 @@ export default function CyberspaceBackground() {
       centerY = canvas.height / 2
       radius = Math.min(canvas.width, canvas.height) * 0.25
 
-      // Clear with dark background
-      ctx.fillStyle = 'rgba(0, 0, 17, 0.15)'
+      // Clear with dark background - darker for better UI contrast
+      ctx.fillStyle = 'rgba(0, 0, 8, 0.25)'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      // Draw floating particles (GREEN theme)
+      // Draw floating particles (GREEN and RED theme) - bright and visible
       particles.forEach(p => {
         p.z -= p.speed
         if (p.z <= 0) {
@@ -87,164 +87,116 @@ export default function CyberspaceBackground() {
         const size = (1 - p.z / 1000) * 4
 
         ctx.fillStyle = p.color
-        ctx.globalAlpha = 1 - p.z / 1000
+        ctx.globalAlpha = (1 - p.z / 1000) * 0.9 // Much more visible
         ctx.fillRect(x, y, size, size)
         ctx.globalAlpha = 1
       })
 
-      // Draw rotating 3D GREEN globe
       rotation += 0.005
 
-      // Globe glow effect - GREEN!
-      const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.7, centerX, centerY, radius * 1.3)
-      gradient.addColorStop(0, 'rgba(0, 255, 0, 0.2)')
-      gradient.addColorStop(0.5, 'rgba(0, 255, 0, 0.1)')
-      gradient.addColorStop(1, 'rgba(0, 255, 0, 0)')
-      ctx.fillStyle = gradient
+      // Glowing half-sphere globe (like mock) behind title
+      const domeRadius = Math.min(canvas.width, canvas.height) * 0.28
+      const domeY = canvas.height * 0.46
+      
+      // Large soft glow
+      const glowGradient = ctx.createRadialGradient(centerX, domeY, domeRadius * 0.2, centerX, domeY, domeRadius * 1.8)
+      glowGradient.addColorStop(0, 'rgba(0, 255, 120, 0.35)')
+      glowGradient.addColorStop(0.35, 'rgba(0, 255, 120, 0.2)')
+      glowGradient.addColorStop(0.7, 'rgba(0, 255, 120, 0.08)')
+      glowGradient.addColorStop(1, 'rgba(0, 255, 120, 0)')
+      ctx.fillStyle = glowGradient
       ctx.beginPath()
-      ctx.arc(centerX, centerY, radius * 1.3, 0, Math.PI * 2)
+      ctx.arc(centerX, domeY, domeRadius * 2, 0, Math.PI * 2)
       ctx.fill()
 
-      // Draw latitude lines (parallels) - GREEN!
-      for (let i = 0; i <= gridLines; i++) {
-        const lat = (i / gridLines) * Math.PI
-        const y = Math.cos(lat) * radius
-        const r = Math.sin(lat) * radius
-
-        ctx.strokeStyle = `rgba(0, 255, 0, ${0.4 + Math.abs(Math.sin(lat)) * 0.4})`
+      // Draw the dome with bright grid lines
+      ctx.shadowBlur = 12
+      ctx.shadowColor = '#00ff66'
+      
+      // Latitude lines on dome (horizontal ellipses)
+      for (let i = 0; i <= 9; i++) {
+        const angle = (i / 10) * (Math.PI / 2) // Only draw top half of sphere
+        const y = -Math.cos(angle) * domeRadius
+        const r = Math.sin(angle) * domeRadius
+        
+        ctx.strokeStyle = `rgba(0, 255, 120, ${0.45 + Math.sin(angle) * 0.35})`
         ctx.lineWidth = 2
         ctx.beginPath()
+        ctx.ellipse(centerX, domeY + y, r, r * 0.32, 0, 0, Math.PI * 2)
+        ctx.stroke()
+      }
 
-        for (let j = 0; j <= meridians; j++) {
-          const lon = (j / meridians) * Math.PI * 2 + rotation
-          const x = Math.cos(lon) * r
-          const z = Math.sin(lon) * r
-
-          // Simple 3D projection - only draw front side
-          if (z > -radius * 0.2) {
-            const screenX = centerX + x
-            const screenY = centerY + y
-            const alpha = (z + radius * 0.2) / (radius * 1.2)
-            if (j === 0) {
-              ctx.moveTo(screenX, screenY)
-            } else {
-              ctx.lineTo(screenX, screenY)
-            }
+      // Longitude lines on dome (vertical meridians)
+      const meridianCount = 18
+      for (let i = 0; i < meridianCount; i++) {
+        const angle = (i / meridianCount) * Math.PI + rotation * 0.7
+        const visible = Math.abs(Math.sin(angle))
+        
+        ctx.strokeStyle = `rgba(0, 255, 120, ${0.35 + visible * 0.35})`
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        
+        // Draw arc from bottom to top of dome
+        for (let j = 0; j <= 20; j++) {
+          const t = j / 20
+          const latAngle = t * (Math.PI / 2)
+          const y = -Math.cos(latAngle) * domeRadius
+          const r = Math.sin(latAngle) * domeRadius
+          const x = centerX + Math.sin(angle) * r
+          const z = Math.cos(angle) * r
+          
+          if (z > 0) {
+            if (j === 0) ctx.moveTo(x, domeY + y)
+            else ctx.lineTo(x, domeY + y)
           }
         }
         ctx.stroke()
       }
-
-      // Draw longitude lines (meridians) - GREEN!
-      for (let i = 0; i < meridians; i++) {
-        const lon = (i / meridians) * Math.PI * 2 + rotation
-
-        ctx.strokeStyle = `rgba(0, 255, 0, ${0.3 + Math.abs(Math.cos(lon)) * 0.4})`
-        ctx.lineWidth = 2
-        ctx.beginPath()
-
-        let firstPoint = true
-        for (let j = 0; j <= gridLines; j++) {
-          const lat = (j / gridLines) * Math.PI
-          const y = Math.cos(lat) * radius
-          const r = Math.sin(lat) * radius
-          const x = Math.cos(lon) * r
-          const z = Math.sin(lon) * r
-
-          // Only draw visible parts
-          if (z > -radius * 0.2) {
-            const screenX = centerX + x
-            const screenY = centerY + y
-            if (firstPoint) {
-              ctx.moveTo(screenX, screenY)
-              firstPoint = false
-            } else {
-              ctx.lineTo(screenX, screenY)
-            }
-          } else {
-            firstPoint = true
-          }
-        }
-        ctx.stroke()
-      }
-
-      // Draw globe outline - BRIGHT GREEN!
-      ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)'
-      ctx.lineWidth = 3
-      ctx.shadowBlur = 15
-      ctx.shadowColor = '#00ff00'
-      ctx.beginPath()
-      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
-      ctx.stroke()
+      
       ctx.shadowBlur = 0
 
-      // Add rotating data points - GREEN (safe) and RED (threats)!
-      const dataPoints = 40
-      for (let i = 0; i < dataPoints; i++) {
-        const angle1 = (i / dataPoints) * Math.PI
-        const angle2 = (i * 2.4) + rotation * 3
-        const lat = angle1
-        const lon = angle2
-        const y = Math.cos(lat) * radius
-        const r = Math.sin(lat) * radius
-        const x = Math.cos(lon) * r
-        const z = Math.sin(lon) * r
-
-        if (z > 0) {
-          const screenX = centerX + x
-          const screenY = centerY + y
-          const pulse = Math.sin(Date.now() * 0.003 + i) * 0.5 + 0.5
-          
-          // 40% of data points are RED (threats), 60% green (safe)
-          const isRedThreat = (i % 5) < 2
-
-          if (isRedThreat) {
-            ctx.fillStyle = `rgba(255, ${Math.floor(pulse * 50)}, 0, ${pulse * 0.9})`
-            ctx.shadowBlur = 8
-            ctx.shadowColor = '#ff0000'
-          } else {
-            ctx.fillStyle = `rgba(0, 255, ${Math.floor(pulse * 100)}, ${pulse * 0.8})`
-            ctx.shadowBlur = 5
-            ctx.shadowColor = '#00ff00'
-          }
+      // Grid floor connected to dome (brighter but not overpowering)
+      const gridSize = 42
+      const gridCount = 10
+      const horizonY = domeY + domeRadius * 0.15
+      
+      ctx.shadowBlur = 10
+      ctx.shadowColor = '#00ff66'
+      
+      // Horizontal lines
+      for (let i = 0; i < gridCount; i++) {
+        const t = i / gridCount
+        const fade = 1 - t * 0.7
+        const y = horizonY + t * t * (canvas.height - horizonY) * 1.05
+        
+        if (y <= canvas.height) {
+          ctx.strokeStyle = `rgba(0, 255, 120, ${0.55 * fade})`
+          ctx.lineWidth = 2.2 * fade
           
           ctx.beginPath()
-          ctx.arc(screenX, screenY, 2 + pulse * 3, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.shadowBlur = 0
+          ctx.moveTo(0, y)
+          ctx.lineTo(canvas.width, y)
+          ctx.stroke()
         }
       }
 
-      // Draw grid floor - GREEN!
-      ctx.strokeStyle = 'rgba(0, 255, 0, 0.2)'
-      ctx.lineWidth = 1
-      const gridSize = 40
-      const gridCount = 15
-      const gridY = canvas.height * 0.8
-
-      for (let i = -gridCount; i < gridCount; i++) {
-        const fade = 1 - Math.abs(i / gridCount) * 0.7
-        ctx.strokeStyle = `rgba(0, 255, 0, ${0.15 * fade})`
+      // Vertical lines with perspective convergence
+      const verticalLineCount = 18
+      for (let i = -verticalLineCount; i <= verticalLineCount; i++) {
+        const fade = 1 - Math.abs(i / verticalLineCount) * 0.6
+        ctx.strokeStyle = `rgba(0, 255, 120, ${0.5 * fade})`
+        ctx.lineWidth = 2.2 * fade
         
-        // Horizontal lines
+        const startX = centerX + i * gridSize * 3.2
+        const endX = centerX + i * gridSize * 0.08
+        
         ctx.beginPath()
-        ctx.moveTo(0, gridY + i * gridSize)
-        ctx.lineTo(canvas.width, gridY + i * gridSize)
+        ctx.moveTo(startX, canvas.height)
+        ctx.lineTo(endX, horizonY)
         ctx.stroke()
       }
-
-      for (let i = -gridCount; i < gridCount; i++) {
-        const fade = 1 - Math.abs(i / gridCount) * 0.7
-        ctx.strokeStyle = `rgba(0, 255, 0, ${0.15 * fade})`
-        
-        // Vertical lines with perspective
-        const centerOffset = canvas.width / 2
-        const x = centerOffset + i * gridSize
-        ctx.beginPath()
-        ctx.moveTo(x, gridY - gridCount * gridSize)
-        ctx.lineTo(x, canvas.height)
-        ctx.stroke()
-      }
+      
+      ctx.shadowBlur = 0
 
       requestAnimationFrame(animate)
     }
@@ -261,7 +213,7 @@ export default function CyberspaceBackground() {
       ref={canvasRef}
       className="fixed top-0 left-0 w-screen h-screen pointer-events-none"
       style={{ 
-        background: 'linear-gradient(180deg, #000033 0%, #000011 50%, #001122 100%)',
+        background: 'linear-gradient(180deg, #000000 0%, #000011 50%, #000022 100%)',
         width: '100vw',
         height: '100vh',
         position: 'fixed',
