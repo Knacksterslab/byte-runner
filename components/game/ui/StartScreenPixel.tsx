@@ -20,7 +20,7 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
    }, [ensureLeaderboardSeeded])
  
    return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#05070d] text-white">
+    <div className="relative min-h-[100svh] w-full overflow-hidden bg-[#05070d] text-white">
       <CyberspaceBackground />
       <div className="absolute inset-0 globe-boost" />
       <div className="absolute inset-0 vignette" />
@@ -42,7 +42,7 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
         <a href="/faq" className="hover:text-cyan-200 transition-colors">FAQ</a>
       </div>
  
-      <div className="relative z-10 mx-auto flex w-full max-w-[740px] flex-col items-center px-6 pb-10 pt-4 text-center">
+      <div className="screen-safe relative z-10 mx-auto flex w-full max-w-[740px] flex-col items-center px-6 pb-10 pt-4 text-center">
         <img
           src="/logo.png"
           alt="Byte Runner"
@@ -236,6 +236,10 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
           display: flex;
           align-items: center;
           gap: 12px;
+        }
+
+        .screen-safe {
+          padding-bottom: calc(40px + env(safe-area-inset-bottom));
         }
  
         @media (max-width: 768px) {
