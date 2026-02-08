@@ -92,7 +92,7 @@ export default function CyberspaceBackground() {
         ctx.globalAlpha = 1
       })
 
-      rotation += 0.005
+      rotation += 0.007
 
       // Glowing half-sphere globe (like mock) behind title
       const domeRadius = Math.min(canvas.width, canvas.height) * 0.28

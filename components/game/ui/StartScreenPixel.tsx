@@ -20,7 +20,7 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
    }, [ensureLeaderboardSeeded])
  
    return (
-    <div className="relative min-h-[100svh] w-full overflow-hidden bg-[#05070d] text-white">
+    <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#05070d] text-white">
       <CyberspaceBackground />
       <div className="absolute inset-0 globe-boost" />
       <div className="absolute inset-0 vignette" />
@@ -42,7 +42,7 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
         <a href="/faq" className="hover:text-cyan-200 transition-colors">FAQ</a>
       </div>
  
-      <div className="screen-safe relative z-10 mx-auto flex w-full max-w-[740px] flex-col items-center px-6 pb-10 pt-4 text-center">
+      <div className="screen-safe screen-stack screen-scroll relative z-10 mx-auto flex w-full max-w-[740px] flex-col items-center px-6 pb-10 pt-4 text-center">
         <img
           src="/logo.png"
           alt="Byte Runner"
@@ -58,7 +58,7 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
            </p>
          </div>
  
-        <div className="panel mt-4 w-full max-w-[700px] px-8 py-5 text-left">
+        <div className="panel stack-panel mt-4 w-full max-w-[700px] px-8 py-5 text-left">
           <span className="panel-outline" aria-hidden="true" />
           <div className="panel-title">
             <span className="title-line" aria-hidden="true" />
@@ -97,7 +97,7 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
            </div>
          </div>
  
-        <div className="panel mt-3 w-full max-w-[700px] px-8 py-5 text-left">
+        <div className="panel stack-panel mt-3 w-full max-w-[700px] px-8 py-5 text-left">
           <span className="panel-outline" aria-hidden="true" />
           <div className="panel-title">
             <span className="title-line" aria-hidden="true" />
@@ -124,7 +124,7 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
  
         <button
           onClick={onStart}
-          className="start-btn mt-4 mb-1"
+          className="start-btn stack-button mt-4 mb-1"
         >
           <span className="btn-glow" aria-hidden="true" />
           <span className="btn-inner">
@@ -241,6 +241,14 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
         .screen-safe {
           padding-bottom: calc(40px + env(safe-area-inset-bottom));
         }
+
+        .screen-scroll {
+          height: 100dvh;
+          overflow-y: hidden;
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
+          padding-top: max(16px, env(safe-area-inset-top));
+        }
  
         @media (max-width: 768px) {
           .logo {
@@ -319,6 +327,53 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
           .start-btn {
             padding: 8px 42px;
             font-size: 0.98rem;
+          }
+        }
+
+        @media (max-height: 700px) {
+          .logo {
+            height: 68px;
+          }
+
+          .headline {
+            font-size: 1.9rem;
+            letter-spacing: 0.2em;
+          }
+
+          .subheadline {
+            font-size: 0.9rem;
+            letter-spacing: 0.4em;
+          }
+
+          .stack-panel {
+            margin-top: 10px !important;
+            padding: 12px 16px;
+          }
+
+          .panel-title {
+            font-size: 0.85rem;
+            letter-spacing: 0.35em;
+            margin-bottom: 8px;
+          }
+
+          .title-line {
+            width: 34px;
+          }
+
+          .stack-button {
+            margin-top: 10px !important;
+            margin-bottom: 4px !important;
+          }
+
+          .start-btn {
+            padding: 8px 38px;
+            font-size: 0.95rem;
+          }
+        }
+
+        @media (max-height: 700px) {
+          .screen-scroll {
+            overflow-y: auto;
           }
         }
 
