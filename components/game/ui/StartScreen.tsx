@@ -1,3 +1,5 @@
+import { LeaderboardPanel } from './LeaderboardPanel'
+
 export interface StartScreenProps {
   onStart: () => void
   onShowTutorial: () => void
@@ -27,27 +29,15 @@ export function StartScreen({ onStart, onShowTutorial }: StartScreenProps) {
         
         <div className="bg-black/80 border-2 border-cyan-600 rounded-lg p-4 md:p-6 text-white space-y-2 backdrop-blur-sm">
           <h3 className="text-cyan-400 font-bold text-lg md:text-xl mb-2">HOW TO PLAY:</h3>
-          
           <div className="text-left space-y-1 text-sm md:text-base">
-            <p><strong className="text-yellow-400">COLLECT KITS:</strong> Grab protection kits (🔐 🛡️ 🦠)</p>
-            <p><strong className="text-green-400">SURVIVE:</strong> Use kits when hit by threats</p>
-            <p><strong className="text-red-400">NO KIT = GAME OVER:</strong> Stay stocked!</p>
-          </div>
-          
-          <div className="border-t-2 border-cyan-800 pt-2 mt-2">
-            <h4 className="text-cyan-400 font-bold mb-1">CONTROLS:</h4>
-            <div className="grid grid-cols-2 gap-1 text-left text-xs">
-              <p>💻 <strong>WASD/Arrows</strong></p>
-              <p>📱 <strong>Touch & Drag</strong></p>
-            </div>
-          </div>
-          
-          <div className="border-t-2 border-cyan-800 pt-2 mt-2">
-            <h4 className="text-green-400 font-bold mb-1 text-sm">23 KITS • 5 ZONES • 60 THREATS</h4>
-            <p className="text-yellow-400 text-xs">💡 Learn real cybersecurity while playing!</p>
-            <p className="text-green-400 text-xs">💾 Backup Kit = Extra Life!</p>
+            <p><strong className="text-cyan-300">MOVE:</strong> WASD / Arrows / Touch</p>
+            <p><strong className="text-orange-300">DODGE THREATS:</strong> Avoid enemies</p>
+            <p><strong className="text-yellow-400">COLLECT KITS:</strong> Protection items</p>
+            <p><strong className="text-red-400">NO KIT = GAME OVER:</strong> Stay stocked</p>
           </div>
         </div>
+
+        <LeaderboardPanel className="max-w-md mx-auto" />
         
         <button
           onClick={onStart}
@@ -68,6 +58,14 @@ export function StartScreen({ onStart, onShowTutorial }: StartScreenProps) {
         <span className="text-lg md:text-base">📝</span>
         <span className="hidden md:inline">Feedback</span>
       </button>
+
+      <div className="absolute bottom-4 right-4 text-xs text-gray-400 flex gap-2 z-20">
+        <a href="/privacy" className="hover:text-cyan-300 transition-colors">Privacy</a>
+        <span className="text-gray-600">•</span>
+        <a href="/terms" className="hover:text-cyan-300 transition-colors">Terms</a>
+        <span className="text-gray-600">•</span>
+        <a href="/faq" className="hover:text-cyan-300 transition-colors">FAQ</a>
+      </div>
     </div>
   )
 }

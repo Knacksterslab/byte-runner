@@ -1,6 +1,16 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { GhostPlayer } from '@/lib/game/ghostPlayers'
+import { getRandomGhostPlayer } from '@/lib/game/ghostPlayers'
+
+export interface LeaderboardEntry {
+  id: string
+  name: string
+  score: number
+  distance: number
+  createdAt: number
+  isPlayer?: boolean
+}
 
 interface GameStore {
   // Game state
@@ -12,6 +22,7 @@ interface GameStore {
   isGameOver: boolean
   dataPackets: number
   highScore: number
+  leaderboard: LeaderboardEntry[]
   
   // Ghost player tracking
   lastAttacker: GhostPlayer | null
@@ -39,6 +50,8 @@ interface GameStore {
   setShowingQuiz: (showing: boolean) => void
   setQuizPassed: (passed: boolean) => void
   setSavedGameState: (state: { level: number; kits: { [key: string]: number }; score: number } | null) => void
+  addLeaderboardEntry: (entry: Omit<LeaderboardEntry, 'id' | 'createdAt'>) => void
+  ensureLeaderboardSeeded: () => void
   resetGame: () => void
 }
 
@@ -53,6 +66,7 @@ export const useGameStore = create<GameStore>()(
       isGameOver: false,
       dataPackets: 0,
       highScore: 0,
+      leaderboard: [],
       lastAttacker: null,
       lastThreatType: null,
       showingQuiz: false,
@@ -104,6 +118,62 @@ export const useGameStore = create<GameStore>()(
       setQuizPassed: (passed) => set({ quizPassed: passed }),
       
       setSavedGameState: (state) => set({ savedGameState: state }),
+
+      addLeaderboardEntry: (entry) => {
+        const newEntry: LeaderboardEntry = {
+          id: `score_${Date.now()}_${Math.random()}`,
+          name: entry.name,
+          score: entry.score,
+          distance: entry.distance,
+          createdAt: Date.now(),
+          isPlayer: entry.isPlayer
+        }
+        const next = [...get().leaderboard, newEntry]
+          .sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score
+            if (b.distance !== a.distance) return b.distance - a.distance
+            return a.createdAt - b.createdAt
+          })
+          .slice(0, 10)
+        set({ leaderboard: next })
+      },
+
+      ensureLeaderboardSeeded: () => {
+        const current = get().leaderboard
+        if (current.length > 0) {
+          const normalized = current.map((entry) => ({
+            ...entry,
+            name: entry.name || 'You'
+          }))
+          if (normalized.some((entry, i) => entry.name !== current[i].name)) {
+            set({ leaderboard: normalized })
+          }
+          return
+        }
+
+        const ghostEntries: LeaderboardEntry[] = Array.from({ length: 8 }, () => {
+          const ghost = getRandomGhostPlayer()
+          const score = Math.floor(200 + Math.random() * 2800)
+          const distance = Math.floor(150 + Math.random() * 2200)
+          return {
+            id: `ghost_${Date.now()}_${Math.random()}`,
+            name: ghost.name,
+            score,
+            distance,
+            createdAt: Date.now(),
+            isPlayer: false
+          }
+        })
+
+        const seeded = ghostEntries
+          .sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score
+            if (b.distance !== a.distance) return b.distance - a.distance
+            return a.createdAt - b.createdAt
+          })
+          .slice(0, 10)
+        set({ leaderboard: seeded })
+      },
       
       resetGame: () => set({
         distance: 0,
@@ -122,7 +192,10 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: 'byte-runner-storage',
-      partialize: (state) => ({ highScore: state.highScore }),
+      partialize: (state) => ({
+        highScore: state.highScore,
+        leaderboard: state.leaderboard
+      }),
     }
   )
 )

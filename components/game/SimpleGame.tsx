@@ -19,6 +19,7 @@ import { useUIState } from './hooks/useUIState'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { TutorialOverlay } from './ui/TutorialOverlay'
 import { StartScreen } from './ui/StartScreen'
+import { LeaderboardPanel } from './ui/LeaderboardPanel'
 import QuizModal from './QuizModal'
 
 interface GameObject {
@@ -49,6 +50,7 @@ export default function SimpleGame() {
   const [savedGameState, setSavedGameState] = useState<{level: number, kits: {[key:string]:number}, score: number} | null>(null)
   const [isFirstDeath, setIsFirstDeath] = useState(true)
   const [deathAction, setDeathAction] = useState<'restart' | 'quiz'>('restart')
+  const [showLeaderboardMobile, setShowLeaderboardMobile] = useState(false)
   
   // Track all timeouts for cleanup to prevent memory leaks
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -2794,6 +2796,41 @@ powerups = powerups.filter(kit => {
         
         {/* Kit inventory displayed in canvas */}
       </div>
+
+      <div className="hidden md:block absolute bottom-4 right-4 z-10 pointer-events-none">
+        <LeaderboardPanel title="Top Runs" maxEntries={5} />
+      </div>
+
+      <button
+        onClick={() => setShowLeaderboardMobile(true)}
+        className="md:hidden absolute bottom-4 right-4 bg-black/80 border border-cyan-700 text-cyan-200 text-xs font-mono px-3 py-2 rounded-full shadow-lg z-10 pointer-events-auto"
+        title="Show leaderboard"
+      >
+        🏆 Top Runs
+      </button>
+
+      {showLeaderboardMobile && (
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setShowLeaderboardMobile(false)}
+        >
+          <div
+            className="w-full max-w-sm"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => setShowLeaderboardMobile(false)}
+                className="text-gray-300 hover:text-white text-lg font-bold"
+                aria-label="Close leaderboard"
+              >
+                ✕
+              </button>
+            </div>
+            <LeaderboardPanel title="Top Runs" maxEntries={8} />
+          </div>
+        </div>
+      )}
       
       {/* Game Canvas */}
       <canvas

@@ -19,12 +19,14 @@ export function LoadingScreen({ progress }: LoadingScreenProps) {
           />
         </div>
 
-        <h2 className="text-3xl md:text-4xl font-bold text-cyan-400 font-mono">
-          INITIALIZING CYBERSPACE...
-        </h2>
+        <div className="inline-block bg-black/70 border border-cyan-800 rounded-lg px-4 py-3">
+          <h2 className="text-2xl md:text-4xl font-bold text-cyan-300 font-mono drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]">
+            INITIALIZING CYBERSPACE...
+          </h2>
+        </div>
 
-        <div className="w-64 md:w-96 mx-auto">
-          <div className="h-3 bg-gray-900 rounded-full overflow-hidden border-2 border-cyan-700 shadow-[0_0_20px_rgba(0,255,255,0.3)]">
+        <div className="w-72 md:w-96 mx-auto">
+          <div className="h-4 md:h-3 bg-gray-900 rounded-full overflow-hidden border-2 border-cyan-700 shadow-[0_0_20px_rgba(0,255,255,0.3)]">
             <div 
               className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 transition-all duration-300 shadow-[0_0_20px_rgba(0,255,255,0.8)]"
               style={{ 
@@ -33,7 +35,7 @@ export function LoadingScreen({ progress }: LoadingScreenProps) {
               }}
             />
           </div>
-          <p className="text-cyan-300 text-sm md:text-base font-mono mt-2">
+          <p className="text-cyan-200 text-base md:text-base font-mono mt-2 drop-shadow-[0_0_6px_rgba(0,255,255,0.5)]">
             {Math.round(progress)}% • Loading assets...
           </p>
         </div>

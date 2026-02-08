@@ -85,7 +85,6 @@ byte-runner/
 ├── components/
 │   ├── game/              # Game components
 │   │   ├── SimpleGame.tsx # Main game orchestrator
-│   │   ├── GameUI.tsx     # React UI overlay
 │   │   ├── QuizModal.tsx  # Quiz modal
 │   │   ├── hooks/         # Custom hooks
 │   │   │   ├── useQuizState.ts
