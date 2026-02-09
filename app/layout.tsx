@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
-import Footer from "@/components/Footer";
+import FooterWrapper from "@/components/FooterWrapper";
 
 export const metadata: Metadata = {
   title: "Byte Runner - A Cybersecurity Survival Game for Everyone",
@@ -83,7 +83,7 @@ export default function RootLayout({
         )}
         
         {children}
-        <Footer />
+        <FooterWrapper />
       </body>
     </html>
   );

@@ -227,11 +227,11 @@ export default function CyberspaceBackground() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed top-0 left-0 w-screen h-screen pointer-events-none"
+      className="fixed inset-0 w-full h-full pointer-events-none"
       style={{ 
         background: 'linear-gradient(180deg, #000000 0%, #000011 50%, #000022 100%)',
-        width: '100vw',
-        height: '100vh',
+        width: '100%',
+        height: '100%',
         position: 'fixed',
         top: 0,
         left: 0,

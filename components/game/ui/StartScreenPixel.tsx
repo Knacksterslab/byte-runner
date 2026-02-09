@@ -251,6 +251,12 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
           -webkit-overflow-scrolling: touch;
           padding-top: max(16px, env(safe-area-inset-top));
           touch-action: pan-y;
+          scrollbar-width: none;
+        }
+
+        .screen-scroll::-webkit-scrollbar {
+          width: 0;
+          height: 0;
         }
  
         @media (max-width: 768px) {

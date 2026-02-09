@@ -3168,7 +3168,7 @@ powerups = powerups.filter(kit => {
   }
   
   return (
-    <div className="relative w-screen h-screen overflow-hidden">
+    <div className="relative w-full h-[100dvh] overflow-hidden">
       {/* HUD - RESPONSIVE FOR MOBILE */}
       <div className="absolute top-2 md:top-4 left-2 md:left-4 right-2 md:right-4 flex justify-between items-start text-white font-mono text-sm md:text-xl z-10 pointer-events-none">
         <div className="space-y-1 md:space-y-2">
