@@ -222,11 +222,12 @@ export default function SimpleGame() {
     let powerupsNeeded = 0
     let powerupsCollected = 0
     let isAdvancingLevel = false // Prevent multiple level advances
-    let spawnFrequency = 520 // ms between obstacle spawns
+    let spawnFrequency = 620 // ms between obstacle spawns (reduced threat density)
     let speedFactor = 0.55
     let threatSpeedFactor = 0.38
     let spawnFactor = 1.1
     let kitSpawnTimer = 0
+    const KIT_SPAWN_INTERVAL = 4000 // ms between kits (more frequent)
     let effectiveObstacleSpeed = obstacleSpeed
     let effectivePlayerSpeed = playerSpeed
     let effectiveSpawnFrequency = spawnFrequency
@@ -1581,11 +1582,11 @@ export default function SimpleGame() {
       if (isZoneTransition(currentLevel)) {
         // Zone transition = major difficulty spike
         obstacleSpeed += 1.0
-        spawnFrequency = Math.max(200, spawnFrequency - 100)
+        spawnFrequency = Math.max(260, spawnFrequency - 70)
       } else {
         // Within zone = gradual increase
         obstacleSpeed += 0.3
-        spawnFrequency = Math.max(300, spawnFrequency - 30)
+        spawnFrequency = Math.max(320, spawnFrequency - 20)
       }
       
       // Show level-up overlay
@@ -2013,7 +2014,7 @@ const passwordWidth = ctx.measureText(passwordText).width
       const slowMotionMultiplier = (quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0) ? 0.15 : 1.0
       speedFactor = Math.min(1.6, Math.max(0.55, 0.55 + (currentLevel - 1) * 0.08))
       threatSpeedFactor = Math.min(1.4, Math.max(0.38, 0.38 + (currentLevel - 1) * 0.07))
-      spawnFactor = Math.min(1.8, Math.max(1.1, 1.1 + (currentLevel - 1) * 0.07))
+      spawnFactor = Math.min(1.6, Math.max(1.1, 1.1 + (currentLevel - 1) * 0.05))
       effectiveObstacleSpeed = obstacleSpeed * threatSpeedFactor
       effectivePlayerSpeed = playerSpeed * speedFactor
       effectiveSpawnFrequency = spawnFrequency / spawnFactor
@@ -2460,9 +2461,9 @@ const passwordWidth = ctx.measureText(passwordText).width
         
         // Spawn kits periodically using a timer so low FPS won't skip
         kitSpawnTimer += frameMs
-        if (kitSpawnTimer >= 5000) {
+        if (kitSpawnTimer >= KIT_SPAWN_INTERVAL) {
           spawnKit()
-          kitSpawnTimer -= 5000
+          kitSpawnTimer -= KIT_SPAWN_INTERVAL
         }
       }
       
