@@ -3233,17 +3233,19 @@ powerups = powerups.filter(kit => {
         onClick={() => {
           window.open('mailto:connect@knacksters.co?subject=Byte Runner Feedback&body=Hi! Here\'s my feedback about Byte Runner:%0D%0A%0D%0A', '_blank')
         }}
-        className="absolute bottom-4 left-4 bg-purple-600 hover:bg-purple-700 text-white text-xs md:text-sm font-semibold py-2 px-3 md:px-4 rounded-lg transition-all shadow-lg hover:scale-105 flex items-center gap-1 md:gap-2 z-10 pointer-events-auto"
+        className="absolute bottom-4 left-3 md:left-4 bg-cyan-500/90 hover:bg-cyan-400 text-white text-xs md:text-sm font-semibold py-2 px-3 md:px-4 rounded-full transition-all shadow-[0_0_16px_rgba(80,200,255,0.6)] hover:scale-105 flex items-center gap-2 z-10 pointer-events-auto backdrop-blur-sm border border-cyan-200/40"
+        aria-label="Send feedback"
         title="Send feedback"
       >
-        📝 <span className="hidden md:inline">Feedback</span>
+        <span className="text-base">📝</span>
+        <span className="hidden sm:inline">Feedback</span>
       </button>
       
       {/* Game Over Overlay */}
       {isGameOver && !showQuiz && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px] z-20 overflow-y-auto p-2 md:p-4">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px] z-20 overflow-y-auto p-2 md:p-4 pb-[calc(12px+env(safe-area-inset-bottom))]">
           <div 
-            className="text-center space-y-3 bg-[#0b1020]/55 rounded-3xl p-4 md:p-5 max-w-xl w-full mx-auto my-auto max-h-[95vh] overflow-y-auto relative [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-red-500"
+            className="text-center space-y-3 bg-[#0b1020]/55 rounded-3xl p-3 sm:p-4 md:p-5 max-w-xl w-full mx-auto my-auto max-h-[90svh] overflow-y-auto relative [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-red-500"
             style={{
               border: '4px solid',
               borderImage: 'linear-gradient(135deg, #ff4444, #ff6666, #00ffff, #0088ff) 1'
@@ -3252,14 +3254,14 @@ powerups = powerups.filter(kit => {
             {/* Header - ELIMINATED with side dashes */}
             <div className="flex items-center justify-center gap-3">
               <span className="h-px w-12 bg-red-500/70 shadow-[0_0_14px_rgba(255,80,80,0.8)]" />
-              <h2 className="text-4xl md:text-5xl font-black text-red-500 font-mono tracking-[0.3em] drop-shadow-[0_0_20px_rgba(255,68,68,0.8)]">ELIMINATED</h2>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-red-500 font-mono tracking-[0.28em] drop-shadow-[0_0_20px_rgba(255,68,68,0.8)]">ELIMINATED</h2>
               <span className="h-px w-12 bg-red-500/70 shadow-[0_0_14px_rgba(255,80,80,0.8)]" />
             </div>
             
             {/* Killer Info - Simplified */}
             {lastAttacker && lastThreatType && (
-              <div className="border-2 border-red-500/60 bg-black/30 backdrop-blur-sm px-4 py-3 rounded-2xl shadow-[0_0_14px_rgba(255,80,80,0.25)]">
-                <p className="text-white text-sm md:text-base font-mono">
+              <div className="border-2 border-red-500/60 bg-black/30 backdrop-blur-sm px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl shadow-[0_0_14px_rgba(255,80,80,0.25)]">
+                <p className="text-white text-xs sm:text-sm md:text-base font-mono">
                   <span className="text-lg mr-2">{lastAttacker.emoji}</span>
                   Killed by <span className="font-bold text-red-400">{lastAttacker.name}</span>
                   <span className={`ml-1 text-xs ${
@@ -3270,14 +3272,14 @@ powerups = powerups.filter(kit => {
                     (Lv{lastAttacker.level} {lastAttacker.level >= 71 ? 'HIGH' : 'MID'})
                   </span>
                 </p>
-                <p className="text-yellow-300/80 text-xs md:text-sm mt-1.5 font-mono">
+                <p className="text-yellow-300/80 text-[11px] sm:text-xs md:text-sm mt-1.5 font-mono">
                   Cause: {getThreatName(lastThreatType)}
                 </p>
               </div>
             )}
             
             {/* Stats - Single Line Mockup Style */}
-            <div className="text-white text-sm md:text-base font-mono tracking-wide">
+            <div className="text-white text-xs sm:text-sm md:text-base font-mono tracking-wide">
               <span className="text-gray-400">Level:</span> <span className="text-cyan-400 font-extrabold">{level}</span> 
               <span className="text-gray-500 mx-2">•</span> 
               <span className="text-gray-400">Score:</span> <span className="text-yellow-400 font-extrabold">{score}</span>
@@ -3285,14 +3287,14 @@ powerups = powerups.filter(kit => {
             
             {/* Continue / Restart panel */}
             <div className="bg-gradient-to-br from-[#1b1a3a]/55 to-[#1a2f4b]/55 border-2 border-cyan-500/45 rounded-2xl overflow-hidden backdrop-blur-sm shadow-[0_0_22px_rgba(64,200,255,0.2)]">
-              <div className="w-full px-4 py-3 text-left flex items-center justify-between">
+              <div className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-left flex items-center justify-between">
                 <div className="flex items-center gap-2 flex-1">
                   <span className="text-xl text-cyan-200">⚡</span>
                   <div>
-                    <p className="text-cyan-300 text-xs md:text-sm font-extrabold font-mono tracking-wide">
+                    <p className="text-cyan-300 text-[11px] sm:text-xs md:text-sm font-extrabold font-mono tracking-wide">
                       CONTINUE (30s quiz)
                     </p>
-                    <p className="text-gray-300/90 text-xs mt-0.5 font-mono">
+                    <p className="text-gray-300/90 text-[11px] sm:text-xs mt-0.5 font-mono">
                       Keep your level & kits
                     </p>
                   </div>
@@ -3300,7 +3302,7 @@ powerups = powerups.filter(kit => {
                 <span className="text-lg text-cyan-400">▲</span>
               </div>
 
-              <div className="px-4 pb-4 space-y-3 border-t border-cyan-500/25">
+              <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-3 border-t border-cyan-500/25">
                 <button
                   onClick={() => {
                     if (lastThreatType) {
@@ -3309,17 +3311,17 @@ powerups = powerups.filter(kit => {
                     }
                     setShowQuiz(true)
                   }}
-                  className="w-full bg-gradient-to-r from-cyan-400/90 to-blue-500/90 hover:from-cyan-400 hover:to-blue-500 text-white font-black py-2.5 px-4 rounded-full transition-all text-sm font-mono tracking-widest shadow-[0_0_26px_rgba(80,200,255,0.6)] border border-cyan-200/40"
+                  className="w-full bg-gradient-to-r from-cyan-400/90 to-blue-500/90 hover:from-cyan-400 hover:to-blue-500 text-white font-black py-2.5 px-4 rounded-full transition-all text-xs sm:text-sm font-mono tracking-widest shadow-[0_0_26px_rgba(80,200,255,0.6)] border border-cyan-200/40"
                 >
                   CONTINUE (30s quiz)
                 </button>
-                <p className="text-center text-gray-300/90 text-xs font-mono">Keep your level & kits</p>
+                <p className="text-center text-gray-300/90 text-[11px] sm:text-xs font-mono">Keep your level & kits</p>
 
                 <div className="h-px bg-cyan-500/20" />
 
                 <button
                   onClick={handleRestart}
-                  className="w-full bg-black/25 border border-cyan-600/35 hover:border-cyan-500/70 text-cyan-200 font-extrabold py-2.5 px-4 rounded-full transition-all text-xs font-mono tracking-wide shadow-[inset_0_0_12px_rgba(0,200,255,0.08)]"
+                  className="w-full bg-black/25 border border-cyan-600/35 hover:border-cyan-500/70 text-cyan-200 font-extrabold py-2.5 px-4 rounded-full transition-all text-[11px] sm:text-xs font-mono tracking-wide shadow-[inset_0_0_12px_rgba(0,200,255,0.08)]"
                 >
                   RESTART FROM SCRATCH
                 </button>
@@ -3331,7 +3333,7 @@ powerups = powerups.filter(kit => {
                       if (kit) trackDeepDiveViewed(kit.id)
                       ui.actions.toggleLearnMore()
                     }}
-                    className="w-full text-center text-cyan-300/90 text-xs font-mono tracking-wide hover:text-cyan-200 transition-colors"
+                    className="w-full text-center text-cyan-300/90 text-[11px] sm:text-xs font-mono tracking-wide hover:text-cyan-200 transition-colors"
                   >
                     More details →
                   </button>
@@ -3346,12 +3348,12 @@ powerups = powerups.filter(kit => {
       {ui.state.showLearnMore && lastThreatType && (() => {
         const protectionKit = getProtectionKitForThreat(lastThreatType)
         return protectionKit ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30 overflow-y-auto p-4">
-            <div className="bg-[#0b1020]/65 border-2 border-cyan-400/40 rounded-2xl p-5 max-w-2xl w-full mx-auto my-auto max-h-[90vh] overflow-y-auto relative [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-500 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-cyan-400 shadow-[0_0_30px_rgba(0,200,255,0.2)]">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30 overflow-y-auto p-3 md:p-4 pb-[calc(12px+env(safe-area-inset-bottom))]">
+            <div className="bg-[#0b1020]/65 border-2 border-cyan-400/40 rounded-2xl p-4 sm:p-5 max-w-2xl w-full mx-auto my-auto max-h-[90svh] overflow-y-auto relative [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-500 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-cyan-400 shadow-[0_0_30px_rgba(0,200,255,0.2)]">
               <div className="flex items-center justify-between border-b border-cyan-500/30 pb-3 mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">💡</span>
-                  <h2 className="text-cyan-200 text-lg md:text-xl font-bold font-mono tracking-wide">WHY DID I DIE?</h2>
+                  <h2 className="text-cyan-200 text-base sm:text-lg md:text-xl font-bold font-mono tracking-wide">WHY DID I DIE?</h2>
                 </div>
                 <button
                   onClick={() => {
@@ -3368,7 +3370,7 @@ powerups = powerups.filter(kit => {
                 </button>
               </div>
 
-              <div className="space-y-3 text-sm font-mono">
+              <div className="space-y-3 text-xs sm:text-sm font-mono">
                 <div className="border-b border-cyan-500/20 pb-2">
                   <p className="text-red-300 flex items-center gap-2">
                     <span>⚠️</span>

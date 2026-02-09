@@ -96,9 +96,9 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
   }
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-transparent z-30 p-4">
+    <div className="absolute inset-0 flex items-center justify-center bg-transparent z-30 p-3 md:p-4 pb-[calc(12px+env(safe-area-inset-bottom))]">
       <div 
-        className="bg-[#0b1020]/45 rounded-3xl p-6 md:p-8 max-w-2xl w-full mx-auto relative backdrop-blur-[2px] shadow-[0_0_30px_rgba(64,200,255,0.2)]"
+        className="bg-[#0b1020]/45 rounded-3xl p-4 sm:p-6 md:p-8 max-w-2xl w-full mx-auto relative backdrop-blur-[2px] shadow-[0_0_30px_rgba(64,200,255,0.2)]"
         style={{
           border: '2px solid',
           borderColor: 'rgba(120, 200, 255, 0.5)'
@@ -109,10 +109,10 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
             {/* Header with Timer */}
             <div className="mb-5">
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xl md:text-2xl font-black text-cyan-300 font-mono tracking-widest flex items-center gap-2">
+                <h2 className="text-base sm:text-xl md:text-2xl font-black text-cyan-300 font-mono tracking-widest flex items-center gap-2">
                   ⚡ {getQuizHeader(kitType)}
                 </h2>
-                <div className={`text-3xl md:text-4xl font-bold font-mono ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-cyan-200'}`}>
+                <div className={`text-2xl sm:text-3xl md:text-4xl font-bold font-mono ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-cyan-200'}`}>
                   {timeLeft}s
                 </div>
               </div>
@@ -124,19 +124,19 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
                   style={{ width: `${(timeLeft / 30) * 100}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-300/90 font-mono mt-2">
+              <p className="text-[11px] sm:text-xs text-gray-300/90 font-mono mt-2">
                 Correct answers keep gear & level
               </p>
             </div>
 
             {/* Question */}
-            <div className="bg-black/30 border border-cyan-400/40 rounded-2xl p-4 md:p-5 mb-3">
-              <p className="text-white text-base md:text-lg font-mono leading-relaxed text-center">
+            <div className="bg-black/30 border border-cyan-400/40 rounded-2xl p-3 sm:p-4 md:p-5 mb-3">
+              <p className="text-white text-sm sm:text-base md:text-lg font-mono leading-relaxed text-center">
                 {question.question}
               </p>
             </div>
 
-            <p className="text-center text-gray-400 text-sm font-mono mb-4">
+            <p className="text-center text-gray-400 text-xs sm:text-sm font-mono mb-4">
               30s Quiz • Choose the correct answer
             </p>
 
@@ -146,7 +146,7 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
                 <button
                   key={index}
                   onClick={() => setSelectedAnswer(index)}
-                  className={`text-left p-4 md:p-5 rounded-2xl font-mono text-sm md:text-base transition-all border relative ${
+                  className={`text-left p-3 sm:p-4 md:p-5 rounded-2xl font-mono text-xs sm:text-sm md:text-base transition-all border relative ${
                     selectedAnswer === index
                       ? 'bg-cyan-400/20 border-cyan-300 text-white shadow-[0_0_20px_rgba(80,200,255,0.45)]'
                       : 'bg-black/20 border-white/15 text-gray-300 hover:bg-white/5 hover:border-cyan-400/40'
@@ -161,7 +161,7 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
             </div>
 
             {/* Bottom Info */}
-            <p className="text-center text-gray-300/90 text-sm font-mono mb-6">
+            <p className="text-center text-gray-300/90 text-xs sm:text-sm font-mono mb-6">
               + Correct answers keep your level & all kits
             </p>
 
@@ -169,7 +169,7 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
             {selectedAnswer !== null && (
               <button
                 onClick={handleSubmit}
-                className="w-full text-lg md:text-xl font-black py-4 px-8 rounded-2xl transition-all font-mono bg-gradient-to-r from-green-500/90 to-cyan-500/90 hover:from-green-400 hover:to-cyan-400 text-white transform hover:scale-[1.02] tracking-wide shadow-[0_0_24px_rgba(80,200,255,0.4)]"
+                className="w-full text-base sm:text-lg md:text-xl font-black py-3 sm:py-4 px-6 sm:px-8 rounded-2xl transition-all font-mono bg-gradient-to-r from-green-500/90 to-cyan-500/90 hover:from-green-400 hover:to-cyan-400 text-white transform hover:scale-[1.02] tracking-wide shadow-[0_0_24px_rgba(80,200,255,0.4)]"
               >
                 ✓ SUBMIT ANSWER
               </button>
