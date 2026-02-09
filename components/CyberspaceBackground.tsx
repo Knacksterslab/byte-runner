@@ -26,9 +26,6 @@ export default function CyberspaceBackground() {
       canvas.height = window.innerHeight
     }
     resize()
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'B',location:'CyberspaceBackground.tsx:28',message:'background init',data:{canvasW:canvas.width,canvasH:canvas.height,dpr:window.devicePixelRatio},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion agent log
     window.addEventListener('resize', resize)
 
     // Globe parameters - make it BIG and visible!
@@ -65,7 +62,6 @@ export default function CyberspaceBackground() {
     }
 
     let lastBgFrameTs = 0
-    let bgFrameCount = 0
     let animationId = 0
     let isRunning = true
     // Animation loop
@@ -79,12 +75,6 @@ export default function CyberspaceBackground() {
       const now = performance.now()
       const bgDelta = lastBgFrameTs ? now - lastBgFrameTs : 0
       lastBgFrameTs = now
-      bgFrameCount += 1
-      if (bgFrameCount % 120 === 0) {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'B',location:'CyberspaceBackground.tsx:80',message:'background frame timing',data:{bgDelta,canvasW:canvas.width,canvasH:canvas.height,particles:particles.length,isConnected:canvas.isConnected},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion agent log
-      }
       // Update center and radius on each frame for responsiveness
       centerX = canvas.width / 2
       centerY = canvas.height / 2
@@ -230,9 +220,6 @@ export default function CyberspaceBackground() {
       if (animationId) {
         cancelAnimationFrame(animationId)
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'B',location:'CyberspaceBackground.tsx:217',message:'background cleanup',data:{isConnected:canvas.isConnected,animationId},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion agent log
       window.removeEventListener('resize', resize)
     }
   }, [])

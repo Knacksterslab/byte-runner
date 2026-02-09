@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '@/lib/store/gameStore'
-import { getRandomThreat, getThreatName, getQuickTip, type ThreatType, type ThreatCategory } from '@/lib/game/threatData'
+import { getRandomThreat, getThreatName, getQuickTip, threatTypes, type ThreatType, type ThreatCategory } from '@/lib/game/threatData'
 import { getRandomGhostPlayer, type GhostPlayer } from '@/lib/game/ghostPlayers'
 import { getProtectionKitName, getProtectionKitForThreat, getProtectionKitById, type ProtectionKit } from '@/lib/game/protectionKits'
 import { getCurrentZone, isZoneTransition, getZoneTip, getThreatSpawnWeight } from '@/lib/game/zones'
@@ -51,7 +51,6 @@ export default function SimpleGame() {
   const [isFirstDeath, setIsFirstDeath] = useState(true)
   const [deathAction, setDeathAction] = useState<'restart' | 'quiz'>('restart')
   const [showLeaderboardMobile, setShowLeaderboardMobile] = useState(false)
-  const loopIdRef = useRef(Math.random().toString(36).slice(2))
   
   // Track all timeouts for cleanup to prevent memory leaks
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -78,12 +77,6 @@ export default function SimpleGame() {
     }
   }, [bonusKitType])
 
-  useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-4',hypothesisId:'D',location:'SimpleGame.tsx:82',message:'gameStarted state',data:{gameStarted,visibility:document.visibilityState,loopId:loopIdRef.current},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion agent log
-  }, [gameStarted])
-  
   // Preload sprites and show loading screen
   useEffect(() => {
     if (!isMounted) return
@@ -182,6 +175,32 @@ export default function SimpleGame() {
       'data-harvester': images.dataBreach,
       'evil-twin': images.virus
     }
+
+    const categoryToSprite: Record<ThreatCategory, HTMLImageElement> = {
+      password: images.firewall,
+      phishing: images.spamWave,
+      updates: images.malware,
+      privacy: images.dataBreach,
+      wifi: images.virus,
+      authentication: images.firewall,
+      'data-loss': images.dataBreach,
+      'social-engineering': images.spamWave,
+      'physical-security': images.firewall,
+      'secure-disposal': images.dataBreach,
+      policy: images.firewall,
+      'incident-reporting': images.dataBreach,
+      compliance: images.firewall,
+      'remote-work': images.virus,
+      'meeting-security': images.spamWave,
+      'travel-security': images.virus,
+      'data-protection': images.dataBreach,
+      'supply-chain': images.malware,
+      'insider-threats': images.dataBreach,
+      'email-security': images.spamWave,
+      'data-classification': images.firewall,
+      'social-media': images.dataBreach,
+      'removable-media': images.malware
+    }
     
     // Gradient cache for background (Chrome performance optimization)
     let cachedGradient: CanvasGradient | null = null
@@ -191,6 +210,7 @@ export default function SimpleGame() {
     // Game state
     let animationId: number
     let gameTime = 0 // Track game time for spawn timestamps
+    let lastHitThreatId: string | null = null
     let playerX = 100 // Start on left
     let playerY = canvas.height / 2
     let playerSize = 45 // Bigger player for better visibility
@@ -202,8 +222,11 @@ export default function SimpleGame() {
     let powerupsNeeded = 0
     let powerupsCollected = 0
     let isAdvancingLevel = false // Prevent multiple level advances
-    let spawnFrequency = 650 // ms between obstacle spawns
+    let spawnFrequency = 520 // ms between obstacle spawns
     let speedFactor = 0.55
+    let threatSpeedFactor = 0.38
+    let spawnFactor = 1.1
+    let kitSpawnTimer = 0
     let effectiveObstacleSpeed = obstacleSpeed
     let effectivePlayerSpeed = playerSpeed
     let effectiveSpawnFrequency = spawnFrequency
@@ -567,10 +590,14 @@ export default function SimpleGame() {
     }
     
     // Show tutorial overlay when kit is used (healing process)
-    function showTutorial(kitType: string) {
+    function showTutorial(kitType: string, threatId?: string) {
       showingTutorial = true
       tutorialKit = kitType
       tutorialTimer = TUTORIAL_DURATION
+      if (threatId) {
+        lastHitThreatId = threatId
+        setLastAttacker(lastAttacker ?? null as any, threatId)
+      }
       isHealing = true // Freeze player during healing
     }
     
@@ -582,6 +609,195 @@ export default function SimpleGame() {
       return level * ALL_KIT_TYPES.length
     }
     
+    function drawRecoveryOverlayForKit() {
+      const protectionKit = getProtectionKitById(tutorialKit)
+      const protectionName = protectionKit?.name ?? 'Protection Kit'
+      const threatIdForOverlay = lastHitThreatId || lastThreatType || null
+      const threatName = threatIdForOverlay ? getThreatName(threatIdForOverlay) : 'Privacy Threat'
+      const threatData = threatIdForOverlay
+        ? threatTypes.find((threat) => threat.id === threatIdForOverlay) ?? null
+        : null
+      const learningPoints = threatData?.educationalContent?.slice(0, 3) ?? [
+        'Reduce exposure',
+        'Block common attacks',
+        'Keep data safe'
+      ]
+      const equivalents = protectionKit?.howToGetIt?.slice(0, 3) ?? [
+        'Use trusted tools',
+        'Enable built-in protections',
+        'Follow best practices'
+      ]
+      const tipText = learningPoints[0] ?? 'Review your privacy settings regularly.'
+      const progress = Math.max(0, Math.min(1, 1 - tutorialTimer / TUTORIAL_DURATION))
+      const timeLeft = Math.max(0, Math.ceil(tutorialTimer / 1000))
+      const scale = Math.min(1, canvas.width / 900, canvas.height / 720)
+      const panelW = Math.min(canvas.width * 0.86, 760 * scale)
+      const panelH = Math.min(canvas.height * 0.72, 520 * scale)
+      const panelX = (canvas.width - panelW) / 2
+      const panelY = (canvas.height - panelH) / 2
+      const padding = 28 * scale
+
+      const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
+        ctx.beginPath()
+        ctx.moveTo(x + r, y)
+        ctx.lineTo(x + w - r, y)
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+        ctx.lineTo(x + w, y + h - r)
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+        ctx.lineTo(x + r, y + h)
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+        ctx.lineTo(x, y + r)
+        ctx.quadraticCurveTo(x, y, x + r, y)
+        ctx.closePath()
+      }
+
+      // Backdrop
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Panel
+      ctx.save()
+      ctx.shadowBlur = 30 * scale
+      ctx.shadowColor = 'rgba(0, 220, 255, 0.35)'
+      roundRect(panelX, panelY, panelW, panelH, 18 * scale)
+      ctx.fillStyle = 'rgba(5, 16, 24, 0.92)'
+      ctx.fill()
+      ctx.shadowBlur = 0
+      ctx.lineWidth = 2 * scale
+      ctx.strokeStyle = 'rgba(0, 210, 255, 0.7)'
+      ctx.stroke()
+      ctx.restore()
+
+      // Header icon + title
+      ctx.textAlign = 'center'
+      ctx.font = `bold ${34 * scale}px monospace`
+      ctx.fillStyle = '#7be9ff'
+      ctx.fillText('🛡️', canvas.width / 2, panelY + padding + 10 * scale)
+      ctx.font = `bold ${28 * scale}px monospace`
+      ctx.fillStyle = '#7be9ff'
+      ctx.fillText('Recovery in Progress', canvas.width / 2, panelY + padding + 48 * scale)
+      ctx.font = `${14 * scale}px monospace`
+      ctx.fillStyle = '#9fb7c9'
+      ctx.fillText('You were hit by a privacy threat — protection activated.', canvas.width / 2, panelY + padding + 72 * scale)
+
+      // Divider line
+      ctx.strokeStyle = 'rgba(0, 180, 220, 0.35)'
+      ctx.lineWidth = 1 * scale
+      ctx.beginPath()
+      ctx.moveTo(panelX + padding, panelY + padding + 90 * scale)
+      ctx.lineTo(panelX + panelW - padding, panelY + padding + 90 * scale)
+      ctx.stroke()
+
+      // Threat / Protection row
+      ctx.textAlign = 'left'
+      const rowY = panelY + padding + 110 * scale
+      ctx.font = `bold ${14 * scale}px monospace`
+      ctx.fillStyle = '#ffcc66'
+      ctx.fillText('⚠️ Threat:', panelX + padding, rowY)
+      ctx.fillStyle = '#dfe9f2'
+      ctx.fillText(threatName, panelX + padding, rowY + 22 * scale)
+
+      ctx.fillStyle = '#7ee0a2'
+      ctx.fillText('🛡️ Protection Used:', panelX + panelW / 2, rowY)
+      ctx.fillStyle = '#dfe9f2'
+      ctx.fillText(protectionName, panelX + panelW / 2, rowY + 22 * scale)
+
+      const wrapText = (text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+        const words = text.split(' ')
+        let line = ''
+        let lines = 0
+        for (const word of words) {
+          const testLine = `${line}${word} `
+          if (ctx.measureText(testLine).width > maxWidth && line) {
+            ctx.fillText(line, x, y + lines * lineHeight)
+            line = `${word} `
+            lines += 1
+          } else {
+            line = testLine
+          }
+        }
+        if (line) {
+          ctx.fillText(line, x, y + lines * lineHeight)
+          lines += 1
+        }
+        return lines
+      }
+
+      // What it stops
+      const listY = rowY + 52 * scale
+      const leftColX = panelX + padding
+      const rightColX = panelX + panelW / 2
+      const colWidth = panelW / 2 - padding * 1.1
+      const lineHeight = 16 * scale
+
+      ctx.fillStyle = '#9fb7c9'
+      ctx.font = `bold ${14 * scale}px monospace`
+      ctx.fillText('What it stops:', leftColX, listY)
+      ctx.font = `${13 * scale}px monospace`
+      let leftLines = 0
+      learningPoints.forEach((item, idx) => {
+        const y = listY + 20 * scale + leftLines * lineHeight
+        ctx.fillStyle = '#7ee0a2'
+        ctx.fillText('✓', leftColX, y)
+        ctx.fillStyle = '#dfe9f2'
+        leftLines += wrapText(item, leftColX + 18 * scale, y, colWidth - 18 * scale, lineHeight)
+      })
+
+      // Real-world equivalents
+      ctx.fillStyle = '#9fb7c9'
+      ctx.font = `bold ${14 * scale}px monospace`
+      ctx.fillText('Real-world equivalents:', rightColX, listY)
+      ctx.font = `${13 * scale}px monospace`
+      let rightLines = 0
+      equivalents.forEach((item) => {
+        const y = listY + 20 * scale + rightLines * lineHeight
+        ctx.fillStyle = '#7ee0a2'
+        ctx.fillText('✓', rightColX, y)
+        ctx.fillStyle = '#dfe9f2'
+        rightLines += wrapText(item, rightColX + 18 * scale, y, colWidth - 18 * scale, lineHeight)
+      })
+
+      // Tip
+      const maxLines = Math.max(leftLines, rightLines)
+      const tipY = listY + 24 * scale + maxLines * lineHeight + 8 * scale
+      ctx.fillStyle = '#cfd7e3'
+      ctx.font = `bold ${13 * scale}px monospace`
+      ctx.fillText('Tip:', panelX + padding, tipY)
+      ctx.font = `${13 * scale}px monospace`
+      ctx.fillStyle = '#9fb7c9'
+      ctx.fillText(tipText, panelX + padding + 36 * scale, tipY)
+
+      // Progress label
+      ctx.textAlign = 'center'
+      ctx.font = `bold ${15 * scale}px monospace`
+      ctx.fillStyle = '#9fb7c9'
+      ctx.fillText(`Recovery completes in ${timeLeft}s`, canvas.width / 2, panelY + panelH - 60 * scale)
+
+      // Progress bar
+      const barW = panelW - padding * 2
+      const barH = 14 * scale
+      const barX = panelX + padding
+      const barY = panelY + panelH - 38 * scale
+      roundRect(barX, barY, barW, barH, 8 * scale)
+      ctx.strokeStyle = 'rgba(0, 200, 255, 0.8)'
+      ctx.lineWidth = 1 * scale
+      ctx.stroke()
+      roundRect(barX + 2, barY + 2, (barW - 4) * progress, barH - 4, 6 * scale)
+      ctx.fillStyle = 'rgba(0, 255, 180, 0.8)'
+      ctx.fill()
+
+      // Small avatar bubble
+      ctx.font = `${16 * scale}px monospace`
+      ctx.fillStyle = '#ffcc66'
+      ctx.beginPath()
+      ctx.arc(barX + 12 * scale, barY - 10 * scale, 10 * scale, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#1b2533'
+      ctx.fillText('🙂', barX + 6 * scale, barY - 4 * scale)
+
+      ctx.textAlign = 'left'
+    }
+
     // Draw tutorial overlay (healing process - freezes player)
     function drawTutorialOverlay() {
       if (!showingTutorial || tutorialTimer <= 0) {
@@ -589,6 +805,10 @@ export default function SimpleGame() {
         isHealing = false // End healing - player can move again
         return
       }
+
+      drawRecoveryOverlayForKit()
+      tutorialTimer -= 16
+      return
       
       // Blur + dim background to focus on tutorial
       ctx.save()
@@ -1011,36 +1231,162 @@ export default function SimpleGame() {
         isRestoring = false
         return
       }
-      
-      // Pulse effect
-      const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7
-      
-      // Blue flash (restoration happening)
-      const flashOpacity = restorationTimer / RESTORATION_DURATION
-      ctx.fillStyle = `rgba(0, 200, 255, ${0.4 * flashOpacity})`
+ 
+      const protectionKit = lastThreatType ? getProtectionKitForThreat(lastThreatType) : null
+      const threatName = lastThreatType ? getThreatName(lastThreatType) : 'Unknown Threat'
+      const protectionName = protectionKit ? protectionKit.name : 'Protection Kit'
+      const learningPoints = protectionKit?.learningPoints?.slice(0, 3) ?? [
+        'Reduce exposure',
+        'Block common attacks',
+        'Keep data safe'
+      ]
+      const equivalents = protectionKit?.howToGetIt?.slice(0, 3) ?? [
+        'Use trusted tools',
+        'Enable built-in protections',
+        'Follow best practices'
+      ]
+      const tipText = protectionKit?.learningPoints?.[0] ?? 'Review your privacy settings regularly.'
+      const progress = Math.max(0, Math.min(1, 1 - restorationTimer / RESTORATION_DURATION))
+      const timeLeft = Math.max(0, Math.ceil(restorationTimer / 1000))
+      const scale = Math.min(1, canvas.width / 900, canvas.height / 720)
+      const panelW = Math.min(canvas.width * 0.86, 760 * scale)
+      const panelH = Math.min(canvas.height * 0.78, 620 * scale)
+      const panelX = (canvas.width - panelW) / 2
+      const panelY = (canvas.height - panelH) / 2
+      const padding = 28 * scale
+ 
+      const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
+        ctx.beginPath()
+        ctx.moveTo(x + r, y)
+        ctx.lineTo(x + w - r, y)
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+        ctx.lineTo(x + w, y + h - r)
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+        ctx.lineTo(x + r, y + h)
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+        ctx.lineTo(x, y + r)
+        ctx.quadraticCurveTo(x, y, x + r, y)
+        ctx.closePath()
+      }
+ 
+      // Backdrop
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
-      
-      // Center message
-      ctx.font = `bold ${Math.floor(64 * pulse)}px monospace`
-      ctx.fillStyle = '#00ccff'
-      ctx.textAlign = 'center'
-      ctx.shadowBlur = 40
-      ctx.shadowColor = '#00ccff'
-      ctx.fillText('💾 RESTORING FROM BACKUP!', canvas.width / 2, canvas.height / 2 - 40)
-      
-      // Sub text
-      ctx.font = 'bold 32px monospace'
-      ctx.fillStyle = '#00ff00'
-      ctx.fillText('DATA RECOVERED', canvas.width / 2, canvas.height / 2 + 20)
-      
-      // Extra life indicator
-      ctx.font = 'bold 24px monospace'
-      ctx.fillStyle = '#ffff00'
-      ctx.fillText('+100 BONUS POINTS', canvas.width / 2, canvas.height / 2 + 60)
-      
+ 
+      // Panel
+      ctx.save()
+      ctx.shadowBlur = 30 * scale
+      ctx.shadowColor = 'rgba(0, 220, 255, 0.35)'
+      roundRect(panelX, panelY, panelW, panelH, 18 * scale)
+      ctx.fillStyle = 'rgba(5, 16, 24, 0.92)'
+      ctx.fill()
       ctx.shadowBlur = 0
+      ctx.lineWidth = 2 * scale
+      ctx.strokeStyle = 'rgba(0, 210, 255, 0.7)'
+      ctx.stroke()
+      ctx.restore()
+ 
+      // Header icon + title
+      ctx.textAlign = 'center'
+      ctx.font = `bold ${34 * scale}px monospace`
+      ctx.fillStyle = '#7be9ff'
+      ctx.fillText('🛡️', canvas.width / 2, panelY + padding + 10 * scale)
+      ctx.font = `bold ${28 * scale}px monospace`
+      ctx.fillStyle = '#7be9ff'
+      ctx.fillText('Recovery in Progress', canvas.width / 2, panelY + padding + 48 * scale)
+      ctx.font = `${14 * scale}px monospace`
+      ctx.fillStyle = '#9fb7c9'
+      ctx.fillText('You were hit by a privacy threat — protection activated.', canvas.width / 2, panelY + padding + 72 * scale)
+ 
+      // Divider line
+      ctx.strokeStyle = 'rgba(0, 180, 220, 0.35)'
+      ctx.lineWidth = 1 * scale
+      ctx.beginPath()
+      ctx.moveTo(panelX + padding, panelY + padding + 90 * scale)
+      ctx.lineTo(panelX + panelW - padding, panelY + padding + 90 * scale)
+      ctx.stroke()
+ 
+      // Threat / Protection row
       ctx.textAlign = 'left'
-      
+      const rowY = panelY + padding + 120 * scale
+      ctx.font = `bold ${14 * scale}px monospace`
+      ctx.fillStyle = '#ffcc66'
+      ctx.fillText('⚠️ Threat:', panelX + padding, rowY)
+      ctx.fillStyle = '#dfe9f2'
+      ctx.fillText(threatName, panelX + padding, rowY + 22 * scale)
+ 
+      ctx.fillStyle = '#7ee0a2'
+      ctx.fillText('🛡️ Protection Used:', panelX + panelW / 2, rowY)
+      ctx.fillStyle = '#dfe9f2'
+      ctx.fillText(protectionName, panelX + panelW / 2, rowY + 22 * scale)
+ 
+      // What it stops
+      const listY = rowY + 65 * scale
+      ctx.fillStyle = '#9fb7c9'
+      ctx.font = `bold ${14 * scale}px monospace`
+      ctx.fillText('What it stops:', panelX + padding, listY)
+      ctx.font = `${13 * scale}px monospace`
+      learningPoints.forEach((item, idx) => {
+        const y = listY + 24 * scale + idx * 22 * scale
+        ctx.fillStyle = '#7ee0a2'
+        ctx.fillText('✓', panelX + padding, y)
+        ctx.fillStyle = '#dfe9f2'
+        ctx.fillText(item, panelX + padding + 18 * scale, y)
+      })
+ 
+      // Real-world equivalents
+      const rightColX = panelX + panelW / 2
+      ctx.fillStyle = '#9fb7c9'
+      ctx.font = `bold ${14 * scale}px monospace`
+      ctx.fillText('Real-world equivalents:', rightColX, listY)
+      ctx.font = `${13 * scale}px monospace`
+      equivalents.forEach((item, idx) => {
+        const y = listY + 24 * scale + idx * 22 * scale
+        ctx.fillStyle = '#7ee0a2'
+        ctx.fillText('✓', rightColX, y)
+        ctx.fillStyle = '#dfe9f2'
+        ctx.fillText(item, rightColX + 18 * scale, y)
+      })
+ 
+      // Tip
+      const tipY = listY + 24 * scale + 3 * 22 * scale + 12 * scale
+      ctx.fillStyle = '#cfd7e3'
+      ctx.font = `bold ${13 * scale}px monospace`
+      ctx.fillText('Tip:', panelX + padding, tipY)
+      ctx.font = `${13 * scale}px monospace`
+      ctx.fillStyle = '#9fb7c9'
+      ctx.fillText(tipText, panelX + padding + 36 * scale, tipY)
+ 
+      // Progress label
+      ctx.textAlign = 'center'
+      ctx.font = `bold ${15 * scale}px monospace`
+      ctx.fillStyle = '#9fb7c9'
+      ctx.fillText(`Recovery completes in ${timeLeft}s`, canvas.width / 2, panelY + panelH - 70 * scale)
+ 
+      // Progress bar
+      const barW = panelW - padding * 2
+      const barH = 14 * scale
+      const barX = panelX + padding
+      const barY = panelY + panelH - 48 * scale
+      roundRect(barX, barY, barW, barH, 8 * scale)
+      ctx.strokeStyle = 'rgba(0, 200, 255, 0.8)'
+      ctx.lineWidth = 1 * scale
+      ctx.stroke()
+      roundRect(barX + 2, barY + 2, (barW - 4) * progress, barH - 4, 6 * scale)
+      ctx.fillStyle = 'rgba(0, 255, 180, 0.8)'
+      ctx.fill()
+ 
+      // Small avatar bubble
+      ctx.font = `${16 * scale}px monospace`
+      ctx.fillStyle = '#ffcc66'
+      ctx.beginPath()
+      ctx.arc(barX + 12 * scale, barY - 10 * scale, 10 * scale, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#1b2533'
+      ctx.fillText('🙂', barX + 6 * scale, barY - 4 * scale)
+ 
+      ctx.textAlign = 'left'
+ 
       // Decrement timer
       restorationTimer -= 16
     }
@@ -1653,10 +1999,7 @@ const passwordWidth = ctx.measureText(passwordText).width
     
     let lastGameFrameTs = 0
     let gameFrameCount = 0
-    let gameLogBurst = 0
-    let endLogCount = 0
     let frameScale = 1
-    const loopId = loopIdRef.current
     // Game loop
     function gameLoop(timestamp: number) {
       if (!ctx) return
@@ -1669,31 +2012,23 @@ const passwordWidth = ctx.measureText(passwordText).width
 // Apply slow-motion effect during quiz (only after countdown finishes)
       const slowMotionMultiplier = (quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0) ? 0.15 : 1.0
       speedFactor = Math.min(1.6, Math.max(0.55, 0.55 + (currentLevel - 1) * 0.08))
-      effectiveObstacleSpeed = obstacleSpeed * speedFactor
+      threatSpeedFactor = Math.min(1.4, Math.max(0.38, 0.38 + (currentLevel - 1) * 0.07))
+      spawnFactor = Math.min(1.8, Math.max(1.1, 1.1 + (currentLevel - 1) * 0.07))
+      effectiveObstacleSpeed = obstacleSpeed * threatSpeedFactor
       effectivePlayerSpeed = playerSpeed * speedFactor
-      effectiveSpawnFrequency = spawnFrequency / speedFactor
-      if (gameFrameCount % 120 === 0) {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'E',location:'SimpleGame.tsx:1668',message:'speed baseline',data:{level,currentLevel,playerSpeed,obstacleSpeed,spawnFrequency,speedFactor,effectivePlayerSpeed,effectiveObstacleSpeed,effectiveSpawnFrequency,frameScale,slowMotionMultiplier,gameDelta},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion agent log
-      }
-      if (gameLogBurst < 5) {
-        gameLogBurst += 1
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-5',hypothesisId:'A',location:'SimpleGame.tsx:1652',message:'game loop burst timing',data:{gameDelta,frameScale,slowMotionMultiplier,quizActive:quiz.refs.activeRef.current,quizCountdown:quiz.refs.countdownRef.current,canvasW:canvas.width,canvasH:canvas.height},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion agent log
+      effectiveSpawnFrequency = spawnFrequency / spawnFactor
+      if (isHealing) {
+        drawTutorialOverlay()
+        if (!isGameOver) {
+          animationId = requestAnimationFrame(gameLoop)
+        }
+        return
       }
       // Draw animated background
       const bgStart = performance.now()
       drawBackground()
       const bgEnd = performance.now()
       
-      if (gameFrameCount % 120 === 0) {
-        // #region agent log
-        const loopEnd = performance.now()
-        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-5',hypothesisId:'A',location:'SimpleGame.tsx:1674',message:'game loop timing start',data:{gameDelta,frameScale,slowMotionMultiplier,quizActive:quiz.refs.activeRef.current,quizCountdown:quiz.refs.countdownRef.current,canvasW:canvas.width,canvasH:canvas.height,bgDrawMs:bgEnd-bgStart,loopMs:loopEnd-loopStart,performanceMode,isChrome,visibility:document.visibilityState,loopId},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion agent log
-      }
       
       // Render quiz UI overlay if active
       if (quiz.refs.activeRef.current && quiz.refs.currentQuizRef.current) {
@@ -2123,9 +2458,11 @@ const passwordWidth = ctx.measureText(passwordText).width
           lastSpawn = timestamp
         }
         
-        // Spawn kits periodically
-        if (timestamp % 5000 < 50) { // Approximately every 5 seconds
+        // Spawn kits periodically using a timer so low FPS won't skip
+        kitSpawnTimer += frameMs
+        if (kitSpawnTimer >= 5000) {
           spawnKit()
+          kitSpawnTimer -= 5000
         }
       }
       
@@ -2151,7 +2488,7 @@ if (!isHealing) {
           ctx.shadowBlur = 0
           
           // Draw sprite if available, otherwise fallback to colored square
-          const sprite = threatToSprite[obstacle.threatId]
+          const sprite = threatToSprite[obstacle.threatId] || categoryToSprite[obstacle.category as ThreatCategory]
           if (sprite && sprite.complete) {
             ctx.drawImage(
               sprite,
@@ -2239,7 +2576,9 @@ const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
             // Use the kit - player survives but needs to recollect!
             kitInventory[requiredKit]--
             totalKitsCollected = Math.max(0, totalKitsCollected - 1) // Deduct from progress - must recollect to advance
-            showTutorial(requiredKit)
+            lastHitThreatId = obstacle.threatId
+            setLastAttacker(obstacle.sentBy, obstacle.threatId)
+            showTutorial(requiredKit, obstacle.threatId)
             addScore(-25) // Cost for consuming kit
             returnObstacleToPool(obstacle)
             return false
@@ -2272,6 +2611,7 @@ const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
                 kits: { ...kitInventory },
                 score: score
               })
+              lastHitThreatId = obstacle.threatId
               setLastAttacker(obstacle.sentBy, obstacle.threatId)
               trackGameOver(currentLevel, score, obstacle.threatId)
               setGameOver(true)
@@ -2698,13 +3038,6 @@ powerups = powerups.filter(kit => {
       
       // Update distance (based on kits collected)
       setDistance(totalKitsCollected * 10 + currentLevel * 50)
-      if (endLogCount < 5) {
-        endLogCount += 1
-        const loopEndTotal = performance.now()
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'A',location:'SimpleGame.tsx:2655',message:'game loop total timing',data:{loopTotalMs:loopEndTotal-loopStart,gameDelta,frameScale,performanceMode,isChrome,visibility:document.visibilityState,loopId},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion agent log
-      }
 // Continue loop
       if (!isGameOver) {
         animationId = requestAnimationFrame(gameLoop)
@@ -2719,9 +3052,6 @@ powerups = powerups.filter(kit => {
     animationId = requestAnimationFrame(gameLoop)
     
     return () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix-5',hypothesisId:'D',location:'SimpleGame.tsx:2668',message:'game loop cleanup',data:{loopId},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion agent log
       cancelAnimationFrame(animationId)
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
@@ -2910,21 +3240,25 @@ powerups = powerups.filter(kit => {
       </button>
       
       {/* Game Over Overlay */}
-      {isGameOver && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] z-20 overflow-y-auto p-2 md:p-4">
+      {isGameOver && !showQuiz && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px] z-20 overflow-y-auto p-2 md:p-4">
           <div 
-            className="text-center space-y-3 bg-[#0f1629] rounded-3xl p-4 md:p-5 max-w-xl w-full mx-auto my-auto max-h-[95vh] overflow-y-auto relative [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-red-500"
+            className="text-center space-y-3 bg-[#0b1020]/55 rounded-3xl p-4 md:p-5 max-w-xl w-full mx-auto my-auto max-h-[95vh] overflow-y-auto relative [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-red-500"
             style={{
               border: '4px solid',
               borderImage: 'linear-gradient(135deg, #ff4444, #ff6666, #00ffff, #0088ff) 1'
             }}
           >
-            {/* Header - ELIMINATED with cyber styling */}
-            <h2 className="text-4xl md:text-5xl font-black text-red-500 font-mono tracking-[0.3em] drop-shadow-[0_0_20px_rgba(255,68,68,0.8)]">ELIMINATED</h2>
+            {/* Header - ELIMINATED with side dashes */}
+            <div className="flex items-center justify-center gap-3">
+              <span className="h-px w-12 bg-red-500/70 shadow-[0_0_14px_rgba(255,80,80,0.8)]" />
+              <h2 className="text-4xl md:text-5xl font-black text-red-500 font-mono tracking-[0.3em] drop-shadow-[0_0_20px_rgba(255,68,68,0.8)]">ELIMINATED</h2>
+              <span className="h-px w-12 bg-red-500/70 shadow-[0_0_14px_rgba(255,80,80,0.8)]" />
+            </div>
             
-            {/* Killer Info - Mockup Style */}
+            {/* Killer Info - Simplified */}
             {lastAttacker && lastThreatType && (
-              <div className="border-2 border-red-500/60 bg-black/40 backdrop-blur-sm px-4 py-3 rounded-2xl">
+              <div className="border-2 border-red-500/60 bg-black/30 backdrop-blur-sm px-4 py-3 rounded-2xl shadow-[0_0_14px_rgba(255,80,80,0.25)]">
                 <p className="text-white text-sm md:text-base font-mono">
                   <span className="text-lg mr-2">{lastAttacker.emoji}</span>
                   Killed by <span className="font-bold text-red-400">{lastAttacker.name}</span>
@@ -2936,8 +3270,8 @@ powerups = powerups.filter(kit => {
                     (Lv{lastAttacker.level} {lastAttacker.level >= 71 ? 'HIGH' : 'MID'})
                   </span>
                 </p>
-                <p className="text-yellow-300 text-xs md:text-sm mt-1.5 font-mono">
-                  Using: {getThreatName(lastThreatType)}
+                <p className="text-yellow-300/80 text-xs md:text-sm mt-1.5 font-mono">
+                  Cause: {getThreatName(lastThreatType)}
                 </p>
               </div>
             )}
@@ -2949,242 +3283,59 @@ powerups = powerups.filter(kit => {
               <span className="text-gray-400">Score:</span> <span className="text-yellow-400 font-extrabold">{score}</span>
             </div>
             
-            {/* Educational moment - Mockup Style */}
-            {lastThreatType && (() => {
-              const protectionKit = getProtectionKitForThreat(lastThreatType)
-              return protectionKit ? (
-                <div className="bg-gradient-to-br from-purple-900/60 to-blue-900/60 border-2 border-cyan-500/40 rounded-2xl overflow-hidden backdrop-blur-sm">
-                  {/* Collapsed Header - Always Visible */}
+            {/* Continue / Restart panel */}
+            <div className="bg-gradient-to-br from-[#1b1a3a]/55 to-[#1a2f4b]/55 border-2 border-cyan-500/45 rounded-2xl overflow-hidden backdrop-blur-sm shadow-[0_0_22px_rgba(64,200,255,0.2)]">
+              <div className="w-full px-4 py-3 text-left flex items-center justify-between">
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-xl text-cyan-200">⚡</span>
+                  <div>
+                    <p className="text-cyan-300 text-xs md:text-sm font-extrabold font-mono tracking-wide">
+                      CONTINUE (30s quiz)
+                    </p>
+                    <p className="text-gray-300/90 text-xs mt-0.5 font-mono">
+                      Keep your level & kits
+                    </p>
+                  </div>
+                </div>
+                <span className="text-lg text-cyan-400">▲</span>
+              </div>
+
+              <div className="px-4 pb-4 space-y-3 border-t border-cyan-500/25">
+                <button
+                  onClick={() => {
+                    if (lastThreatType) {
+                      const kit = getProtectionKitForThreat(lastThreatType)
+                      if (kit) trackQuizAttempt(kit.id)
+                    }
+                    setShowQuiz(true)
+                  }}
+                  className="w-full bg-gradient-to-r from-cyan-400/90 to-blue-500/90 hover:from-cyan-400 hover:to-blue-500 text-white font-black py-2.5 px-4 rounded-full transition-all text-sm font-mono tracking-widest shadow-[0_0_26px_rgba(80,200,255,0.6)] border border-cyan-200/40"
+                >
+                  CONTINUE (30s quiz)
+                </button>
+                <p className="text-center text-gray-300/90 text-xs font-mono">Keep your level & kits</p>
+
+                <div className="h-px bg-cyan-500/20" />
+
+                <button
+                  onClick={handleRestart}
+                  className="w-full bg-black/25 border border-cyan-600/35 hover:border-cyan-500/70 text-cyan-200 font-extrabold py-2.5 px-4 rounded-full transition-all text-xs font-mono tracking-wide shadow-[inset_0_0_12px_rgba(0,200,255,0.08)]"
+                >
+                  RESTART FROM SCRATCH
+                </button>
+
+                {lastThreatType && (
                   <button
                     onClick={() => {
-                      ui.actions.toggleEducationDetails()
-                      const newState = !ui.state.showEducationDetails
-                      // Track education expansion
-                      if (newState && lastThreatType) {
-                        const kit = getProtectionKitForThreat(lastThreatType)
-                        if (kit) trackEducationExpanded(kit.id)
-                      }
-                      // Auto-award bonus kit when expanded for first time!
-                      if (newState && !bonusKitType) {
-                        setBonusKitType(protectionKit.id)
-                        ui.actions.showBonus(3000)
-                      }
+                      const kit = getProtectionKitForThreat(lastThreatType)
+                      if (kit) trackDeepDiveViewed(kit.id)
+                      ui.actions.toggleLearnMore()
                     }}
-                    className="w-full p-3 text-left flex items-center justify-between hover:bg-cyan-900/20 transition-colors group"
+                    className="w-full text-center text-cyan-300/90 text-xs font-mono tracking-wide hover:text-cyan-200 transition-colors"
                   >
-                    <div className="flex items-center gap-2 flex-1">
-                      <span className="text-xl">💡</span>
-                      <div>
-                        <p className="text-cyan-300 text-xs md:text-sm font-extrabold font-mono tracking-wide">
-                          WHY YOU DIED
-                          {isFirstDeath && !ui.state.showEducationDetails && (
-                            <span className="ml-2 text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded animate-pulse font-bold">
-                              TAP
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-pink-300 text-xs mt-0.5 font-mono">
-                          Missing {protectionKit.name}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-lg text-cyan-400 transition-transform duration-300 group-hover:scale-110" style={{ transform: ui.state.showEducationDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                      ▼
-                    </span>
+                    More details →
                   </button>
-                  
-                  {/* Expandable Content */}
-                  {ui.state.showEducationDetails && (
-                    <div className="px-3 pb-3 space-y-2 border-t border-cyan-500/20 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <p className="text-red-300 text-xs pt-2 font-mono">
-                        Hit by <span className="font-extrabold text-red-400">{getThreatName(lastThreatType)}</span> without protection.
-                      </p>
-                      
-                      <div className="space-y-1.5 text-xs font-mono">
-                        <div className="bg-black/30 rounded p-2">
-                          <p className="text-cyan-300 font-extrabold mb-0.5 tracking-wide">WHAT IS IT?</p>
-                          <p className="text-white leading-snug text-[11px]">
-                            {protectionKit.whatItIs}
-                          </p>
-                        </div>
-                        
-                        <div className="bg-black/30 rounded p-2">
-                          <p className="text-yellow-300 font-extrabold mb-0.5 tracking-wide">WHY IT MATTERS:</p>
-                          <p className="text-gray-200 leading-snug text-[11px]">
-                            {protectionKit.whyItMatters}
-                          </p>
-                        </div>
-                        
-                        <div className="bg-black/30 rounded p-2">
-                          <p className="text-green-300 font-extrabold mb-0.5 tracking-wide">HOW TO GET IT:</p>
-                          <ul className="text-gray-200 text-[11px] space-y-0.5 list-disc list-inside leading-snug">
-                            {protectionKit.howToGetIt.slice(0, 2).map((item, idx) => (
-                              <li key={idx}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                      
-                      {/* Learn More Button */}
-                      <button
-                        onClick={() => {
-                          ui.actions.toggleLearnMore()
-                          if (lastThreatType) {
-                            const kit = getProtectionKitForThreat(lastThreatType)
-                            if (kit) trackDeepDiveViewed(kit.id)
-                          }
-                        }}
-                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-extrabold py-2 px-3 rounded-lg transition-all transform hover:scale-[1.02] text-xs font-mono tracking-wide"
-                      >
-                        🎓 LEARN MORE
-                      </button>
-                    </div>
-                  )}
-                  
-                  {/* Bonus Kit Notification */}
-                  {ui.state.showBonusNotification && bonusKitType === protectionKit.id && (
-                    <div className="bg-green-600 text-white px-2 py-1.5 text-xs font-extrabold text-center border-t border-green-400 font-mono">
-                      ✓ +1 {protectionKit.emoji} {protectionKit.name}
-                    </div>
-                  )}
-                </div>
-              ) : null
-            })()}
-            
-            {/* Social Share Section - Mockup Style */}
-            <div className="border-t border-gray-700/30 pt-3 pb-2">
-              <p className="text-cyan-400 text-sm font-extrabold text-center mb-2 font-mono tracking-wide">Share Your Score:</p>
-              <div className="flex gap-2 justify-center flex-wrap">
-                {/* Twitter/X Share */}
-                <button
-                  onClick={() => {
-                    trackSocialShare('twitter', score)
-                    const text = `I scored ${score} on Byte Runner! 🎮🔐 Reached level ${level}. Can you beat me?\n\nPlay: ${window.location.origin}`;
-                    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-                    window.open(twitterUrl, '_blank');
-                  }}
-                  className="bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white text-xs md:text-sm font-bold py-2 px-4 rounded-xl transition-all font-mono"
-                  title="Share on Twitter/X"
-                >
-                  𝕏 Share
-                </button>
-
-                {/* LinkedIn Share */}
-                <button
-                  onClick={() => {
-                    trackSocialShare('linkedin', score)
-                    const url = encodeURIComponent(window.location.origin);
-                    const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
-                    window.open(linkedInUrl, '_blank');
-                  }}
-                  className="bg-[#0077B5] hover:bg-[#006399] text-white text-xs md:text-sm font-bold py-2 px-4 rounded-xl transition-all font-mono"
-                  title="Share on LinkedIn"
-                >
-                  in Share
-                </button>
-
-                {/* Copy Link */}
-                <button
-                  onClick={(e) => {
-                    navigator.clipboard.writeText(window.location.origin);
-                    const btn = e.currentTarget as HTMLButtonElement;
-                    if (btn) {
-                      const originalText = btn.innerHTML;
-                      btn.innerHTML = '✓ Copied!';
-                      btn.classList.add('bg-green-600');
-                      setTimeout(() => {
-                        btn.innerHTML = originalText;
-                        btn.classList.remove('bg-green-600');
-                      }, 2000);
-                    }
-                  }}
-                  className="bg-gray-600 hover:bg-gray-500 text-white text-xs md:text-sm font-bold py-2 px-4 rounded-xl transition-all font-mono"
-                  title="Copy link"
-                >
-                  🔗 Copy
-                </button>
-              </div>
-            </div>
-
-            {/* ACTION CHOICE - Mockup Style */}
-            <div className="space-y-2.5 pt-3 border-t border-gray-700/30">
-              <p className="text-center text-cyan-300 font-extrabold text-sm md:text-base font-mono tracking-widest">
-                ⚡ CHOOSE YOUR FATE ⚡
-              </p>
-              
-              {/* Option Cards */}
-              <div className="space-y-2.5">
-                {/* Option 1: Restart */}
-                <button
-                  onClick={() => setDeathAction('restart')}
-                  className={`w-full text-left p-3.5 rounded-2xl transition-all border-3 font-mono ${
-                    deathAction === 'restart' 
-                      ? 'bg-cyan-900/30 border-cyan-400 shadow-lg shadow-cyan-500/30 border-[3px]' 
-                      : 'bg-black/30 border-cyan-700/40 hover:border-cyan-600/60 border-2'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="text-3xl mt-0.5">🔄</div>
-                    <div className="flex-1">
-                      <h3 className="text-cyan-400 font-extrabold text-sm tracking-wide">RESTART FROM LEVEL 1</h3>
-                      <p className="text-gray-300 text-xs mt-1">
-                        Start fresh • Instant restart{bonusKitType && ' • +1 BONUS KIT! 🎁'}
-                      </p>
-                    </div>
-                    {deathAction === 'restart' && (
-                      <div className="text-cyan-400 text-2xl font-bold">✓</div>
-                    )}
-                  </div>
-                </button>
-                
-                {/* Option 2: Quiz */}
-                <button
-                  onClick={() => setDeathAction('quiz')}
-                  className={`w-full text-left p-3.5 rounded-2xl transition-all font-mono ${
-                    deathAction === 'quiz' 
-                      ? 'bg-purple-900/30 border-purple-400 shadow-lg shadow-purple-500/30 border-[3px]' 
-                      : 'bg-black/30 border-purple-700/40 hover:border-purple-600/60 border-2'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="text-3xl mt-0.5">🧠</div>
-                    <div className="flex-1">
-                      <h3 className="text-purple-400 font-extrabold text-sm tracking-wide">ANSWER QUIZ TO CONTINUE</h3>
-                      <p className="text-gray-300 text-xs mt-1">
-                        <span className="text-green-400 font-bold">✓ Pass:</span> Continue Level {level} • 
-                        <span className="text-red-400 font-bold"> ✗ Fail:</span> Restart w/ 50% kits
-                      </p>
-                      <p className="text-yellow-300 text-[10px] mt-1 font-bold">⏱️ 30s quiz • Multiple choice</p>
-                    </div>
-                    {deathAction === 'quiz' && (
-                      <div className="text-purple-400 text-2xl font-bold">✓</div>
-                    )}
-                  </div>
-                </button>
-              </div>
-              
-              {/* Action Button - Large and Prominent */}
-              <div className="pt-1">
-                <button
-                  onClick={() => {
-                    if (deathAction === 'restart') {
-                      handleRestart()
-                    } else {
-                      if (lastThreatType) {
-                        const kit = getProtectionKitForThreat(lastThreatType)
-                        if (kit) trackQuizAttempt(kit.id)
-                      }
-                      setShowQuiz(true)
-                    }
-                  }}
-                  className={`w-full font-black py-4 px-6 rounded-2xl transition-all transform hover:scale-[1.02] text-base md:text-lg shadow-xl font-mono tracking-widest ${
-                    deathAction === 'restart'
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white shadow-cyan-500/40'
-                      : 'bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white shadow-purple-500/40'
-                  }`}
-                >
-                  {deathAction === 'restart' ? 'RESTART' : 'ANSWER QUIZ'}
-                </button>
+                )}
               </div>
             </div>
           </div>
@@ -3195,80 +3346,80 @@ powerups = powerups.filter(kit => {
       {ui.state.showLearnMore && lastThreatType && (() => {
         const protectionKit = getProtectionKitForThreat(lastThreatType)
         return protectionKit ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/95 z-30 overflow-y-auto p-4">
-            <div className="bg-gradient-to-br from-gray-900 to-blue-900 border-4 border-purple-500 rounded-2xl p-8 max-w-4xl w-full mx-auto my-auto max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-purple-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-purple-500">
-              {/* Header */}
-              <div className="text-center mb-6 border-b border-purple-500 pb-4">
-                <h2 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-2">
-                  {protectionKit.emoji} {protectionKit.name}
-                </h2>
-                <p className="text-gray-300 text-lg italic">{protectionKit.description}</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30 overflow-y-auto p-4">
+            <div className="bg-[#0b1020]/65 border-2 border-cyan-400/40 rounded-2xl p-5 max-w-2xl w-full mx-auto my-auto max-h-[90vh] overflow-y-auto relative [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-500 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-cyan-400 shadow-[0_0_30px_rgba(0,200,255,0.2)]">
+              <div className="flex items-center justify-between border-b border-cyan-500/30 pb-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">💡</span>
+                  <h2 className="text-cyan-200 text-lg md:text-xl font-bold font-mono tracking-wide">WHY DID I DIE?</h2>
+                </div>
+                <button
+                  onClick={() => {
+                    const protectionKit = getProtectionKitForThreat(lastThreatType)
+                    if (protectionKit) {
+                      setBonusKitType(protectionKit.id)
+                    }
+                    ui.actions.toggleLearnMore()
+                  }}
+                  className="h-8 w-8 flex items-center justify-center rounded-md border border-cyan-400/40 text-cyan-200 hover:text-white hover:border-cyan-300 transition-colors"
+                  aria-label="Close details"
+                >
+                  ✕
+                </button>
               </div>
-              
-              {/* How It Works */}
-              <div className="mb-6 bg-blue-950/50 border border-blue-500 rounded-lg p-5">
-                <h3 className="text-2xl font-bold text-cyan-400 mb-3">🔧 How It Works</h3>
-                <p className="text-white text-base leading-relaxed">{protectionKit.howItWorks}</p>
+
+              <div className="space-y-3 text-sm font-mono">
+                <div className="border-b border-cyan-500/20 pb-2">
+                  <p className="text-red-300 flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span className="uppercase tracking-wide">Cause</span>
+                  </p>
+                  <p className="text-yellow-200 mt-1">{getThreatName(lastThreatType)}</p>
+                </div>
+
+                <div className="border-b border-cyan-500/20 pb-2">
+                  <p className="text-cyan-300 flex items-center gap-2">
+                    <span>🛡️</span>
+                    <span className="uppercase tracking-wide">Missing protection</span>
+                  </p>
+                  <p className="text-cyan-100 mt-1">{protectionKit.name}</p>
+                </div>
+
+                <div className="border-b border-cyan-500/20 pb-2">
+                  <p className="text-gray-300 uppercase tracking-wide">Summary</p>
+                  <p className="text-gray-200 mt-1">{protectionKit.whyItMatters}</p>
+                  <button
+                    onClick={() => {
+                      const kit = getProtectionKitForThreat(lastThreatType)
+                      if (kit) trackDeepDiveViewed(kit.id)
+                    }}
+                    className="text-cyan-300 mt-2 hover:text-cyan-200 transition-colors"
+                  >
+                    More details →
+                  </button>
+                </div>
+
+                <div className="border-b border-cyan-500/20 pb-2">
+                  <p className="text-gray-300 uppercase tracking-wide">What happened</p>
+                  <p className="text-gray-200 mt-1">{protectionKit.whatItIs}</p>
+                  <p className="text-gray-200 mt-2">{protectionKit.howItWorks}</p>
+                </div>
+
+                <div className="border-b border-cyan-500/20 pb-2">
+                  <p className="text-gray-300 uppercase tracking-wide">Real-world example</p>
+                  <p className="text-gray-200 mt-1">{protectionKit.realWorldExample.title}</p>
+                  <p className="text-gray-200 mt-1">{protectionKit.realWorldExample.description}</p>
+                </div>
+
+                <div>
+                  <p className="text-gray-300 uppercase tracking-wide">How this is prevented</p>
+                  <ul className="text-gray-200 mt-1 space-y-1 list-disc list-inside">
+                    {protectionKit.learningPoints.slice(0, 3).map((point, idx) => (
+                      <li key={idx}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              
-              {/* Real World Example */}
-              <div className="mb-6 bg-red-950/50 border border-red-500 rounded-lg p-5">
-                <h3 className="text-2xl font-bold text-red-400 mb-3">📰 Real World Breach</h3>
-                <p className="text-yellow-300 text-lg font-bold mb-2">{protectionKit.realWorldExample.title}</p>
-                <p className="text-white text-base leading-relaxed mb-3">{protectionKit.realWorldExample.description}</p>
-                <p className="text-red-300 text-base leading-relaxed">
-                  <span className="font-bold">Impact:</span> {protectionKit.realWorldExample.impact}
-                </p>
-              </div>
-              
-              {/* Step-by-Step Setup */}
-              <div className="mb-6 bg-green-950/50 border border-green-500 rounded-lg p-5">
-                <h3 className="text-2xl font-bold text-green-400 mb-4">📋 Step-by-Step Setup</h3>
-                {protectionKit.stepByStepSetup.map((setup, idx) => (
-                  <div key={idx} className="mb-4 last:mb-0">
-                    <p className="text-cyan-300 font-bold text-lg mb-2">{setup.platform}:</p>
-                    <ol className="list-decimal list-inside text-white text-sm space-y-1 ml-2">
-                      {setup.steps.map((step, stepIdx) => (
-                        <li key={stepIdx} className="leading-relaxed">{step}</li>
-                      ))}
-                    </ol>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Key Learning Points */}
-              <div className="mb-6 bg-yellow-950/50 border border-yellow-500 rounded-lg p-5">
-                <h3 className="text-2xl font-bold text-yellow-400 mb-3">💡 Key Takeaways</h3>
-                <ul className="text-white text-base space-y-2">
-                  {protectionKit.learningPoints.map((point, idx) => (
-                    <li key={idx} className="flex items-start">
-                      <span className="text-yellow-400 mr-2">✓</span>
-                      <span>{point}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              {/* Reward Banner */}
-              <div className="bg-gradient-to-r from-purple-600 to-pink-600 border-2 border-yellow-400 rounded-lg p-4 mb-6 text-center animate-pulse">
-                <p className="text-yellow-300 text-2xl font-bold">🎁 REWARD UNLOCKED!</p>
-                <p className="text-white text-lg">You'll start your next game with +1 {protectionKit.name}!</p>
-              </div>
-              
-              {/* Close Button */}
-              <button
-                onClick={() => {
-                  // Award bonus kit matching the protection kit they learned about
-                  const protectionKit = getProtectionKitForThreat(lastThreatType)
-                  if (protectionKit) {
-                    setBonusKitType(protectionKit.id)
-                  }
-                  ui.actions.toggleLearnMore()
-                }}
-                className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white text-2xl font-bold py-4 px-8 rounded-lg transition-all transform hover:scale-105"
-              >
-                ✓ GOT IT! CLOSE & RESTART
-              </button>
             </div>
           </div>
         ) : null

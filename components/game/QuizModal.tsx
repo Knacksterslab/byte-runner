@@ -96,12 +96,12 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
   }
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] z-30 p-4">
+    <div className="absolute inset-0 flex items-center justify-center bg-transparent z-30 p-4">
       <div 
-        className="bg-[#0f1629] rounded-3xl p-6 md:p-8 max-w-2xl w-full mx-auto relative"
+        className="bg-[#0b1020]/45 rounded-3xl p-6 md:p-8 max-w-2xl w-full mx-auto relative backdrop-blur-[2px] shadow-[0_0_30px_rgba(64,200,255,0.2)]"
         style={{
-          border: '4px solid',
-          borderImage: 'linear-gradient(135deg, #00ffff, #0088ff, #aa44ff, #ff00ff) 1'
+          border: '2px solid',
+          borderColor: 'rgba(120, 200, 255, 0.5)'
         }}
       >
         {!showResult ? (
@@ -109,65 +109,67 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
             {/* Header with Timer */}
             <div className="mb-5">
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xl md:text-2xl font-black text-cyan-400 font-mono tracking-widest">{getQuizHeader(kitType)}</h2>
-                <div className={`text-3xl md:text-4xl font-bold font-mono ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-green-400'}`}>
+                <h2 className="text-xl md:text-2xl font-black text-cyan-300 font-mono tracking-widest flex items-center gap-2">
+                  ⚡ {getQuizHeader(kitType)}
+                </h2>
+                <div className={`text-3xl md:text-4xl font-bold font-mono ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-cyan-200'}`}>
                   {timeLeft}s
                 </div>
               </div>
               
               {/* Progress bar */}
-              <div className="w-full bg-gray-800/50 rounded-full h-2.5">
+              <div className="w-full bg-white/10 rounded-full h-2.5">
                 <div 
-                  className={`h-2.5 rounded-full transition-all ${timeLeft <= 10 ? 'bg-red-500' : 'bg-green-500'}`}
+                  className={`h-2.5 rounded-full transition-all ${timeLeft <= 10 ? 'bg-red-400' : 'bg-green-400'}`}
                   style={{ width: `${(timeLeft / 30) * 100}%` }}
                 />
               </div>
+              <p className="text-xs text-gray-300/90 font-mono mt-2">
+                Correct answers keep gear & level
+              </p>
             </div>
 
             {/* Question */}
-            <div className="bg-black/30 border-2 border-cyan-500/40 rounded-2xl p-5 md:p-6 mb-5">
-              <p className="text-white text-base md:text-lg font-mono leading-relaxed">
+            <div className="bg-black/30 border border-cyan-400/40 rounded-2xl p-4 md:p-5 mb-3">
+              <p className="text-white text-base md:text-lg font-mono leading-relaxed text-center">
                 {question.question}
               </p>
             </div>
 
-            {/* Options - 2x2 Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-5">
+            <p className="text-center text-gray-400 text-sm font-mono mb-4">
+              30s Quiz • Choose the correct answer
+            </p>
+
+            {/* Options - Single Column */}
+            <div className="space-y-3 mb-5">
               {question.options.map((option, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedAnswer(index)}
-                  className={`text-left p-4 md:p-5 rounded-2xl font-mono text-sm md:text-base transition-all border-2 relative ${
+                  className={`text-left p-4 md:p-5 rounded-2xl font-mono text-sm md:text-base transition-all border relative ${
                     selectedAnswer === index
-                      ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                      : 'bg-black/30 border-gray-700/50 text-gray-300 hover:bg-gray-800/50 hover:border-cyan-600/40'
+                      ? 'bg-cyan-400/20 border-cyan-300 text-white shadow-[0_0_20px_rgba(80,200,255,0.45)]'
+                      : 'bg-black/20 border-white/15 text-gray-300 hover:bg-white/5 hover:border-cyan-400/40'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <span className={`font-extrabold mr-2 ${selectedAnswer === index ? 'text-cyan-400' : 'text-gray-500'}`}>
-                        {String.fromCharCode(65 + index)}.
-                      </span>
-                      <span className="break-words">{option}</span>
-                    </div>
-                    {selectedAnswer === index && (
-                      <span className="text-green-400 text-xl font-bold flex-shrink-0">✓</span>
-                    )}
-                  </div>
+                  <span className={`font-extrabold mr-2 ${selectedAnswer === index ? 'text-cyan-300' : 'text-gray-500'}`}>
+                    {String.fromCharCode(65 + index)}.
+                  </span>
+                  <span className="break-words">{option}</span>
                 </button>
               ))}
             </div>
 
             {/* Bottom Info */}
-            <p className="text-center text-gray-400 text-sm font-mono mb-6">
-              30s • Multiple choice
+            <p className="text-center text-gray-300/90 text-sm font-mono mb-6">
+              + Correct answers keep your level & all kits
             </p>
 
             {/* Submit Button (Hidden, auto-submit on selection in mockup style) */}
             {selectedAnswer !== null && (
               <button
                 onClick={handleSubmit}
-                className="w-full text-lg md:text-xl font-black py-4 px-8 rounded-2xl transition-all font-mono bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white transform hover:scale-[1.02] tracking-wide shadow-xl"
+                className="w-full text-lg md:text-xl font-black py-4 px-8 rounded-2xl transition-all font-mono bg-gradient-to-r from-green-500/90 to-cyan-500/90 hover:from-green-400 hover:to-cyan-400 text-white transform hover:scale-[1.02] tracking-wide shadow-[0_0_24px_rgba(80,200,255,0.4)]"
               >
                 ✓ SUBMIT ANSWER
               </button>
