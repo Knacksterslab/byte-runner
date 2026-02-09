@@ -4,7 +4,7 @@ import "./globals.css";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Byte Runner - Learn Cybersecurity",
+  title: "Byte Runner - A Cybersecurity Survival Game for Everyone?",
   description: "Endless runner game that teaches real security tools. Die to ransomware, learn about backups. Free to play.",
   viewport: {
     width: 'device-width',
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: 'Byte Runner - Learn Cybersecurity by Playing',
+    title: 'Byte Runner - A Cybersecurity Survival Game for Everyone?',
     description: 'Endless runner game that teaches real security tools. Die to ransomware, learn about backups. Free to play.',
     url: 'https://byte-runner.vercel.app',
     siteName: 'Byte Runner',
@@ -29,14 +29,14 @@ export const metadata: Metadata = {
       url: 'https://byte-runner.vercel.app/og-image.png',
       width: 1200,
       height: 630,
-      alt: 'Byte Runner - Learn Cybersecurity by Playing'
+      alt: 'Byte Runner - A Cybersecurity Survival Game for Everyone?'
     }],
     type: 'website',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Byte Runner - Learn Cybersecurity by Playing',
+    title: 'Byte Runner - A Cybersecurity Survival Game for Everyone?',
     description: 'Endless runner game that teaches real security tools. Die to ransomware, learn about backups.',
     images: ['https://byte-runner.vercel.app/og-image.png'],
   },
