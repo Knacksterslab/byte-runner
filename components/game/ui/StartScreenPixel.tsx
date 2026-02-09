@@ -173,6 +173,7 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
           background: rgba(4, 10, 16, 0.72);
           box-shadow: 0 0 36px rgba(0, 220, 255, 0.55), inset 0 0 26px rgba(0, 220, 255, 0.18);
           backdrop-filter: blur(6px);
+          touch-action: pan-y;
         }
 
         .panel-outline {
@@ -380,6 +381,12 @@ import CyberspaceBackground from '@/components/CyberspaceBackground'
         }
 
         @media (pointer: coarse) {
+          .screen-scroll {
+            overflow-y: auto;
+          }
+        }
+
+        @media (hover: none) {
           .screen-scroll {
             overflow-y: auto;
           }
