@@ -38,16 +38,16 @@ export function StartScreenNew({
   }, [ensureLeaderboardSeeded])
 
   return (
-    <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#05070d] text-white">
+    <div className="start-screen-container relative min-h-[100dvh] w-full overflow-y-auto overflow-x-hidden bg-[#05070d] text-white">
       {/* Background with built-in grid */}
-      <div className="absolute inset-0 nebula-background" />
-      <div className="absolute inset-0 vignette" />
+      <div className="fixed inset-0 nebula-background" />
+      <div className="fixed inset-0 vignette" />
 
       {/* Sign in button */}
       {onSignIn && (
         <button
           onClick={onSignIn}
-          className="absolute left-4 sm:left-6 top-4 sm:top-6 z-20 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 py-1.5 sm:py-1 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation"
+          className="fixed left-4 sm:left-6 top-4 sm:top-6 z-20 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 py-1.5 sm:py-1 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation"
         >
           {signInLabel}
         </button>
@@ -56,14 +56,14 @@ export function StartScreenNew({
       {/* Tutorial button */}
       <button
         onClick={onShowTutorial}
-        className="absolute right-4 sm:right-6 top-4 sm:top-6 z-20 flex h-[48px] w-[48px] sm:h-[54px] sm:w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24] text-xl sm:text-2xl font-bold text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105 touch-manipulation"
+        className="fixed right-4 sm:right-6 top-4 sm:top-6 z-20 flex h-[48px] w-[48px] sm:h-[54px] sm:w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24] text-xl sm:text-2xl font-bold text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105 touch-manipulation"
       >
         <span className="question-frame" />
         <span className="relative z-10 text-cyan-100 drop-shadow-[0_0_8px_rgba(0,255,255,0.9)]">?</span>
       </button>
 
       {/* Footer links */}
-      <div className="absolute bottom-4 sm:bottom-5 right-4 sm:right-6 z-20 flex gap-2 text-xs text-cyan-100/70">
+      <div className="fixed bottom-4 sm:bottom-5 right-4 sm:right-6 z-20 flex gap-2 text-xs text-cyan-100/70">
         <a href="/privacy" className="hover:text-cyan-200 transition-colors">Privacy</a>
         <span className="text-cyan-100/40">•</span>
         <a href="/terms" className="hover:text-cyan-200 transition-colors">Terms</a>
@@ -72,7 +72,7 @@ export function StartScreenNew({
       </div>
 
       {/* Main content */}
-      <div className="screen-safe screen-stack screen-scroll relative z-10 mx-auto flex w-full max-w-[980px] flex-col items-center px-4 sm:px-6 pb-6 pt-3 text-center">
+      <div className="screen-safe relative z-10 mx-auto flex w-full max-w-[980px] flex-col items-center px-4 sm:px-6 pb-6 pt-3 text-center">
         {/* Logo */}
         <img
           src="/logo.png"
@@ -285,6 +285,18 @@ export function StartScreenNew({
 
       {/* CSS Styles from original */}
       <style jsx>{`
+        .start-screen-container {
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+
+        .start-screen-container::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+        }
+
         .nebula-background {
           background-image: url('/space-background-final.png');
           background-size: cover;
@@ -534,22 +546,8 @@ export function StartScreenNew({
         }
 
         .screen-safe {
-          padding-bottom: calc(20px + env(safe-area-inset-bottom));
-        }
-
-        .screen-scroll {
-          height: 100dvh;
-          overflow-y: auto;
-          overscroll-behavior: contain;
-          -webkit-overflow-scrolling: touch;
           padding-top: max(12px, env(safe-area-inset-top));
-          touch-action: pan-y;
-          scrollbar-width: none;
-        }
-
-        .screen-scroll::-webkit-scrollbar {
-          width: 0;
-          height: 0;
+          padding-bottom: calc(20px + env(safe-area-inset-bottom));
         }
 
         .leaderboard-link {
