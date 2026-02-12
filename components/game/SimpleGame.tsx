@@ -73,6 +73,7 @@ export default function SimpleGame() {
   const [pendingSave, setPendingSave] = useState(false)
   const [activeContests, setActiveContests] = useState<Contest[]>([])
   const authLabelRef = useRef('Guest • Sign in')
+  const showQuizOverlayRef = useRef(false)
   
   // Track all timeouts for cleanup to prevent memory leaks
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -124,6 +125,10 @@ export default function SimpleGame() {
       ? `${currentUser?.username || 'Player'} • Sign out`
       : 'Guest • Sign in'
   }, [authStatus, currentUser?.username])
+
+  useEffect(() => {
+    showQuizOverlayRef.current = showQuiz
+  }, [showQuiz])
 
   // Load active contests
   useEffect(() => {
@@ -2238,8 +2243,11 @@ const passwordWidth = ctx.measureText(passwordText).width
       
       // Draw kit inventory and progress (RESPONSIVE for mobile!)
       const isMobile = canvas.width < 768
+      const isReactQuizOpen = showQuizOverlayRef.current
+      const isInGameQuizActive = quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0
+      const shouldHideHud = isReactQuizOpen || isInGameQuizActive
       
-      if (isMobile) {
+      if (isMobile && !shouldHideHud) {
         // MOBILE: Collapsible HUD (top-right)
         const kitX = canvas.width - 110
         const kitY = 80
@@ -2358,7 +2366,7 @@ const passwordWidth = ctx.measureText(passwordText).width
           ctx.fillText('TAP ▲', kitX + 28, zoneY)
         }
         
-      } else {
+      } else if (!shouldHideHud) {
         // DESKTOP: Collapsible top-left HUD
         const hudX = 20
         const hudY = 80
@@ -2513,8 +2521,7 @@ const passwordWidth = ctx.measureText(passwordText).width
       }
       
       // Draw Threats From Panel (top-right) - desktop only - HIDDEN DURING QUIZ
-      const isQuizActive = quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0
-      if (canvas.width >= 768 && obstacles.length > 0 && !isQuizActive) {
+      if (canvas.width >= 768 && obstacles.length > 0 && !shouldHideHud) {
         const activeThreats = obstacles.filter(o => o.active && o.sentBy)
         if (activeThreats.length > 0) {
           // Get the closest threat to player
@@ -3587,42 +3594,50 @@ powerups = powerups.filter(kit => {
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden">
       {renderAuthModal()}
-      {/* HUD - RESPONSIVE FOR MOBILE */}
-      <div className="absolute top-2 md:top-4 left-2 md:left-4 right-2 md:right-4 flex justify-between items-start text-white font-mono text-sm md:text-xl z-10 pointer-events-none">
-        <div className="space-y-1 md:space-y-2 pointer-events-auto">
-          {/* Mobile auth chip */}
-          <button
-            onClick={authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true)}
-            className="md:hidden bg-black/80 border border-cyan-600 rounded px-2 py-1 text-[10px] font-mono text-cyan-100 hover:text-cyan-50 transition-colors"
-            title={authStatus === 'authed' ? 'Sign out' : 'Sign in'}
-          >
-            {authStatus === 'authed'
-              ? `${currentUser?.username || 'Player'} • Sign out`
-              : 'Guest • Sign in'}
-          </button>
-          {/* Mobile only - level and score shown in canvas HUD on desktop */}
-          <div className="md:hidden bg-black/80 border border-cyan-600 rounded px-2 py-1">
-            <span className="text-[10px]">L:</span> <span className="text-cyan-400 font-bold text-sm">{level}</span>
+      {!showQuiz && (
+        <>
+          {/* HUD - RESPONSIVE FOR MOBILE */}
+          <div className="absolute top-2 md:top-4 left-2 md:left-4 right-2 md:right-4 flex justify-between items-start text-white font-mono text-sm md:text-xl z-10 pointer-events-none">
+            <div className="space-y-1 md:space-y-2 pointer-events-auto">
+              {/* Mobile auth chip */}
+              <button
+                onClick={authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true)}
+                className="md:hidden bg-black/80 border border-cyan-600 rounded px-2 py-1 text-[10px] font-mono text-cyan-100 hover:text-cyan-50 transition-colors"
+                title={authStatus === 'authed' ? 'Sign out' : 'Sign in'}
+              >
+                {authStatus === 'authed'
+                  ? `${currentUser?.username || 'Player'} • Sign out`
+                  : 'Guest • Sign in'}
+              </button>
+              {/* Mobile only - level and score shown in canvas HUD on desktop */}
+              <div className="md:hidden bg-black/80 border border-cyan-600 rounded px-2 py-1">
+                <span className="text-[10px]">L:</span> <span className="text-cyan-400 font-bold text-sm">{level}</span>
+              </div>
+              <div className="md:hidden bg-black/80 border border-yellow-600 rounded px-2 py-1">
+                <span className="text-[10px]">S:</span> <span className="text-yellow-400 font-bold text-sm">{score}</span>
+              </div>
+            </div>
           </div>
-          <div className="md:hidden bg-black/80 border border-yellow-600 rounded px-2 py-1">
-            <span className="text-[10px]">S:</span> <span className="text-yellow-400 font-bold text-sm">{score}</span>
-          </div>
+        </>
+      )}
+
+      {!showQuiz && (
+        <div className="hidden md:block absolute bottom-4 right-4 z-10 pointer-events-none">
+          <LeaderboardPanel title="Top Runs" maxEntries={5} entries={leaderboardEntries} loading={leaderboardLoading} />
         </div>
-      </div>
+      )}
 
-      <div className="hidden md:block absolute bottom-4 right-4 z-10 pointer-events-none">
-        <LeaderboardPanel title="Top Runs" maxEntries={5} entries={leaderboardEntries} loading={leaderboardLoading} />
-      </div>
+      {!showQuiz && (
+        <button
+          onClick={() => setShowLeaderboardMobile(true)}
+          className="md:hidden absolute bottom-4 right-4 bg-black/80 border border-cyan-700 text-cyan-200 text-xs font-mono px-3 py-2 rounded-full shadow-lg z-10 pointer-events-auto"
+          title="Show leaderboard"
+        >
+          🏆 Top Runs
+        </button>
+      )}
 
-      <button
-        onClick={() => setShowLeaderboardMobile(true)}
-        className="md:hidden absolute bottom-4 right-4 bg-black/80 border border-cyan-700 text-cyan-200 text-xs font-mono px-3 py-2 rounded-full shadow-lg z-10 pointer-events-auto"
-        title="Show leaderboard"
-      >
-        🏆 Top Runs
-      </button>
-
-      {showLeaderboardMobile && (
+      {!showQuiz && showLeaderboardMobile && (
         <div
           className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-4"
           onClick={() => setShowLeaderboardMobile(false)}
@@ -3653,268 +3668,131 @@ powerups = powerups.filter(kit => {
       />
 
       {/* Feedback Button - During Gameplay */}
-      <button
-        onClick={() => {
-          window.open('mailto:connect@knacksters.co?subject=Byte Runner Feedback&body=Hi! Here\'s my feedback about Byte Runner:%0D%0A%0D%0A', '_blank')
-        }}
-        className="absolute bottom-4 left-3 md:left-4 bg-cyan-500/90 hover:bg-cyan-400 text-white text-xs md:text-sm font-semibold py-2 px-3 md:px-4 rounded-full transition-all shadow-[0_0_16px_rgba(80,200,255,0.6)] hover:scale-105 flex items-center gap-2 z-10 pointer-events-auto backdrop-blur-sm border border-cyan-200/40"
-        aria-label="Send feedback"
-        title="Send feedback"
-      >
-        <span className="text-base">📝</span>
-        <span className="hidden sm:inline">Feedback</span>
-      </button>
+      {!showQuiz && (
+        <button
+          onClick={() => {
+            window.open('mailto:connect@knacksters.co?subject=Byte Runner Feedback&body=Hi! Here\'s my feedback about Byte Runner:%0D%0A%0D%0A', '_blank')
+          }}
+          className="absolute bottom-4 left-3 md:left-4 bg-cyan-500/90 hover:bg-cyan-400 text-white text-xs md:text-sm font-semibold py-2 px-3 md:px-4 rounded-full transition-all shadow-[0_0_16px_rgba(80,200,255,0.6)] hover:scale-105 flex items-center gap-2 z-10 pointer-events-auto backdrop-blur-sm border border-cyan-200/40"
+          aria-label="Send feedback"
+          title="Send feedback"
+        >
+          <span className="text-base">📝</span>
+          <span className="hidden sm:inline">Feedback</span>
+        </button>
+      )}
       
       {/* Game Over Overlay */}
       {isGameOver && !showQuiz && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px] z-20 overflow-y-auto p-2 md:p-4 pb-[calc(12px+env(safe-area-inset-bottom))]">
-          <div 
-            className="text-center space-y-3 bg-[#0b1020]/55 rounded-3xl p-3 sm:p-4 md:p-5 max-w-xl w-full mx-auto my-auto max-h-[90svh] overflow-y-auto relative [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-red-500"
-            style={{
-              border: '4px solid',
-              borderImage: 'linear-gradient(135deg, #ff4444, #ff6666, #00ffff, #0088ff) 1'
-            }}
-          >
-            {/* Header - ELIMINATED with side dashes */}
-            <div className="flex items-center justify-center gap-3">
-              <span className="h-px w-12 bg-red-500/70 shadow-[0_0_14px_rgba(255,80,80,0.8)]" />
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-red-500 font-mono tracking-[0.28em] drop-shadow-[0_0_20px_rgba(255,68,68,0.8)]">ELIMINATED</h2>
-              <span className="h-px w-12 bg-red-500/70 shadow-[0_0_14px_rgba(255,80,80,0.8)]" />
-            </div>
-            
-            {/* Killer Info - Simplified */}
-            {lastAttacker && lastThreatType && (
-              <div className="border-2 border-red-500/60 bg-black/30 backdrop-blur-sm px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl shadow-[0_0_14px_rgba(255,80,80,0.25)]">
-                <p className="text-white text-xs sm:text-sm md:text-base font-mono">
-                  <span className="text-lg mr-2">{lastAttacker.emoji}</span>
-                  Killed by <span className="font-bold text-red-400">{lastAttacker.name}</span>
-                  <span className={`ml-1 text-xs ${
-                    lastAttacker.level >= 100 ? 'text-red-400' : 
-                    lastAttacker.level >= 71 ? 'text-yellow-400' : 
-                    'text-cyan-400'
-                  }`}>
-                    (Lv{lastAttacker.level} {lastAttacker.level >= 71 ? 'HIGH' : 'MID'})
-                  </span>
-                </p>
-                <p className="text-yellow-300/80 text-[11px] sm:text-xs md:text-sm mt-1.5 font-mono">
-                  Cause: {getThreatName(lastThreatType)}
-                </p>
-              </div>
-            )}
-            
-            {/* Stats - Single Line Mockup Style */}
-            <div className="text-white text-xs sm:text-sm md:text-base font-mono tracking-wide">
-              <span className="text-gray-400">Level:</span> <span className="text-cyan-400 font-extrabold">{level}</span> 
-              <span className="text-gray-500 mx-2">•</span> 
-              <span className="text-gray-400">Score:</span> <span className="text-yellow-400 font-extrabold">{score}</span>
-            </div>
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/10 p-3 md:p-4 pb-[calc(12px+env(safe-area-inset-bottom))]">
+          <div className="absolute inset-0 pointer-events-none">
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: "url('/space-background-final.png')",
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                opacity: 0.84,
+                filter: 'saturate(0.72) brightness(0.9)',
+              }}
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(0,0,0,0.08)_0%,rgba(2,4,10,0.42)_72%)]" />
+          </div>
 
-            {/* Leaderboard save prompt */}
-            <div className="border border-cyan-500/35 bg-black/40 rounded-2xl px-3 sm:px-4 py-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-cyan-300 text-[11px] sm:text-xs font-mono tracking-wide">LEADERBOARD</p>
-                {authStatus === 'authed' && currentUser?.username && (
-                  <span className="text-[10px] sm:text-[11px] text-cyan-200/80 font-mono">
-                    Signed in as {currentUser.username}
+          <div className="relative z-10 w-full max-w-[680px] text-center">
+            <div className="mb-4 rounded-2xl border border-red-500/55 bg-[#1a0a12]/45 px-4 py-3 shadow-[0_0_20px_rgba(255,80,80,0.2)]">
+              <p className="text-white text-[1.05rem] sm:text-xl font-mono">
+                <span className="mr-2 text-2xl">{lastAttacker?.emoji ?? '🔥'}</span>
+                Killed by <span className="font-bold text-red-400">{lastAttacker?.name ?? 'Unknown Threat'}</span>{' '}
+                {lastAttacker && (
+                  <span className={`${lastAttacker.level >= 100 ? 'text-red-400' : lastAttacker.level >= 71 ? 'text-yellow-400' : 'text-cyan-400'}`}>
+                    (Lv{lastAttacker.level}[{lastAttacker.level >= 71 ? 'MID' : 'LOW'}])
                   </span>
                 )}
-              </div>
-              {saveStatus === 'saved' ? (
-                <a
-                  href="/leaderboard"
-                  className="w-full bg-gradient-to-r from-green-400/90 to-cyan-500/90 hover:from-green-400 hover:to-cyan-500 text-black font-black py-2 px-4 rounded-full transition-all text-[11px] sm:text-xs font-mono tracking-widest shadow-[0_0_18px_rgba(0,255,200,0.4)] flex items-center justify-center gap-2"
-                >
-                  ✓ VIEW LEADERBOARD
-                </a>
-              ) : saveStatus === 'saving' || (authStatus === 'authed' && currentUser?.username && saveStatus === 'idle') ? (
-                <div className="w-full bg-gradient-to-r from-cyan-400/90 to-blue-500/90 text-black font-black py-2 px-4 rounded-full text-[11px] sm:text-xs font-mono tracking-widest shadow-[0_0_18px_rgba(0,200,255,0.4)] flex items-center justify-center gap-2">
-                  <div className="inline-block animate-spin rounded-full h-3 w-3 border-2 border-black border-t-transparent"></div>
-                  AUTO-SAVING...
-                </div>
-              ) : (
-                <button
-                  onClick={handleSaveToLeaderboard}
-                  className="w-full bg-gradient-to-r from-yellow-400/90 to-orange-500/90 hover:from-yellow-400 hover:to-orange-500 text-black font-black py-2 px-4 rounded-full transition-all text-[11px] sm:text-xs font-mono tracking-widest shadow-[0_0_18px_rgba(255,200,80,0.4)]"
-                >
-                  {authStatus === 'authed' ? 'SAVE TO LEADERBOARD' : 'SIGN IN TO SAVE SCORE'}
-                </button>
-              )}
-              {(saveStatus === 'error' || (saveStatus === 'saved' && saveMessage)) && saveMessage && (
-                <p className={`text-[10px] sm:text-[11px] font-mono ${saveStatus === 'error' ? 'text-red-300' : 'text-green-300'}`}>
-                  {saveMessage}
-                </p>
-              )}
-              {authStatus !== 'authed' && (
-                <p className="text-[10px] sm:text-[11px] font-mono text-gray-300">
-                  Play without registering anytime — only saving needs an account.
-                </p>
-              )}
+              </p>
+              <p className="mt-1 text-yellow-200 text-sm sm:text-base font-mono">
+                Cause: {lastThreatType ? getThreatName(lastThreatType) : 'Unknown Cause'}
+              </p>
             </div>
 
-            {/* Share section */}
-            <div className="border border-purple-500/35 bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-2xl px-3 sm:px-4 py-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-purple-300 text-[11px] sm:text-xs font-mono tracking-wide">SHARE YOUR RUN</p>
-              </div>
+            <div className="mb-5 text-white font-mono text-2xl sm:text-3xl tracking-wide">
+              <span className="text-gray-300">Level:</span> <span className="font-extrabold text-cyan-300">{level}</span>
+              <span className="mx-3 text-gray-500">•</span>
+              <span className="text-gray-300">Score:</span> <span className="font-extrabold text-yellow-300">{score}</span>
+            </div>
+
+            <div className="rounded-[24px] border-2 border-cyan-300/80 bg-[#050c1b]/82 px-3 py-4 sm:px-5 sm:py-5 shadow-[0_0_30px_rgba(34,211,238,0.35)]">
+              <h3 className="mb-4 flex items-center justify-center gap-3 text-cyan-100 text-[1.8rem] sm:text-[2.2rem] font-black font-mono tracking-[0.16em]">
+                <span className="h-px w-10 sm:w-14 bg-cyan-300/65" />
+                <span>⚡ CONTINUE RUN</span>
+                <span className="h-px w-10 sm:w-14 bg-cyan-300/65" />
+              </h3>
+
+              <button
+                onClick={() => {
+                  if (lastThreatType) {
+                    const kit = getProtectionKitForThreat(lastThreatType)
+                    if (kit) trackQuizAttempt(kit.id)
+                  }
+                  setShowQuiz(true)
+                }}
+                className="w-full rounded-full border border-cyan-100/55 bg-gradient-to-r from-cyan-400 via-sky-500 to-indigo-600 px-4 py-2.5 sm:py-3 text-[1.25rem] sm:text-[1.5rem] font-black font-mono tracking-[0.12em] text-white shadow-[0_0_26px_rgba(80,200,255,0.55)]"
+              >
+                CONTINUE RUN
+              </button>
+
+              <p className="mt-3 text-gray-200 text-[1rem] sm:text-[1.2rem] font-mono">
+                Take 30s quiz to keep level & kits
+              </p>
+
+              <div className="my-4 h-px bg-cyan-300/20" />
+
+              <button
+                onClick={handleRestart}
+                className="w-full rounded-full border border-cyan-300/45 bg-[#07101f]/78 px-4 py-2.5 sm:py-3 text-[1.15rem] sm:text-[1.35rem] font-semibold font-mono tracking-[0.05em] text-cyan-100 hover:border-cyan-300/75 transition-colors"
+              >
+                Restart from scratch
+              </button>
+            </div>
+
+            <div className="mt-5 text-white font-mono text-[1.2rem] sm:text-[1.4rem]">
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="text-white hover:text-cyan-200 transition-colors"
+              >
+                Sign in to save score
+              </button>
+              <span className="mx-3 text-gray-400">•</span>
               <button
                 onClick={async () => {
-                  const tweetText = `I just scored ${score} points in Byte Runner! 🎮🔐\n\nAn epic cybersecurity game where you learn real defense tools while dodging cyber threats.\n\nCan you beat my score?\n\nPlay now: ${window.location.origin}`
+                  const tweetText = `I just scored ${score} points in Byte Runner! 🎮🔐\n\nCan you beat my score?\n\nPlay now: ${window.location.origin}`
                   const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
                   window.open(tweetUrl, '_blank', 'width=550,height=420')
-                  
-                  // Track share event and check for badge rewards
                   try {
                     await recordShare('twitter', score)
                     trackSocialShare('twitter', score)
-                    
-                    // Check for new badges after sharing
-                    const { checkBadges } = await import('@/lib/api/backend')
-                    const result = await checkBadges()
-                    if (result.awarded.length > 0) {
-                      // Show badge notification
-                      console.log('New badges earned:', result.awarded)
-                      // TODO: Show in-game notification
-                    }
                   } catch (error) {
                     console.error('Failed to record share:', error)
                   }
                 }}
-                className="w-full bg-gradient-to-r from-blue-500/90 to-purple-600/90 hover:from-blue-500 hover:to-purple-600 text-white font-bold py-2 px-4 rounded-full transition-all text-[11px] sm:text-xs font-mono tracking-wide shadow-[0_0_18px_rgba(138,43,226,0.4)] flex items-center justify-center gap-2"
+                className="font-semibold hover:text-cyan-200 transition-colors"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-                Share on X (Twitter)
+                Share run
               </button>
-              <p className="text-[10px] text-gray-400 font-mono text-center mt-2">
-                Share your score and challenge your friends!
-              </p>
             </div>
 
-            {/* Active Contests Promotion */}
-            {activeContests.length > 0 && (
-              <div className="border-2 border-yellow-500/50 bg-gradient-to-br from-yellow-900/30 to-orange-900/30 rounded-2xl px-3 sm:px-4 py-3 backdrop-blur-sm shadow-[0_0_18px_rgba(255,200,80,0.3)]">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-yellow-300 text-[11px] sm:text-xs font-mono tracking-wide flex items-center gap-2">
-                    <span className="text-lg">🏆</span>
-                    ACTIVE CONTESTS
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  {activeContests.slice(0, 2).map((contest) => {
-                    const endDate = new Date(contest.end_date)
-                    const now = new Date()
-                    const hoursLeft = Math.max(0, Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60)))
-                    const topPrize = contest.prize_pool ? Object.values(contest.prize_pool)[0] : null
-                    
-                    return (
-                      <div key={contest.id} className="bg-black/40 rounded-lg p-2.5 sm:p-3 border border-yellow-600/30">
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white text-xs sm:text-sm font-bold truncate">{contest.name}</p>
-                            {topPrize && (
-                              <p className="text-yellow-300 text-[10px] sm:text-xs font-mono">
-                                Top Prize: {topPrize}
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="text-orange-300 text-[10px] sm:text-xs font-mono">
-                              {hoursLeft}h left
-                            </p>
-                          </div>
-                        </div>
-                        <a
-                          href={`/contests/${contest.id}`}
-                          className="block w-full bg-gradient-to-r from-yellow-600/80 to-orange-600/80 hover:from-yellow-500 hover:to-orange-500 text-white text-[10px] sm:text-xs font-bold py-1.5 rounded-lg transition-all text-center"
-                        >
-                          View Contest →
-                        </a>
-                      </div>
-                    )
-                  })}
-                  {activeContests.length > 2 && (
-                    <a
-                      href="/contests"
-                      className="block text-center text-yellow-300 hover:text-yellow-200 text-[10px] sm:text-xs font-mono transition-colors"
-                    >
-                      + {activeContests.length - 2} more contests
-                    </a>
-                  )}
-                </div>
-              </div>
+            {lastThreatType && (
+              <button
+                onClick={() => {
+                  const kit = getProtectionKitForThreat(lastThreatType)
+                  if (kit) trackDeepDiveViewed(kit.id)
+                  ui.actions.toggleLearnMore()
+                }}
+                className="mt-3 text-cyan-300 text-[1.2rem] sm:text-[1.35rem] font-mono hover:text-cyan-200 transition-colors"
+              >
+                More details →
+              </button>
             )}
-            
-            {/* Continue / Restart panel */}
-            <div className="bg-gradient-to-br from-[#1b1a3a]/55 to-[#1a2f4b]/55 border-2 border-cyan-500/45 rounded-2xl overflow-hidden backdrop-blur-sm shadow-[0_0_22px_rgba(64,200,255,0.2)]">
-              <div className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-left flex items-center justify-between">
-                <div className="flex items-center gap-2 flex-1">
-                  <span className="text-xl text-cyan-200">⚡</span>
-                  <div>
-                    <p className="text-cyan-300 text-[11px] sm:text-xs md:text-sm font-extrabold font-mono tracking-wide">
-                      CONTINUE (30s quiz)
-                    </p>
-                    <p className="text-gray-300/90 text-[11px] sm:text-xs mt-0.5 font-mono">
-                      Keep your level & kits
-                    </p>
-                  </div>
-                </div>
-                <span className="text-lg text-cyan-400">▲</span>
-              </div>
-
-              <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-3 border-t border-cyan-500/25">
-                <button
-                  onClick={() => {
-                    if (lastThreatType) {
-                      const kit = getProtectionKitForThreat(lastThreatType)
-                      if (kit) trackQuizAttempt(kit.id)
-                    }
-                    setShowQuiz(true)
-                  }}
-                  className="w-full bg-gradient-to-r from-cyan-400/90 to-blue-500/90 hover:from-cyan-400 hover:to-blue-500 text-white font-black py-2.5 px-4 rounded-full transition-all text-xs sm:text-sm font-mono tracking-widest shadow-[0_0_26px_rgba(80,200,255,0.6)] border border-cyan-200/40"
-                >
-                  CONTINUE (30s quiz)
-                </button>
-                <p className="text-center text-gray-300/90 text-[11px] sm:text-xs font-mono">Keep your level & kits</p>
-
-                <div className="h-px bg-cyan-500/20" />
-
-                <button
-                  onClick={handleRestart}
-                  className="w-full bg-black/25 border border-cyan-600/35 hover:border-cyan-500/70 text-cyan-200 font-extrabold py-2.5 px-4 rounded-full transition-all text-[11px] sm:text-xs font-mono tracking-wide shadow-[inset_0_0_12px_rgba(0,200,255,0.08)]"
-                >
-                  RESTART FROM SCRATCH
-                </button>
-
-                {lastThreatType && (
-                  <button
-                    onClick={() => {
-                      const kit = getProtectionKitForThreat(lastThreatType)
-                      if (kit) trackDeepDiveViewed(kit.id)
-                      ui.actions.toggleLearnMore()
-                    }}
-                    className="w-full text-center text-cyan-300/90 text-[11px] sm:text-xs font-mono tracking-wide hover:text-cyan-200 transition-colors"
-                  >
-                    More details →
-                  </button>
-                )}
-
-                {authStatus === 'authed' && (
-                  <>
-                    <div className="h-px bg-cyan-500/20" />
-                    <button
-                      onClick={async () => {
-                        await handleSignOut()
-                        handleRestart()
-                      }}
-                      className="w-full text-center text-gray-400/90 text-[11px] sm:text-xs font-mono tracking-wide hover:text-gray-300 transition-colors"
-                    >
-                      Sign out • {currentUser?.username || 'Player'}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -4064,6 +3942,7 @@ powerups = powerups.filter(kit => {
       {showQuiz && lastThreatType && (
         <QuizModal
           kitType={getProtectionKitForThreat(lastThreatType)?.id || 'password-manager'}
+          level={level}
           onPass={handleQuizPass}
           onFail={handleQuizFail}
           onClose={() => setShowQuiz(false)}

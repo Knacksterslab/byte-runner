@@ -14,7 +14,8 @@ body {
   padding: 0;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: #000011;
   font-family: 'Courier New', monospace;
   /* Prevent pull-to-refresh and overscroll on mobile */
@@ -38,8 +39,6 @@ html {
 
 * {
   box-sizing: border-box;
-  /* Prevent touch scrolling everywhere */
-  touch-action: none;
 }
 
 /* Allow scrolling only on modal content */

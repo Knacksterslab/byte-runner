@@ -5,12 +5,13 @@ import { getRandomQuizQuestion, type QuizQuestion } from '@/lib/game/quizQuestio
 
 interface QuizModalProps {
   kitType: string
+  level: number
   onPass: () => void
   onFail: () => void
   onClose: () => void
 }
 
-export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModalProps) {
+export default function QuizModal({ kitType, level, onPass, onFail, onClose }: QuizModalProps) {
   const [question, setQuestion] = useState<QuizQuestion | null>(null)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [timeLeft, setTimeLeft] = useState(30)
@@ -70,10 +71,10 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
     return () => clearInterval(timer)
   }, [timeLeft, showResult])
 
-  const handleSubmit = () => {
-    if (selectedAnswer === null && timeLeft > 0) return // Must select an answer
+  const handleSubmit = (answerOverride: number | null = selectedAnswer) => {
+    if (answerOverride === null && timeLeft > 0) return // Must select an answer while timer active
 
-    const correct = selectedAnswer === question?.correctAnswer
+    const correct = answerOverride === question?.correctAnswer
     setIsCorrect(correct)
     setShowResult(true)
 
@@ -96,89 +97,97 @@ export default function QuizModal({ kitType, onPass, onFail, onClose }: QuizModa
   }
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-transparent z-30 p-3 md:p-4 pb-[calc(12px+env(safe-area-inset-bottom))]">
-      <div 
-        className="bg-[#0b1020]/45 rounded-3xl p-4 sm:p-6 md:p-8 max-w-2xl w-full mx-auto relative backdrop-blur-[2px] shadow-[0_0_30px_rgba(64,200,255,0.2)]"
-        style={{
-          border: '2px solid',
-          borderColor: 'rgba(120, 200, 255, 0.5)'
-        }}
-      >
+    <div className="absolute inset-0 z-30 flex items-start justify-center bg-transparent px-2 sm:px-3 md:px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-[72px] sm:pt-[82px]">
+      {/* Match home/mockup background look while quiz is open */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: "url('/space-background-final.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: 0.84,
+            filter: 'saturate(0.72) brightness(0.9)',
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(circle at 50% 38%, rgba(0, 0, 0, 0.08) 0%, rgba(2, 4, 10, 0.42) 72%)',
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 w-full max-w-[680px]">
         {!showResult ? (
           <>
-            {/* Header with Timer */}
-            <div className="mb-5">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-base sm:text-xl md:text-2xl font-black text-cyan-300 font-mono tracking-widest flex items-center gap-2">
-                  ⚡ {getQuizHeader(kitType)}
-                </h2>
-                <div className={`text-2xl sm:text-3xl md:text-4xl font-bold font-mono ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-cyan-200'}`}>
-                  {timeLeft}s
-                </div>
+            {/* Top status strip */}
+            <div className="mb-3 px-1">
+              <div className="flex items-center justify-between text-cyan-100 font-mono text-sm sm:text-lg tracking-wider">
+                <span className="font-semibold">L{level} • NEWBIE</span>
+                <span className="text-xl leading-none text-cyan-300">🧍</span>
+                <span className="font-semibold text-yellow-300">❤️ ×0 {timeLeft}s</span>
               </div>
-              
-              {/* Progress bar */}
-              <div className="w-full bg-white/10 rounded-full h-2.5">
+              <div className="mt-2 w-full bg-[#111827]/80 rounded-full h-3">
                 <div 
-                  className={`h-2.5 rounded-full transition-all ${timeLeft <= 10 ? 'bg-red-400' : 'bg-green-400'}`}
+                  className={`h-3 rounded-full transition-all ${timeLeft <= 10 ? 'bg-red-400' : 'bg-green-400'}`}
                   style={{ width: `${(timeLeft / 30) * 100}%` }}
                 />
               </div>
-              <p className="text-[11px] sm:text-xs text-gray-300/90 font-mono mt-2">
-                Correct answers keep gear & level
+            </div>
+
+            {/* Quiz content block */}
+            <div className="rounded-[22px] border-2 border-cyan-300/80 bg-[#050c1b]/86 p-3 sm:p-4 shadow-[0_0_26px_rgba(34,211,238,0.35)]">
+              <h2 className="mb-2 flex items-center justify-center gap-3 text-base sm:text-[1.75rem] font-black text-cyan-300 font-mono tracking-[0.15em]">
+                <span className="h-px w-10 sm:w-16 bg-cyan-300/60" />
+                <span className="whitespace-nowrap">⚡ {getQuizHeader(kitType)}</span>
+                <span className="h-px w-10 sm:w-16 bg-cyan-300/60" />
+              </h2>
+              <p className="text-center text-[11px] sm:text-sm text-gray-100/95 font-semibold font-mono mb-4">
+                Answer correctly to keep your gear & level.
               </p>
-            </div>
 
-            {/* Question */}
-            <div className="bg-black/30 border border-cyan-400/40 rounded-2xl p-3 sm:p-4 md:p-5 mb-3">
-              <p className="text-white text-sm sm:text-base md:text-lg font-mono leading-relaxed text-center">
-                {question.question}
+              {/* Question */}
+              <div className="rounded-2xl border-2 border-cyan-300/70 bg-[#050a18]/94 px-3 py-4 sm:px-4 sm:py-4 mb-3">
+                <p className="text-white text-[2rem] sm:text-[2.1rem] font-semibold font-mono leading-relaxed text-center">
+                  {question.question}
+                </p>
+              </div>
+
+              <p className="text-center text-gray-300 text-xs sm:text-sm font-semibold font-mono mb-3">
+                30s Quiz • Choose the correct answer
               </p>
+
+              {/* Options - Single Column */}
+              <div className="space-y-3">
+                {question.options.map((option, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      if (selectedAnswer !== null) return
+                      setSelectedAnswer(index)
+                      setTimeout(() => handleSubmit(index), 150)
+                    }}
+                    className={`w-full text-left p-3 sm:p-4 md:p-5 rounded-2xl font-mono text-sm sm:text-base transition-all border relative ${
+                      selectedAnswer === index
+                        ? 'bg-cyan-400/15 border-cyan-300/90 text-white shadow-[0_0_20px_rgba(80,200,255,0.45)]'
+                        : 'bg-[#040912]/92 border-cyan-300/45 text-white/95 hover:bg-[#071122]/95 hover:border-cyan-300/75'
+                    }`}
+                    disabled={selectedAnswer !== null}
+                  >
+                    <span className="mr-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-cyan-300/80 text-cyan-200 font-black text-2xl align-middle">
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <span className="break-words align-middle font-semibold">{option}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-
-            <p className="text-center text-gray-400 text-xs sm:text-sm font-mono mb-4">
-              30s Quiz • Choose the correct answer
-            </p>
-
-            {/* Options - Single Column */}
-            <div className="space-y-3 mb-5">
-              {question.options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedAnswer(index)}
-                  className={`text-left p-3 sm:p-4 md:p-5 rounded-2xl font-mono text-xs sm:text-sm md:text-base transition-all border relative ${
-                    selectedAnswer === index
-                      ? 'bg-cyan-400/20 border-cyan-300 text-white shadow-[0_0_20px_rgba(80,200,255,0.45)]'
-                      : 'bg-black/20 border-white/15 text-gray-300 hover:bg-white/5 hover:border-cyan-400/40'
-                  }`}
-                >
-                  <span className={`font-extrabold mr-2 ${selectedAnswer === index ? 'text-cyan-300' : 'text-gray-500'}`}>
-                    {String.fromCharCode(65 + index)}.
-                  </span>
-                  <span className="break-words">{option}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Bottom Info */}
-            <p className="text-center text-gray-300/90 text-xs sm:text-sm font-mono mb-6">
-              + Correct answers keep your level & all kits
-            </p>
-
-            {/* Submit Button (Hidden, auto-submit on selection in mockup style) */}
-            {selectedAnswer !== null && (
-              <button
-                onClick={handleSubmit}
-                className="w-full text-base sm:text-lg md:text-xl font-black py-3 sm:py-4 px-6 sm:px-8 rounded-2xl transition-all font-mono bg-gradient-to-r from-green-500/90 to-cyan-500/90 hover:from-green-400 hover:to-cyan-400 text-white transform hover:scale-[1.02] tracking-wide shadow-[0_0_24px_rgba(80,200,255,0.4)]"
-              >
-                ✓ SUBMIT ANSWER
-              </button>
-            )}
           </>
         ) : (
           <>
             {/* Result Screen */}
-            <div className="text-center">
+            <div className="text-center bg-[#050c1b]/95 border-2 border-cyan-400/70 rounded-3xl p-5 sm:p-6 md:p-8 shadow-[0_0_24px_rgba(34,211,238,0.2)]">
               {isCorrect ? (
                 <>
                   <div className="text-8xl mb-6 animate-bounce">✅</div>

@@ -62,15 +62,6 @@ export function StartScreenNew({
         <span className="relative z-10 text-cyan-100 drop-shadow-[0_0_8px_rgba(0,255,255,0.9)]">?</span>
       </button>
 
-      {/* Footer links */}
-      <div className="fixed bottom-4 sm:bottom-5 right-4 sm:right-6 z-20 flex gap-2 text-xs text-cyan-100/70">
-        <a href="/privacy" className="hover:text-cyan-200 transition-colors">Privacy</a>
-        <span className="text-cyan-100/40">•</span>
-        <a href="/terms" className="hover:text-cyan-200 transition-colors">Terms</a>
-        <span className="text-cyan-100/40">•</span>
-        <a href="/faq" className="hover:text-cyan-200 transition-colors">FAQ</a>
-      </div>
-
       {/* Main content */}
       <div className="screen-safe relative z-10 mx-auto flex w-full max-w-[980px] flex-col items-center px-4 sm:px-6 pb-6 pt-3 text-center">
         {/* Logo */}
@@ -280,6 +271,15 @@ export function StartScreenNew({
               </a>
             </div>
           )}
+        </div>
+
+        {/* Footer links: scroll on mobile, fixed on desktop */}
+        <div className="mt-4 mb-2 flex gap-2 text-xs text-cyan-100/70 sm:fixed sm:bottom-5 sm:right-6 sm:z-20">
+          <a href="/privacy" className="hover:text-cyan-200 transition-colors">Privacy</a>
+          <span className="text-cyan-100/40">•</span>
+          <a href="/terms" className="hover:text-cyan-200 transition-colors">Terms</a>
+          <span className="text-cyan-100/40">•</span>
+          <a href="/faq" className="hover:text-cyan-200 transition-colors">FAQ</a>
         </div>
       </div>
 
