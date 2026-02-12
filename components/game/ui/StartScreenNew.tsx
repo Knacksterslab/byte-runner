@@ -38,10 +38,10 @@ export function StartScreenNew({
   }, [ensureLeaderboardSeeded])
 
   return (
-    <div className="relative min-h-[100dvh] w-full bg-[#05070d] text-white">
+    <div className="relative w-full bg-[#05070d] text-white" style={{ minHeight: 'calc(100vh + 1px)', paddingBottom: '40px' }}>
       {/* Background with built-in grid */}
-      <div className="fixed inset-0 nebula-background" />
-      <div className="fixed inset-0 vignette" />
+      <div className="fixed inset-0 nebula-background" style={{ zIndex: 0 }} />
+      <div className="fixed inset-0 vignette" style={{ zIndex: 1 }} />
 
       {/* Sign in button */}
       {onSignIn && (
@@ -325,7 +325,6 @@ export function StartScreenNew({
           background: rgba(4, 10, 16, 0.98);
           box-shadow: 0 0 36px rgba(0, 220, 255, 0.55), inset 0 0 15px rgba(0, 220, 255, 0.12);
           backdrop-filter: blur(3px);
-          touch-action: auto;
         }
 
         .panel-outline {

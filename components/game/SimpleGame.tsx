@@ -3544,9 +3544,17 @@ powerups = powerups.filter(kit => {
       <>
         <style jsx>{`
           .start-screen-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow-y: scroll;
+            overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
+            overscroll-behavior-y: contain;
             scrollbar-width: none;
+            touch-action: pan-y;
           }
           .start-screen-wrapper::-webkit-scrollbar {
             display: none;
@@ -3554,7 +3562,7 @@ powerups = powerups.filter(kit => {
             height: 0;
           }
         `}</style>
-        <div className="start-screen-wrapper relative w-full h-[100dvh] overflow-y-auto overflow-x-hidden">
+        <div className="start-screen-wrapper">
           <TutorialOverlay 
             showing={tutorial.state.showing}
             onClose={tutorial.actions.close}
