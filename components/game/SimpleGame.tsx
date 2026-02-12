@@ -3542,22 +3542,36 @@ powerups = powerups.filter(kit => {
   if (!gameStarted) {
     return (
       <>
-        <TutorialOverlay 
-          showing={tutorial.state.showing}
-          onClose={tutorial.actions.close}
-        />
-        <StartScreenNew 
-          onStart={handleStart}
-          onShowTutorial={tutorial.actions.open}
-          onSignIn={authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true)}
-          signInLabel={authStatus === 'authed'
-            ? `Signed in as ${currentUser?.username || 'Player'} • Sign out`
-            : 'Guest • Sign in'
+        <style jsx>{`
+          .start-screen-wrapper {
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            scrollbar-width: none;
           }
-          onViewLeaderboard={handleViewLeaderboard}
-          activeContests={activeContests}
-        />
-        {renderAuthModal()}
+          .start-screen-wrapper::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+          }
+        `}</style>
+        <div className="start-screen-wrapper relative w-full h-[100dvh] overflow-y-auto overflow-x-hidden">
+          <TutorialOverlay 
+            showing={tutorial.state.showing}
+            onClose={tutorial.actions.close}
+          />
+          <StartScreenNew 
+            onStart={handleStart}
+            onShowTutorial={tutorial.actions.open}
+            onSignIn={authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true)}
+            signInLabel={authStatus === 'authed'
+              ? `Signed in as ${currentUser?.username || 'Player'} • Sign out`
+              : 'Guest • Sign in'
+            }
+            onViewLeaderboard={handleViewLeaderboard}
+            activeContests={activeContests}
+          />
+          {renderAuthModal()}
+        </div>
       </>
     )
   }

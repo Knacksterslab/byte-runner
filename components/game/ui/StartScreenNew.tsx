@@ -38,7 +38,7 @@ export function StartScreenNew({
   }, [ensureLeaderboardSeeded])
 
   return (
-    <div className="start-screen-container relative min-h-[100dvh] w-full overflow-y-auto overflow-x-hidden bg-[#05070d] text-white">
+    <div className="relative min-h-[100dvh] w-full bg-[#05070d] text-white">
       {/* Background with built-in grid */}
       <div className="fixed inset-0 nebula-background" />
       <div className="fixed inset-0 vignette" />
@@ -285,18 +285,6 @@ export function StartScreenNew({
 
       {/* CSS Styles from original */}
       <style jsx>{`
-        .start-screen-container {
-          overscroll-behavior: contain;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-        }
-
-        .start-screen-container::-webkit-scrollbar {
-          display: none;
-          width: 0;
-          height: 0;
-        }
-
         .nebula-background {
           background-image: url('/space-background-final.png');
           background-size: cover;
