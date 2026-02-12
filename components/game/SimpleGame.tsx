@@ -20,7 +20,7 @@ import { useTutorialState } from './hooks/useTutorialState'
 import { useUIState } from './hooks/useUIState'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { TutorialOverlay } from './ui/TutorialOverlay'
-import { StartScreenPixel } from './ui/StartScreenPixel'
+import { StartScreenNew } from './ui/StartScreenNew'
 import { LeaderboardPanel } from './ui/LeaderboardPanel'
 import QuizModal from './QuizModal'
 
@@ -3546,7 +3546,7 @@ powerups = powerups.filter(kit => {
           showing={tutorial.state.showing}
           onClose={tutorial.actions.close}
         />
-        <StartScreenPixel 
+        <StartScreenNew 
           onStart={handleStart}
           onShowTutorial={tutorial.actions.open}
           onSignIn={authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true)}
