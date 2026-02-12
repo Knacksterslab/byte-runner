@@ -47,7 +47,7 @@ export function StartScreenNew({
       {onSignIn && (
         <button
           onClick={onSignIn}
-          className="absolute left-6 top-6 z-20 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 py-1 text-[10px] sm:text-xs font-mono tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white"
+          className="absolute left-4 sm:left-6 top-4 sm:top-6 z-20 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 py-1.5 sm:py-1 text-[10px] sm:text-xs font-mono tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation"
         >
           {signInLabel}
         </button>
@@ -56,14 +56,14 @@ export function StartScreenNew({
       {/* Tutorial button */}
       <button
         onClick={onShowTutorial}
-        className="absolute right-6 top-6 z-20 flex h-[54px] w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24] text-2xl font-bold text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105"
+        className="absolute right-4 sm:right-6 top-4 sm:top-6 z-20 flex h-[48px] w-[48px] sm:h-[54px] sm:w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24] text-xl sm:text-2xl font-bold text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105 touch-manipulation"
       >
         <span className="question-frame" />
         <span className="relative z-10 text-cyan-100 drop-shadow-[0_0_8px_rgba(0,255,255,0.9)]">?</span>
       </button>
 
       {/* Footer links */}
-      <div className="absolute bottom-5 right-6 z-20 flex gap-2 text-xs text-cyan-100/70">
+      <div className="absolute bottom-4 sm:bottom-5 right-4 sm:right-6 z-20 flex gap-2 text-xs text-cyan-100/70">
         <a href="/privacy" className="hover:text-cyan-200 transition-colors">Privacy</a>
         <span className="text-cyan-100/40">•</span>
         <a href="/terms" className="hover:text-cyan-200 transition-colors">Terms</a>
@@ -72,7 +72,7 @@ export function StartScreenNew({
       </div>
 
       {/* Main content */}
-      <div className="screen-safe screen-stack screen-scroll relative z-10 mx-auto flex w-full max-w-[1100px] flex-col items-center px-6 pb-6 pt-3 text-center">
+      <div className="screen-safe screen-stack screen-scroll relative z-10 mx-auto flex w-full max-w-[980px] flex-col items-center px-4 sm:px-6 pb-6 pt-3 text-center">
         {/* Logo */}
         <img
           src="/logo.png"
@@ -82,10 +82,10 @@ export function StartScreenNew({
 
         {/* Headlines */}
         <div className="mt-2 space-y-1">
-          <h1 className="headline text-3xl font-bold tracking-[0.24em] text-red-100 sm:text-4xl md:text-[2.7rem]">
+          <h1 className="headline text-2xl font-bold tracking-[0.24em] text-red-100 sm:text-3xl md:text-4xl lg:text-[2.7rem]">
             THE CYBER STORM IS HERE
           </h1>
-          <p className="subheadline text-base font-bold tracking-[0.5em] text-orange-200 sm:text-lg md:text-xl">
+          <p className="subheadline text-sm font-bold tracking-[0.5em] text-orange-200 sm:text-base md:text-lg lg:text-xl">
             — FORTIFY OR FALL —
           </p>
         </div>
@@ -93,46 +93,46 @@ export function StartScreenNew({
           {/* START GAME Button */}
           <button
             onClick={onStart}
-            className="start-btn-new relative mt-6 mb-3"
+            className="start-btn-new relative mt-6 sm:mt-8 mb-4 sm:mb-6"
           >
             <span className="btn-outer-glow" />
             <span className="btn-text">START GAME</span>
           </button>
 
         {/* Two Column Grid */}
-        <div className="w-full grid md:grid-cols-2 gap-6 mt-3">
+        <div className="w-full grid md:grid-cols-2 gap-4 md:gap-8 mt-0">
           {/* HOW TO PLAY Panel */}
-          <div className="panel stack-panel px-8 py-4 text-left">
+          <div className="panel stack-panel px-5 sm:px-8 py-4 text-left">
             <span className="panel-outline" />
             <div className="panel-title">
               <span className="title-line" />
               <span>HOW TO PLAY</span>
               <span className="title-line" />
             </div>
-            <div className="space-y-2.5 text-[0.95rem] sm:text-base">
-              <div className="flex items-center gap-4">
-                <Keyboard className="h-7 w-7 text-cyan-300" />
+            <div className="space-y-2.5 text-[0.9rem] sm:text-[0.95rem]">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <Keyboard className="h-6 w-6 sm:h-7 sm:w-7 text-cyan-300 flex-shrink-0" />
                 <div>
                   <span className="font-bold text-cyan-300">MOVE:</span>{' '}
                   <span className="text-slate-200">WASD / Arrows / Touch</span>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <AlertTriangle className="h-7 w-7 text-orange-400" />
+              <div className="flex items-center gap-3 sm:gap-4">
+                <AlertTriangle className="h-6 w-6 sm:h-7 sm:w-7 text-orange-400 flex-shrink-0" />
                 <div>
                   <span className="font-bold text-orange-300">DODGE THREATS:</span>{' '}
                   <span className="text-slate-200">Avoid hostile enemies</span>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <Shield className="h-7 w-7 text-emerald-400" />
+              <div className="flex items-center gap-3 sm:gap-4">
+                <Shield className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-400 flex-shrink-0" />
                 <div>
                   <span className="font-bold text-emerald-300">COLLECT KITS:</span>{' '}
                   <span className="text-slate-200">Protection items</span>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <Skull className="h-7 w-7 text-red-400" />
+              <div className="flex items-center gap-3 sm:gap-4">
+                <Skull className="h-6 w-6 sm:h-7 sm:w-7 text-red-400 flex-shrink-0" />
                 <div>
                   <span className="font-bold text-red-300">NO KIT = GAME OVER:</span>{' '}
                   <span className="text-slate-200">Stay stocked</span>
@@ -142,7 +142,7 @@ export function StartScreenNew({
           </div>
 
           {/* TOP RUNS Panel */}
-          <div className="panel stack-panel px-8 py-4 text-left">
+          <div className="panel stack-panel px-5 sm:px-8 py-4 text-left">
             <span className="panel-outline" />
             <div className="panel-title">
               <span className="title-line" />
@@ -155,15 +155,15 @@ export function StartScreenNew({
               <>
                 <div className="space-y-2.5 text-sm text-slate-200 sm:text-base">
                   {entries.map((entry, index) => (
-                    <div key={entry.id} className="flex items-center gap-4 font-mono">
+                    <div key={entry.id} className="flex items-center gap-2 sm:gap-4 font-mono">
                       <div className="medal-badge" data-rank={index + 1}>
                         <span className="medal-number">{index + 1}</span>
                       </div>
-                      <span className={`flex-1 truncate text-base ${entry.isPlayer ? 'text-yellow-300' : 'text-white'}`}>
+                      <span className={`flex-1 truncate text-sm sm:text-base ${entry.isPlayer ? 'text-yellow-300' : 'text-white'}`}>
                         {entry.name}
                       </span>
-                      <span className="text-white font-semibold whitespace-nowrap">{entry.score} pts</span>
-                      <span className="text-slate-400 whitespace-nowrap">• {entry.distance}m</span>
+                      <span className="text-white font-semibold whitespace-nowrap text-sm sm:text-base">{entry.score} pts</span>
+                      <span className="text-slate-400 whitespace-nowrap text-xs sm:text-sm hidden xs:inline">• {entry.distance}m</span>
                     </div>
                   ))}
                 </div>
@@ -182,7 +182,7 @@ export function StartScreenNew({
         </div>
 
         {/* Active Contests Section */}
-        <div className="panel stack-panel mt-6 w-full px-8 py-4 text-left">
+        <div className="panel stack-panel mt-6 sm:mt-8 w-full px-5 sm:px-8 py-4 text-left">
           <span className="panel-outline" />
           <div className="panel-title">
             <span className="title-line" />
@@ -195,7 +195,7 @@ export function StartScreenNew({
 
           {/* Show real contests if available, otherwise show placeholder */}
           {activeContests.length > 0 ? (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
               {activeContests.slice(0, 2).map((contest) => {
                 const endDate = new Date(contest.end_date)
                 const now = new Date()
@@ -204,17 +204,17 @@ export function StartScreenNew({
                 
                 return (
                   <div key={contest.id} className="contest-card">
-                    <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-start justify-between gap-2 sm:gap-3 mb-3">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-white text-base font-bold truncate mb-1">{contest.name}</h3>
+                        <h3 className="text-white text-sm sm:text-base font-bold truncate mb-1">{contest.name}</h3>
                         {topPrize && (
-                          <p className="text-yellow-300 text-sm font-mono">
+                          <p className="text-yellow-300 text-xs sm:text-sm font-mono">
                             🏆 Top Prize: <span className="font-bold">{topPrize}</span>
                           </p>
                         )}
                       </div>
-                      <div className="contest-timer">
-                        <span className="text-lg font-bold">{hoursLeft}h</span>
+                      <div className="contest-timer flex-shrink-0">
+                        <span className="text-base sm:text-lg font-bold">{hoursLeft}h</span>
                         <span className="text-xs">left</span>
                       </div>
                     </div>
@@ -231,17 +231,17 @@ export function StartScreenNew({
             </div>
           ) : (
             // Placeholder contests
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
               <div className="contest-card opacity-60">
-                <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-start justify-between gap-2 sm:gap-3 mb-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white text-base font-bold mb-1">Weekly Championship</h3>
-                    <p className="text-yellow-300 text-sm font-mono">
+                    <h3 className="text-white text-sm sm:text-base font-bold mb-1">Weekly Championship</h3>
+                    <p className="text-yellow-300 text-xs sm:text-sm font-mono">
                       🏆 Top Prize: <span className="font-bold">$500</span>
                     </p>
                   </div>
-                  <div className="contest-timer">
-                    <span className="text-lg font-bold">--</span>
+                  <div className="contest-timer flex-shrink-0">
+                    <span className="text-base sm:text-lg font-bold">--</span>
                     <span className="text-xs">hours</span>
                   </div>
                 </div>
@@ -251,15 +251,15 @@ export function StartScreenNew({
               </div>
 
               <div className="contest-card opacity-60">
-                <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-start justify-between gap-2 sm:gap-3 mb-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white text-base font-bold mb-1">Speed Run Challenge</h3>
-                    <p className="text-yellow-300 text-sm font-mono">
+                    <h3 className="text-white text-sm sm:text-base font-bold mb-1">Speed Run Challenge</h3>
+                    <p className="text-yellow-300 text-xs sm:text-sm font-mono">
                       🏆 Top Prize: <span className="font-bold">$250</span>
                     </p>
                   </div>
-                  <div className="contest-timer">
-                    <span className="text-lg font-bold">--</span>
+                  <div className="contest-timer flex-shrink-0">
+                    <span className="text-base sm:text-lg font-bold">--</span>
                     <span className="text-xs">hours</span>
                   </div>
                 </div>
@@ -286,7 +286,7 @@ export function StartScreenNew({
       {/* CSS Styles from original */}
       <style jsx>{`
         .nebula-background {
-          background-image: url('/space-background-new.png');
+          background-image: url('/space-background-final.png');
           background-size: cover;
           background-position: center;
           background-attachment: fixed;
@@ -486,7 +486,7 @@ export function StartScreenNew({
         /* New START GAME button with exact specs */
         .start-btn-new {
           position: relative;
-          width: 500px;
+          width: 360px;
           max-width: 90vw;
           height: 60px;
           border-radius: 16px;
@@ -498,10 +498,18 @@ export function StartScreenNew({
           display: flex;
           align-items: center;
           justify-content: center;
+          -webkit-tap-highlight-color: transparent;
         }
 
         .start-btn-new:hover {
           transform: scale(1.03);
+        }
+
+        @media (hover: none) {
+          .start-btn-new:active {
+            transform: scale(0.97);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.7);
+          }
         }
 
         .btn-outer-glow {
@@ -556,11 +564,19 @@ export function StartScreenNew({
           box-shadow: 0 0 20px rgba(251, 191, 36, 0.25), inset 0 0 10px rgba(251, 191, 36, 0.08);
           backdrop-filter: blur(2px);
           transition: all 0.3s ease;
+          min-height: 48px;
         }
 
         .contest-card:hover {
           border-color: rgba(251, 191, 36, 0.6);
           box-shadow: 0 0 30px rgba(251, 191, 36, 0.4), inset 0 0 15px rgba(251, 191, 36, 0.12);
+        }
+
+        @media (hover: none) {
+          .contest-card:active {
+            border-color: rgba(251, 191, 36, 0.6);
+            transform: scale(0.98);
+          }
         }
 
         .contest-timer {
@@ -577,10 +593,11 @@ export function StartScreenNew({
         }
 
         .contest-cta {
-          display: block;
+          display: flex;
           width: 100%;
           text-align: center;
           padding: 10px 16px;
+          min-height: 44px;
           background: linear-gradient(135deg, rgba(251, 191, 36, 0.4) 0%, rgba(234, 88, 12, 0.5) 100%);
           border: 2px solid rgba(251, 191, 36, 0.7);
           border-radius: 10px;
@@ -591,7 +608,6 @@ export function StartScreenNew({
           box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
           transition: all 0.2s ease;
           text-decoration: none;
-          display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
@@ -601,6 +617,13 @@ export function StartScreenNew({
           background: linear-gradient(135deg, rgba(251, 191, 36, 0.6) 0%, rgba(234, 88, 12, 0.7) 100%);
           transform: scale(1.02);
           box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
+        }
+
+        @media (hover: none) {
+          .contest-cta:active {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.7) 0%, rgba(234, 88, 12, 0.8) 100%);
+            transform: scale(0.98);
+          }
         }
 
         .contest-cta-disabled {
@@ -625,7 +648,7 @@ export function StartScreenNew({
 
           .panel {
             max-width: 600px;
-            padding: 18px 22px;
+            padding: 20px 24px;
           }
 
           .panel-title {
@@ -638,21 +661,59 @@ export function StartScreenNew({
           }
 
           .start-btn-new {
-            height: 50px;
+            height: 52px;
+            width: 320px;
           }
 
           .btn-text {
             font-size: 16px;
           }
+
+          .contest-card {
+            padding: 16px;
+          }
+
+          .contest-timer {
+            font-size: 11px;
+            padding: 4px 10px;
+          }
         }
 
-        @media (max-width: 560px) {
+        @media (max-width: 640px) {
           .logo {
-            height: 72px;
+            height: 76px;
+          }
+
+          .headline {
+            text-shadow: 0 0 16px rgba(255, 100, 50, 0.35);
+          }
+
+          .subheadline {
+            text-shadow: 0 0 10px rgba(255, 150, 80, 0.3);
           }
 
           .panel {
-            max-width: 94%;
+            max-width: 100%;
+            padding: 18px 20px;
+          }
+
+          .start-btn-new {
+            height: 50px;
+            width: 280px;
+          }
+
+          .btn-text {
+            font-size: 15px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .logo {
+            height: 64px;
+          }
+
+          .panel {
+            max-width: 100%;
             padding: 16px 18px;
           }
 
@@ -672,10 +733,25 @@ export function StartScreenNew({
 
           .start-btn-new {
             height: 48px;
+            width: 260px;
           }
 
           .btn-text {
             font-size: 14px;
+          }
+
+          .contest-card {
+            padding: 14px;
+          }
+
+          .contest-timer {
+            font-size: 10px;
+            padding: 3px 8px;
+          }
+
+          .contest-cta {
+            padding: 8px 16px;
+            font-size: 12px;
           }
         }
       `}</style>
