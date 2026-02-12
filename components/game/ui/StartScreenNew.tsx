@@ -47,7 +47,7 @@ export function StartScreenNew({
       {onSignIn && (
         <button
           onClick={onSignIn}
-          className="absolute left-4 sm:left-6 top-4 sm:top-6 z-20 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 py-1.5 sm:py-1 text-[10px] sm:text-xs font-mono tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation"
+          className="absolute left-4 sm:left-6 top-4 sm:top-6 z-20 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 py-1.5 sm:py-1 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation"
         >
           {signInLabel}
         </button>
@@ -114,28 +114,28 @@ export function StartScreenNew({
                 <Keyboard className="h-6 w-6 sm:h-7 sm:w-7 text-cyan-300 flex-shrink-0" />
                 <div>
                   <span className="font-bold text-cyan-300">MOVE:</span>{' '}
-                  <span className="text-slate-200">WASD / Arrows / Touch</span>
+                  <span className="text-white font-semibold">WASD / Arrows / Touch</span>
                 </div>
               </div>
               <div className="flex items-center gap-3 sm:gap-4">
                 <AlertTriangle className="h-6 w-6 sm:h-7 sm:w-7 text-orange-400 flex-shrink-0" />
                 <div>
                   <span className="font-bold text-orange-300">DODGE THREATS:</span>{' '}
-                  <span className="text-slate-200">Avoid hostile enemies</span>
+                  <span className="text-white font-semibold">Avoid hostile enemies</span>
                 </div>
               </div>
               <div className="flex items-center gap-3 sm:gap-4">
                 <Shield className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-400 flex-shrink-0" />
                 <div>
                   <span className="font-bold text-emerald-300">COLLECT KITS:</span>{' '}
-                  <span className="text-slate-200">Protection items</span>
+                  <span className="text-white font-semibold">Protection items</span>
                 </div>
               </div>
               <div className="flex items-center gap-3 sm:gap-4">
                 <Skull className="h-6 w-6 sm:h-7 sm:w-7 text-red-400 flex-shrink-0" />
                 <div>
                   <span className="font-bold text-red-300">NO KIT = GAME OVER:</span>{' '}
-                  <span className="text-slate-200">Stay stocked</span>
+                  <span className="text-white font-semibold">Stay stocked</span>
                 </div>
               </div>
             </div>
@@ -150,7 +150,7 @@ export function StartScreenNew({
               <span className="title-line" />
             </div>
             {entries.length === 0 ? (
-              <div className="text-center text-xs text-cyan-100/70">No runs yet. Be the first!</div>
+              <div className="text-center text-xs text-cyan-100/70 font-semibold">No runs yet. Be the first!</div>
             ) : (
               <>
                 <div className="space-y-2.5 text-sm text-slate-200 sm:text-base">
@@ -159,18 +159,18 @@ export function StartScreenNew({
                       <div className="medal-badge" data-rank={index + 1}>
                         <span className="medal-number">{index + 1}</span>
                       </div>
-                      <span className={`flex-1 truncate text-sm sm:text-base ${entry.isPlayer ? 'text-yellow-300' : 'text-white'}`}>
+                      <span className={`flex-1 truncate text-sm sm:text-base font-bold ${entry.isPlayer ? 'text-yellow-300' : 'text-white'}`}>
                         {entry.name}
                       </span>
-                      <span className="text-white font-semibold whitespace-nowrap text-sm sm:text-base">{entry.score} pts</span>
-                      <span className="text-slate-400 whitespace-nowrap text-xs sm:text-sm hidden xs:inline">• {entry.distance}m</span>
+                      <span className="text-white font-bold whitespace-nowrap text-sm sm:text-base">{entry.score} pts</span>
+                      <span className="text-slate-300 font-semibold whitespace-nowrap text-xs sm:text-sm hidden xs:inline">• {entry.distance}m</span>
                     </div>
                   ))}
                 </div>
                 <div className="mt-3 text-center">
                   <button
                     onClick={onViewLeaderboard}
-                    className="leaderboard-link text-sm text-slate-300 hover:text-cyan-300 transition-colors"
+                    className="leaderboard-link text-sm text-white font-semibold hover:text-cyan-300 transition-colors"
                     disabled={!onViewLeaderboard}
                   >
                     View full leaderboard →
@@ -206,10 +206,10 @@ export function StartScreenNew({
                   <div key={contest.id} className="contest-card">
                     <div className="flex items-start justify-between gap-2 sm:gap-3 mb-3">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-white text-sm sm:text-base font-bold truncate mb-1">{contest.name}</h3>
+                        <h3 className="text-white text-sm sm:text-base font-extrabold truncate mb-1">{contest.name}</h3>
                         {topPrize && (
                           <p className="text-yellow-300 text-xs sm:text-sm font-mono">
-                            🏆 Top Prize: <span className="font-bold">{topPrize}</span>
+                            🏆 <span className="font-bold">Top Prize:</span> <span className="font-extrabold">{topPrize}</span>
                           </p>
                         )}
                       </div>
@@ -235,9 +235,9 @@ export function StartScreenNew({
               <div className="contest-card opacity-60">
                 <div className="flex items-start justify-between gap-2 sm:gap-3 mb-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white text-sm sm:text-base font-bold mb-1">Weekly Championship</h3>
+                    <h3 className="text-white text-sm sm:text-base font-extrabold mb-1">Weekly Championship</h3>
                     <p className="text-yellow-300 text-xs sm:text-sm font-mono">
-                      🏆 Top Prize: <span className="font-bold">$500</span>
+                      🏆 <span className="font-bold">Top Prize:</span> <span className="font-extrabold">$500</span>
                     </p>
                   </div>
                   <div className="contest-timer flex-shrink-0">
@@ -253,9 +253,9 @@ export function StartScreenNew({
               <div className="contest-card opacity-60">
                 <div className="flex items-start justify-between gap-2 sm:gap-3 mb-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white text-sm sm:text-base font-bold mb-1">Speed Run Challenge</h3>
+                    <h3 className="text-white text-sm sm:text-base font-extrabold mb-1">Speed Run Challenge</h3>
                     <p className="text-yellow-300 text-xs sm:text-sm font-mono">
-                      🏆 Top Prize: <span className="font-bold">$250</span>
+                      🏆 <span className="font-bold">Top Prize:</span> <span className="font-extrabold">$250</span>
                     </p>
                   </div>
                   <div className="contest-timer flex-shrink-0">
@@ -274,7 +274,7 @@ export function StartScreenNew({
             <div className="mt-4 text-center">
               <a
                 href="/contests"
-                className="text-cyan-400 hover:text-cyan-300 text-sm font-mono transition-colors"
+                className="text-cyan-400 hover:text-cyan-300 text-sm font-mono font-semibold transition-colors"
               >
                 View all {activeContests.length} contests →
               </a>
@@ -298,6 +298,7 @@ export function StartScreenNew({
         .vignette {
           background: radial-gradient(circle at 50% 40%, transparent 0%, rgba(2, 4, 10, 0.3) 70%);
           z-index: 3;
+          pointer-events: none;
         }
 
         .headline {
@@ -324,7 +325,7 @@ export function StartScreenNew({
           background: rgba(4, 10, 16, 0.98);
           box-shadow: 0 0 36px rgba(0, 220, 255, 0.55), inset 0 0 15px rgba(0, 220, 255, 0.12);
           backdrop-filter: blur(3px);
-          touch-action: pan-y;
+          touch-action: auto;
         }
 
         .panel-outline {
@@ -525,7 +526,7 @@ export function StartScreenNew({
           z-index: 10;
           font-family: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui;
           font-size: 22px;
-          font-weight: 600;
+          font-weight: 700;
           letter-spacing: 0.18em;
           text-transform: uppercase;
           color: #D5F6FA;
@@ -552,7 +553,7 @@ export function StartScreenNew({
         }
 
         .leaderboard-link {
-          font-weight: 500;
+          font-weight: 600;
         }
 
         .contest-card {
@@ -602,7 +603,7 @@ export function StartScreenNew({
           border: 2px solid rgba(251, 191, 36, 0.7);
           border-radius: 10px;
           color: white;
-          font-weight: 700;
+          font-weight: 800;
           font-size: 0.9rem;
           letter-spacing: 0.05em;
           box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
@@ -635,7 +636,7 @@ export function StartScreenNew({
           border: 2px solid rgba(150, 150, 150, 0.3);
           border-radius: 10px;
           color: #94a3b8;
-          font-weight: 700;
+          font-weight: 800;
           font-size: 0.9rem;
           letter-spacing: 0.05em;
           cursor: not-allowed;
