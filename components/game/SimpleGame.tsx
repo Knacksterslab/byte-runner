@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { useGameStore } from '@/lib/store/gameStore'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
+import { useGameStore, type LeaderboardEntry } from '@/lib/store/gameStore'
 import { getRandomThreat, getThreatName, getQuickTip, threatTypes, type ThreatType, type ThreatCategory } from '@/lib/game/threatData'
 import { getRandomGhostPlayer, type GhostPlayer } from '@/lib/game/ghostPlayers'
 import { getProtectionKitName, getProtectionKitForThreat, getProtectionKitById, type ProtectionKit } from '@/lib/game/protectionKits'
@@ -13,6 +14,7 @@ import { PLAYER_CONFIG, GAME_CONFIG, KIT_CONFIG, QUIZ_CONFIG, VISUAL_CONFIG, ALL
 import { ObjectPool } from '@/lib/game/objectPool'
 import { createInputState, createKeyboardHandlers, createTouchHandlers, createClickHandler } from '@/lib/game/gameInput'
 import { checkCollisions } from '@/lib/game/collisionDetection'
+import { getCurrentUser, getLeaderboard, setUsername as apiSetUsername, signIn, signUp, signOut, submitRun, recordShare, getActiveContests, type BackendUser, type Contest } from '@/lib/api/backend'
 import { useQuizState } from './hooks/useQuizState'
 import { useTutorialState } from './hooks/useTutorialState'
 import { useUIState } from './hooks/useUIState'
@@ -51,6 +53,26 @@ export default function SimpleGame() {
   const [isFirstDeath, setIsFirstDeath] = useState(true)
   const [deathAction, setDeathAction] = useState<'restart' | 'quiz'>('restart')
   const [showLeaderboardMobile, setShowLeaderboardMobile] = useState(false)
+  const [authStatus, setAuthStatus] = useState<'checking' | 'guest' | 'authed'>('checking')
+  const [currentUser, setCurrentUser] = useState<BackendUser | null>(null)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [authLoading, setAuthLoading] = useState(false)
+  const [showUsernameModal, setShowUsernameModal] = useState(false)
+  const [usernameInput, setUsernameInput] = useState('')
+  const [usernameError, setUsernameError] = useState<string | null>(null)
+  const [usernameLoading, setUsernameLoading] = useState(false)
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([])
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
+  const [runStartedAt, setRunStartedAt] = useState<number | null>(null)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [pendingSave, setPendingSave] = useState(false)
+  const [activeContests, setActiveContests] = useState<Contest[]>([])
+  const authLabelRef = useRef('Guest • Sign in')
   
   // Track all timeouts for cleanup to prevent memory leaks
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -59,13 +81,100 @@ export default function SimpleGame() {
   const quiz = useQuizState()
   const tutorial = useTutorialState()
   const ui = useUIState()
+  const router = useRouter()
   
-  const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame } = useGameStore()
+  const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, addLeaderboardEntry, setLeaderboard } = useGameStore()
 
   
   // Ensure component is mounted (client-side only)
   useEffect(() => {
     setIsMounted(true)
+  }, [])
+
+  // Load auth state (guest vs signed-in)
+  useEffect(() => {
+    let isActive = true
+
+    const loadUser = async () => {
+      try {
+        const user = await getCurrentUser()
+        if (!isActive) return
+        if (user) {
+          setCurrentUser(user)
+          setAuthStatus('authed')
+        } else {
+          setCurrentUser(null)
+          setAuthStatus('guest')
+        }
+      } catch {
+        if (!isActive) return
+        setCurrentUser(null)
+        setAuthStatus('guest')
+      }
+    }
+
+    loadUser()
+    return () => {
+      isActive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    authLabelRef.current = authStatus === 'authed'
+      ? `${currentUser?.username || 'Player'} • Sign out`
+      : 'Guest • Sign in'
+  }, [authStatus, currentUser?.username])
+
+  // Load active contests
+  useEffect(() => {
+    let isActive = true
+
+    const loadContests = async () => {
+      try {
+        const contests = await getActiveContests()
+        if (!isActive) return
+        setActiveContests(contests)
+      } catch (error) {
+        console.error('Failed to load contests:', error)
+      }
+    }
+
+    loadContests()
+    return () => {
+      isActive = false
+    }
+  }, [])
+
+  // Load leaderboard from backend
+  useEffect(() => {
+    let isActive = true
+
+    const loadLeaderboard = async () => {
+      setLeaderboardLoading(true)
+      try {
+        const entries = await getLeaderboard(50)
+        if (!isActive) return
+        const mapped: LeaderboardEntry[] = entries.map((entry, index) => ({
+          id: `remote_${index}_${entry.createdAt}`,
+          name: entry.username,
+          score: entry.score,
+          distance: entry.distance,
+          createdAt: new Date(entry.createdAt).getTime()
+        }))
+        setLeaderboardEntries(mapped)
+        setLeaderboard(mapped.slice(0, 10)) // Sync top 10 to game store for display
+      } catch {
+        if (!isActive) return
+        setLeaderboardEntries([])
+      } finally {
+        if (isActive) setLeaderboardLoading(false)
+      }
+    }
+
+    loadLeaderboard()
+    return () => {
+      isActive = false
+    }
   }, [])
   
   // Show bonus notification when bonus kit is awarded
@@ -475,6 +584,26 @@ export default function SimpleGame() {
         const hudWidth = ui.state.desktopHudExpanded ? expandedHudWidth : collapsedHudWidth
         const hudHeight = ui.state.desktopHudExpanded ? expandedHudHeight : collapsedHudHeight
         
+        // Check if click is within auth label area first (top left of HUD)
+        const authBoxWidth = 180
+        const authBoxHeight = 15
+        const authBoxX = hudX + 10
+        const authBoxY = hudY + 2
+
+        if (
+          clickX >= authBoxX &&
+          clickX <= authBoxX + authBoxWidth &&
+          clickY >= authBoxY &&
+          clickY <= authBoxY + authBoxHeight
+        ) {
+          if (authStatus === 'authed') {
+            handleSignOut()
+          } else {
+            setShowAuthModal(true)
+          }
+          return
+        }
+
         // Check if click is within HUD bounds
         if (
           clickX >= hudX && 
@@ -2252,6 +2381,13 @@ const passwordWidth = ctx.measureText(passwordText).width
           ctx.stroke()
           
           // CLEAN: High contrast white text, larger fonts
+          // Auth label (top left, very first)
+          const authLabel = authLabelRef.current
+          ctx.font = 'bold 12px monospace'
+          ctx.fillStyle = '#7be9ff'
+          ctx.textAlign = 'left'
+          ctx.fillText(authLabel, hudX + 15, hudY + 12)
+          
           // Level and rank on left
           ctx.font = 'bold 16px monospace'
           ctx.fillStyle = '#ffffff'
@@ -2305,6 +2441,13 @@ const passwordWidth = ctx.measureText(passwordText).width
           ctx.strokeStyle = '#00ff00'
           ctx.lineWidth = 2
           ctx.stroke()
+          
+          // Auth label (top left, very first)
+          const authLabel = authLabelRef.current
+          ctx.font = 'bold 12px monospace'
+          ctx.fillStyle = '#7be9ff'
+          ctx.textAlign = 'left'
+          ctx.fillText(authLabel, hudX + 10, hudY + 12)
           
           // Level and rank
           ctx.font = 'bold 14px monospace'
@@ -3076,12 +3219,247 @@ powerups = powerups.filter(kit => {
       })
     }
   }, [gameStarted, isGameOver, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, setLevel, ui.state.mobileHudExpanded, ui.state.desktopHudExpanded])
+
+  const refreshLeaderboard = async () => {
+    setLeaderboardLoading(true)
+    try {
+      const entries = await getLeaderboard(50)
+      const mapped: LeaderboardEntry[] = entries.map((entry, index) => ({
+        id: `remote_${index}_${entry.createdAt}`,
+        name: entry.username,
+        score: entry.score,
+        distance: entry.distance,
+        createdAt: new Date(entry.createdAt).getTime()
+      }))
+      setLeaderboardEntries(mapped)
+      setLeaderboard(mapped.slice(0, 10)) // Sync top 10 to game store for display
+    } catch {
+      setLeaderboardEntries([])
+    } finally {
+      setLeaderboardLoading(false)
+    }
+  }
+
+  const renderAuthModal = () => {
+    if (!showAuthModal) return null
+    return (
+      <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-4">
+        <div className="w-full max-w-sm bg-[#0b1020]/90 border border-cyan-500/40 rounded-2xl p-4 sm:p-5 shadow-[0_0_26px_rgba(0,200,255,0.2)]">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-cyan-200 font-mono text-sm sm:text-base font-bold tracking-wide">
+              {authMode === 'signup' ? 'Create account' : 'Sign in'}
+            </h3>
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="h-8 w-8 flex items-center justify-center rounded-md border border-cyan-400/40 text-cyan-200 hover:text-white hover:border-cyan-300 transition-colors"
+              aria-label="Close auth"
+            >
+              ✕
+            </button>
+          </div>
+          <form onSubmit={handleAuthSubmit} className="space-y-3">
+            <input
+              type="email"
+              value={authEmail}
+              onChange={(event) => setAuthEmail(event.target.value)}
+              className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-sm font-mono"
+              placeholder="email@example.com"
+              required
+            />
+            <input
+              type="password"
+              value={authPassword}
+              onChange={(event) => setAuthPassword(event.target.value)}
+              className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-sm font-mono"
+              placeholder="password"
+              required
+              minLength={8}
+            />
+            {authError && (
+              <p className="text-red-300 text-xs font-mono">{authError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 text-white font-black py-2 rounded-full text-xs font-mono tracking-widest shadow-[0_0_20px_rgba(80,200,255,0.5)] disabled:opacity-60"
+            >
+              {authLoading ? 'WORKING...' : authMode === 'signup' ? 'CREATE ACCOUNT' : 'SIGN IN'}
+            </button>
+          </form>
+          <div className="flex items-center justify-between mt-3 text-[11px] font-mono">
+            <button
+              onClick={() => setAuthMode(authMode === 'signup' ? 'signin' : 'signup')}
+              className="text-cyan-300 hover:text-cyan-200 transition-colors"
+            >
+              {authMode === 'signup' ? 'Have an account? Sign in' : 'New here? Create account'}
+            </button>
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="text-gray-300 hover:text-white transition-colors"
+            >
+              Continue without saving
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setAuthLoading(true)
+    setAuthError(null)
+    try {
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H2,H4',location:'SimpleGame.tsx:handleAuth',message:'Auth flow starting',data:{mode:authMode},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
+
+      const result = authMode === 'signup'
+        ? await signUp(authEmail.trim(), authPassword)
+        : await signIn(authEmail.trim(), authPassword)
+
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H2,H4',location:'SimpleGame.tsx:handleAuth',message:'Auth completed, calling getCurrentUser',data:{resultStatus:result.status},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
+
+      if (result.status !== 'OK') {
+        const fieldError = result.formFields?.find((field) => field.error)?.error
+        setAuthError(result.message || fieldError || 'Authentication failed.')
+        setAuthLoading(false)
+        return
+      }
+
+      const user = await getCurrentUser()
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H2,H3,H4',location:'SimpleGame.tsx:handleAuth',message:'getCurrentUser returned',data:{hasUser:!!user,username:user?.username},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
+
+      setCurrentUser(user)
+      setAuthStatus(user ? 'authed' : 'guest')
+      setShowAuthModal(false)
+
+      if (user && !user.username) {
+        setUsernameInput('')
+        setShowUsernameModal(true)
+      } else if (user && pendingSave) {
+        setPendingSave(false)
+        await handleSaveToLeaderboard()
+      }
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Authentication failed.')
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  const handleUsernameSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setUsernameLoading(true)
+    setUsernameError(null)
+    try {
+      const updated = await apiSetUsername(usernameInput.trim())
+      setCurrentUser(updated)
+      setShowUsernameModal(false)
+      setSaveMessage(null)
+      if (pendingSave) {
+        setPendingSave(false)
+        await handleSaveToLeaderboard()
+      }
+    } catch (error) {
+      setUsernameError(error instanceof Error ? error.message : 'Failed to set username.')
+    } finally {
+      setUsernameLoading(false)
+    }
+  }
+
+  const handleSaveToLeaderboard = async () => {
+    if (authStatus !== 'authed') {
+      setPendingSave(true)
+      setShowAuthModal(true)
+      return
+    }
+    if (!currentUser?.username) {
+      setPendingSave(true)
+      setShowUsernameModal(true)
+      return
+    }
+
+    setPendingSave(false)
+    setSaveStatus('saving')
+    setSaveMessage(null)
+    try {
+      const durationMs = runStartedAt ? Math.max(0, Date.now() - runStartedAt) : 0
+      const result = await submitRun({
+        score,
+        distance,
+        durationMs,
+        clientVersion: 'web'
+      })
+      addLeaderboardEntry({
+        name: currentUser.username,
+        score,
+        distance,
+        isPlayer: true
+      })
+      await refreshLeaderboard()
+      setSaveStatus('saved')
+      
+      // Show contest entry notification
+      if (result.enteredContests && result.enteredContests.length > 0) {
+        const contestNames = result.enteredContests.join(', ')
+        setSaveMessage(`Saved to leaderboard! 🏆 Entered in: ${contestNames}`)
+      } else {
+        setSaveMessage('Saved to leaderboard.')
+      }
+    } catch (error) {
+      setSaveStatus('error')
+      setSaveMessage(error instanceof Error ? error.message : 'Failed to save score.')
+    }
+  }
+
+  useEffect(() => {
+    if (!isGameOver) return
+    if (showQuiz) return
+    if (authStatus !== 'authed') return
+    if (!currentUser?.username) return
+    if (saveStatus !== 'idle') return
+    
+    // Auto-save with slight delay to ensure state is stable
+    const timer = setTimeout(() => {
+      handleSaveToLeaderboard()
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [isGameOver, showQuiz, authStatus, currentUser?.username, saveStatus])
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+    } catch {
+      // Ignore sign-out errors to avoid blocking UI reset
+    } finally {
+      setCurrentUser(null)
+      setAuthStatus('guest')
+      setSaveStatus('idle')
+      setSaveMessage(null)
+      setPendingSave(false)
+    }
+  }
+
+  const handleViewLeaderboard = () => {
+    router.push('/leaderboard')
+  }
   
   const handleStart = () => {
     trackGameStart()
     resetGame()
     setGameStarted(true)
     setLevel(1)
+    setRunStartedAt(Date.now())
+    setSaveStatus('idle')
+    setSaveMessage(null)
+    setPendingSave(false)
   }
   
   const handleRestart = () => {
@@ -3090,6 +3468,10 @@ powerups = powerups.filter(kit => {
     setShowQuiz(false)
     setGameStarted(true)
     setLevel(1)
+    setRunStartedAt(Date.now())
+    setSaveStatus('idle')
+    setSaveMessage(null)
+    setPendingSave(false)
   }
   
   const handleQuizPass = () => {
@@ -3138,6 +3520,10 @@ powerups = powerups.filter(kit => {
     resetGame()
     setGameStarted(true)
     setLevel(1)
+    setRunStartedAt(Date.now())
+    setSaveStatus('idle')
+    setSaveMessage(null)
+    setPendingSave(false)
     // Clear saved state after game loop starts
     const tid = setTimeout(() => setSavedGameState(null), 100)
     timeoutRefs.current.push(tid)
@@ -3163,16 +3549,35 @@ powerups = powerups.filter(kit => {
         <StartScreenPixel 
           onStart={handleStart}
           onShowTutorial={tutorial.actions.open}
+          onSignIn={authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true)}
+          signInLabel={authStatus === 'authed'
+            ? `Signed in as ${currentUser?.username || 'Player'} • Sign out`
+            : 'Guest • Sign in'
+          }
+          onViewLeaderboard={handleViewLeaderboard}
+          activeContests={activeContests}
         />
+        {renderAuthModal()}
       </>
     )
   }
   
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden">
+      {renderAuthModal()}
       {/* HUD - RESPONSIVE FOR MOBILE */}
       <div className="absolute top-2 md:top-4 left-2 md:left-4 right-2 md:right-4 flex justify-between items-start text-white font-mono text-sm md:text-xl z-10 pointer-events-none">
-        <div className="space-y-1 md:space-y-2">
+        <div className="space-y-1 md:space-y-2 pointer-events-auto">
+          {/* Mobile auth chip */}
+          <button
+            onClick={authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true)}
+            className="md:hidden bg-black/80 border border-cyan-600 rounded px-2 py-1 text-[10px] font-mono text-cyan-100 hover:text-cyan-50 transition-colors"
+            title={authStatus === 'authed' ? 'Sign out' : 'Sign in'}
+          >
+            {authStatus === 'authed'
+              ? `${currentUser?.username || 'Player'} • Sign out`
+              : 'Guest • Sign in'}
+          </button>
           {/* Mobile only - level and score shown in canvas HUD on desktop */}
           <div className="md:hidden bg-black/80 border border-cyan-600 rounded px-2 py-1">
             <span className="text-[10px]">L:</span> <span className="text-cyan-400 font-bold text-sm">{level}</span>
@@ -3181,14 +3586,10 @@ powerups = powerups.filter(kit => {
             <span className="text-[10px]">S:</span> <span className="text-yellow-400 font-bold text-sm">{score}</span>
           </div>
         </div>
-        
-        {/* Threat Direction Indicator - rendered in canvas HUD */}
-        
-        {/* Kit inventory displayed in canvas */}
       </div>
 
       <div className="hidden md:block absolute bottom-4 right-4 z-10 pointer-events-none">
-        <LeaderboardPanel title="Top Runs" maxEntries={5} />
+        <LeaderboardPanel title="Top Runs" maxEntries={5} entries={leaderboardEntries} loading={leaderboardLoading} />
       </div>
 
       <button
@@ -3217,7 +3618,7 @@ powerups = powerups.filter(kit => {
                 ✕
               </button>
             </div>
-            <LeaderboardPanel title="Top Runs" maxEntries={8} />
+            <LeaderboardPanel title="Top Runs" maxEntries={8} entries={leaderboardEntries} loading={leaderboardLoading} />
           </div>
         </div>
       )}
@@ -3225,7 +3626,7 @@ powerups = powerups.filter(kit => {
       {/* Game Canvas */}
       <canvas
         ref={canvasRef}
-        className="w-full h-full"
+        className="absolute inset-0 w-full h-full z-0"
         tabIndex={0}
       />
 
@@ -3285,6 +3686,142 @@ powerups = powerups.filter(kit => {
               <span className="text-gray-500 mx-2">•</span> 
               <span className="text-gray-400">Score:</span> <span className="text-yellow-400 font-extrabold">{score}</span>
             </div>
+
+            {/* Leaderboard save prompt */}
+            <div className="border border-cyan-500/35 bg-black/40 rounded-2xl px-3 sm:px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-cyan-300 text-[11px] sm:text-xs font-mono tracking-wide">LEADERBOARD</p>
+                {authStatus === 'authed' && currentUser?.username && (
+                  <span className="text-[10px] sm:text-[11px] text-cyan-200/80 font-mono">
+                    Signed in as {currentUser.username}
+                  </span>
+                )}
+              </div>
+              {saveStatus === 'saved' ? (
+                <a
+                  href="/leaderboard"
+                  className="w-full bg-gradient-to-r from-green-400/90 to-cyan-500/90 hover:from-green-400 hover:to-cyan-500 text-black font-black py-2 px-4 rounded-full transition-all text-[11px] sm:text-xs font-mono tracking-widest shadow-[0_0_18px_rgba(0,255,200,0.4)] flex items-center justify-center gap-2"
+                >
+                  ✓ VIEW LEADERBOARD
+                </a>
+              ) : saveStatus === 'saving' || (authStatus === 'authed' && currentUser?.username && saveStatus === 'idle') ? (
+                <div className="w-full bg-gradient-to-r from-cyan-400/90 to-blue-500/90 text-black font-black py-2 px-4 rounded-full text-[11px] sm:text-xs font-mono tracking-widest shadow-[0_0_18px_rgba(0,200,255,0.4)] flex items-center justify-center gap-2">
+                  <div className="inline-block animate-spin rounded-full h-3 w-3 border-2 border-black border-t-transparent"></div>
+                  AUTO-SAVING...
+                </div>
+              ) : (
+                <button
+                  onClick={handleSaveToLeaderboard}
+                  className="w-full bg-gradient-to-r from-yellow-400/90 to-orange-500/90 hover:from-yellow-400 hover:to-orange-500 text-black font-black py-2 px-4 rounded-full transition-all text-[11px] sm:text-xs font-mono tracking-widest shadow-[0_0_18px_rgba(255,200,80,0.4)]"
+                >
+                  {authStatus === 'authed' ? 'SAVE TO LEADERBOARD' : 'SIGN IN TO SAVE SCORE'}
+                </button>
+              )}
+              {(saveStatus === 'error' || (saveStatus === 'saved' && saveMessage)) && saveMessage && (
+                <p className={`text-[10px] sm:text-[11px] font-mono ${saveStatus === 'error' ? 'text-red-300' : 'text-green-300'}`}>
+                  {saveMessage}
+                </p>
+              )}
+              {authStatus !== 'authed' && (
+                <p className="text-[10px] sm:text-[11px] font-mono text-gray-300">
+                  Play without registering anytime — only saving needs an account.
+                </p>
+              )}
+            </div>
+
+            {/* Share section */}
+            <div className="border border-purple-500/35 bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-2xl px-3 sm:px-4 py-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-purple-300 text-[11px] sm:text-xs font-mono tracking-wide">SHARE YOUR RUN</p>
+              </div>
+              <button
+                onClick={async () => {
+                  const tweetText = `I just scored ${score} points in Byte Runner! 🎮🔐\n\nAn epic cybersecurity game where you learn real defense tools while dodging cyber threats.\n\nCan you beat my score?\n\nPlay now: ${window.location.origin}`
+                  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
+                  window.open(tweetUrl, '_blank', 'width=550,height=420')
+                  
+                  // Track share event and check for badge rewards
+                  try {
+                    await recordShare('twitter', score)
+                    trackSocialShare('twitter', score)
+                    
+                    // Check for new badges after sharing
+                    const { checkBadges } = await import('@/lib/api/backend')
+                    const result = await checkBadges()
+                    if (result.awarded.length > 0) {
+                      // Show badge notification
+                      console.log('New badges earned:', result.awarded)
+                      // TODO: Show in-game notification
+                    }
+                  } catch (error) {
+                    console.error('Failed to record share:', error)
+                  }
+                }}
+                className="w-full bg-gradient-to-r from-blue-500/90 to-purple-600/90 hover:from-blue-500 hover:to-purple-600 text-white font-bold py-2 px-4 rounded-full transition-all text-[11px] sm:text-xs font-mono tracking-wide shadow-[0_0_18px_rgba(138,43,226,0.4)] flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                Share on X (Twitter)
+              </button>
+              <p className="text-[10px] text-gray-400 font-mono text-center mt-2">
+                Share your score and challenge your friends!
+              </p>
+            </div>
+
+            {/* Active Contests Promotion */}
+            {activeContests.length > 0 && (
+              <div className="border-2 border-yellow-500/50 bg-gradient-to-br from-yellow-900/30 to-orange-900/30 rounded-2xl px-3 sm:px-4 py-3 backdrop-blur-sm shadow-[0_0_18px_rgba(255,200,80,0.3)]">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-yellow-300 text-[11px] sm:text-xs font-mono tracking-wide flex items-center gap-2">
+                    <span className="text-lg">🏆</span>
+                    ACTIVE CONTESTS
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {activeContests.slice(0, 2).map((contest) => {
+                    const endDate = new Date(contest.end_date)
+                    const now = new Date()
+                    const hoursLeft = Math.max(0, Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60)))
+                    const topPrize = contest.prize_pool ? Object.values(contest.prize_pool)[0] : null
+                    
+                    return (
+                      <div key={contest.id} className="bg-black/40 rounded-lg p-2.5 sm:p-3 border border-yellow-600/30">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-xs sm:text-sm font-bold truncate">{contest.name}</p>
+                            {topPrize && (
+                              <p className="text-yellow-300 text-[10px] sm:text-xs font-mono">
+                                Top Prize: {topPrize}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-orange-300 text-[10px] sm:text-xs font-mono">
+                              {hoursLeft}h left
+                            </p>
+                          </div>
+                        </div>
+                        <a
+                          href={`/contests/${contest.id}`}
+                          className="block w-full bg-gradient-to-r from-yellow-600/80 to-orange-600/80 hover:from-yellow-500 hover:to-orange-500 text-white text-[10px] sm:text-xs font-bold py-1.5 rounded-lg transition-all text-center"
+                        >
+                          View Contest →
+                        </a>
+                      </div>
+                    )
+                  })}
+                  {activeContests.length > 2 && (
+                    <a
+                      href="/contests"
+                      className="block text-center text-yellow-300 hover:text-yellow-200 text-[10px] sm:text-xs font-mono transition-colors"
+                    >
+                      + {activeContests.length - 2} more contests
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
             
             {/* Continue / Restart panel */}
             <div className="bg-gradient-to-br from-[#1b1a3a]/55 to-[#1a2f4b]/55 border-2 border-cyan-500/45 rounded-2xl overflow-hidden backdrop-blur-sm shadow-[0_0_22px_rgba(64,200,255,0.2)]">
@@ -3339,8 +3876,70 @@ powerups = powerups.filter(kit => {
                     More details →
                   </button>
                 )}
+
+                {authStatus === 'authed' && (
+                  <>
+                    <div className="h-px bg-cyan-500/20" />
+                    <button
+                      onClick={async () => {
+                        await handleSignOut()
+                        handleRestart()
+                      }}
+                      className="w-full text-center text-gray-400/90 text-[11px] sm:text-xs font-mono tracking-wide hover:text-gray-300 transition-colors"
+                    >
+                      Sign out • {currentUser?.username || 'Player'}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auth Modal moved to home screen */}
+
+      {/* Username Modal */}
+      {showUsernameModal && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-sm bg-[#0b1020]/90 border border-cyan-500/40 rounded-2xl p-4 sm:p-5 shadow-[0_0_26px_rgba(0,200,255,0.2)]">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-cyan-200 font-mono text-sm sm:text-base font-bold tracking-wide">
+                Choose a username
+              </h3>
+              <button
+                onClick={() => setShowUsernameModal(false)}
+                className="h-8 w-8 flex items-center justify-center rounded-md border border-cyan-400/40 text-cyan-200 hover:text-white hover:border-cyan-300 transition-colors"
+                aria-label="Close username"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleUsernameSubmit} className="space-y-3">
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={(event) => setUsernameInput(event.target.value)}
+                className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-sm font-mono"
+                placeholder="3-16 letters, numbers, underscores"
+                minLength={3}
+                maxLength={16}
+                required
+              />
+              {usernameError && (
+                <p className="text-red-300 text-xs font-mono">{usernameError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={usernameLoading}
+                className="w-full bg-gradient-to-r from-green-400 to-emerald-500 text-black font-black py-2 rounded-full text-xs font-mono tracking-widest shadow-[0_0_20px_rgba(80,255,160,0.45)] disabled:opacity-60"
+              >
+                {usernameLoading ? 'SAVING...' : 'SET USERNAME'}
+              </button>
+            </form>
+            <p className="mt-2 text-[11px] text-gray-300 font-mono">
+              This name will appear on the leaderboard.
+            </p>
           </div>
         </div>
       )}

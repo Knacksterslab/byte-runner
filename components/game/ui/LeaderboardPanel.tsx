@@ -1,26 +1,32 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useGameStore } from '@/lib/store/gameStore'
+import { useGameStore, type LeaderboardEntry } from '@/lib/store/gameStore'
 
 interface LeaderboardPanelProps {
   title?: string
   maxEntries?: number
+  entries?: LeaderboardEntry[]
+  loading?: boolean
   className?: string
 }
 
 export function LeaderboardPanel({
   title = 'Top Runs',
   maxEntries = 5,
+  entries,
+  loading = false,
   className
 }: LeaderboardPanelProps) {
   const leaderboard = useGameStore((state) => state.leaderboard)
   const ensureLeaderboardSeeded = useGameStore((state) => state.ensureLeaderboardSeeded)
-  const entries = leaderboard.slice(0, maxEntries)
+  const visibleEntries = (entries ?? leaderboard).slice(0, maxEntries)
 
   useEffect(() => {
-    ensureLeaderboardSeeded()
-  }, [ensureLeaderboardSeeded])
+    if (!entries) {
+      ensureLeaderboardSeeded()
+    }
+  }, [ensureLeaderboardSeeded, entries])
 
   return (
     <div className={className}>
@@ -38,11 +44,13 @@ export function LeaderboardPanel({
         >
           — {title} —
         </p>
-        {entries.length === 0 ? (
+        {loading ? (
+          <p className="text-gray-400 text-xs">Loading leaderboard...</p>
+        ) : visibleEntries.length === 0 ? (
           <p className="text-gray-400 text-xs">No runs yet. Be the first!</p>
         ) : (
           <div className="space-y-1.5 text-xs md:text-sm text-gray-200 font-mono">
-            {entries.map((entry, index) => (
+            {visibleEntries.map((entry, index) => (
               <div key={entry.id} className="flex justify-between gap-3">
                 <span className="text-cyan-400 font-bold">#{index + 1}</span>
                 <span className="flex-1 text-left">

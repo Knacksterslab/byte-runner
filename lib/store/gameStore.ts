@@ -51,6 +51,7 @@ interface GameStore {
   setQuizPassed: (passed: boolean) => void
   setSavedGameState: (state: { level: number; kits: { [key: string]: number }; score: number } | null) => void
   addLeaderboardEntry: (entry: Omit<LeaderboardEntry, 'id' | 'createdAt'>) => void
+  setLeaderboard: (entries: LeaderboardEntry[]) => void
   ensureLeaderboardSeeded: () => void
   resetGame: () => void
 }
@@ -136,6 +137,10 @@ export const useGameStore = create<GameStore>()(
           })
           .slice(0, 10)
         set({ leaderboard: next })
+      },
+
+      setLeaderboard: (entries) => {
+        set({ leaderboard: entries })
       },
 
       ensureLeaderboardSeeded: () => {
