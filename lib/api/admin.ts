@@ -1,5 +1,8 @@
 // Admin API functions
-const API_DOMAIN = process.env.NEXT_PUBLIC_API_DOMAIN || 'http://localhost:4000'
+const RAW_API_DOMAIN = process.env.NEXT_PUBLIC_API_DOMAIN || 'http://localhost:4000'
+const API_DOMAIN = RAW_API_DOMAIN.startsWith('http://') || RAW_API_DOMAIN.startsWith('https://')
+  ? RAW_API_DOMAIN.replace(/\/+$/, '')
+  : `https://${RAW_API_DOMAIN.replace(/\/+$/, '')}`
 
 async function fetchWithSession(input: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers || {})

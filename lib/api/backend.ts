@@ -42,7 +42,10 @@ interface AuthResult {
   formFields?: Array<{ id: string; error?: string }>
 }
 
-const API_DOMAIN = process.env.NEXT_PUBLIC_API_DOMAIN || 'http://localhost:4000'
+const RAW_API_DOMAIN = process.env.NEXT_PUBLIC_API_DOMAIN || 'http://localhost:4000'
+const API_DOMAIN = RAW_API_DOMAIN.startsWith('http://') || RAW_API_DOMAIN.startsWith('https://')
+  ? RAW_API_DOMAIN.replace(/\/+$/, '')
+  : `https://${RAW_API_DOMAIN.replace(/\/+$/, '')}`
 const ANTI_CSRF_KEY = 'byte-runner-anti-csrf'
 const FDI_VERSION = '1.18'
 let cachedAntiCsrf: string | null = null
@@ -67,10 +70,6 @@ async function fetchWithSession(input: string, init: RequestInit = {}) {
   const antiCsrf = getAntiCsrf()
   if (antiCsrf) headers.set('anti-csrf', antiCsrf)
 
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H1,H5',location:'backend.ts:fetchWithSession',message:'fetchWithSession called',data:{url:input,hasAntiCsrf:!!antiCsrf,antiCsrfValue:antiCsrf,hasCredentials:true},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion agent log
-
   const res = await fetch(`${API_DOMAIN}${input}`, {
     ...init,
     headers,
@@ -82,23 +81,11 @@ async function fetchWithSession(input: string, init: RequestInit = {}) {
     setAntiCsrf(nextAntiCsrf)
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H1,H2,H3',location:'backend.ts:fetchWithSession',message:'fetchWithSession response',data:{url:input,status:res.status,hasNewAntiCsrf:!!nextAntiCsrf,newAntiCsrfValue:nextAntiCsrf},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion agent log
-
   return res
 }
 
 export async function getCurrentUser(): Promise<BackendUser | null> {
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H2,H3,H4',location:'backend.ts:getCurrentUser',message:'getCurrentUser started',data:{hasAntiCsrf:!!getAntiCsrf()},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion agent log
-
   const res = await fetchWithSession('/users/me', { method: 'GET' })
-  
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H2,H3,H4',location:'backend.ts:getCurrentUser',message:'getCurrentUser response received',data:{status:res.status,is401:res.status===401},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion agent log
 
   if (res.status === 401) return null
   if (!res.ok) {
@@ -138,10 +125,6 @@ export async function signUp(email: string, password: string): Promise<AuthResul
     'st-auth-mode': 'cookie',
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H1,H2,H6,H7',location:'backend.ts:signUp',message:'signUp started after clear-session',data:{email:email.substring(0,3)+'***',beforeAntiCsrf:getAntiCsrf(),apiDomain:API_DOMAIN,headers:requestHeaders},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion agent log
-
   const res = await fetch(`${API_DOMAIN}/auth/signup`, {
     method: 'POST',
     headers: requestHeaders,
@@ -160,10 +143,6 @@ export async function signUp(email: string, password: string): Promise<AuthResul
   }
 
   const jsonResponse = await res.json()
-
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H1,H2,H6',location:'backend.ts:signUp',message:'signUp completed',data:{status:res.status,receivedAntiCsrf:!!nextAntiCsrf,afterAntiCsrf:getAntiCsrf(),responseStatus:jsonResponse.status,responseMessage:jsonResponse.message},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion agent log
 
   return jsonResponse
 }

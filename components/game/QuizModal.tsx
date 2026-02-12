@@ -8,10 +8,9 @@ interface QuizModalProps {
   level: number
   onPass: () => void
   onFail: () => void
-  onClose: () => void
 }
 
-export default function QuizModal({ kitType, level, onPass, onFail, onClose }: QuizModalProps) {
+export default function QuizModal({ kitType, level, onPass, onFail }: QuizModalProps) {
   const [question, setQuestion] = useState<QuizQuestion | null>(null)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [timeLeft, setTimeLeft] = useState(30)

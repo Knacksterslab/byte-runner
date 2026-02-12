@@ -21,7 +21,6 @@ import { useUIState } from './hooks/useUIState'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { TutorialOverlay } from './ui/TutorialOverlay'
 import { StartScreenNew } from './ui/StartScreenNew'
-import { LeaderboardPanel } from './ui/LeaderboardPanel'
 import QuizModal from './QuizModal'
 
 interface GameObject {
@@ -52,7 +51,6 @@ export default function SimpleGame() {
   const [savedGameState, setSavedGameState] = useState<{level: number, kits: {[key:string]:number}, score: number} | null>(null)
   const [isFirstDeath, setIsFirstDeath] = useState(true)
   const [deathAction, setDeathAction] = useState<'restart' | 'quiz'>('restart')
-  const [showLeaderboardMobile, setShowLeaderboardMobile] = useState(false)
   const [authStatus, setAuthStatus] = useState<'checking' | 'guest' | 'authed'>('checking')
   const [currentUser, setCurrentUser] = useState<BackendUser | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -65,14 +63,11 @@ export default function SimpleGame() {
   const [usernameInput, setUsernameInput] = useState('')
   const [usernameError, setUsernameError] = useState<string | null>(null)
   const [usernameLoading, setUsernameLoading] = useState(false)
-  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([])
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
   const [runStartedAt, setRunStartedAt] = useState<number | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [pendingSave, setPendingSave] = useState(false)
   const [activeContests, setActiveContests] = useState<Contest[]>([])
-  const authLabelRef = useRef('Guest • Sign in')
   const showQuizOverlayRef = useRef(false)
   
   // Track all timeouts for cleanup to prevent memory leaks
@@ -121,12 +116,6 @@ export default function SimpleGame() {
   }, [])
 
   useEffect(() => {
-    authLabelRef.current = authStatus === 'authed'
-      ? `${currentUser?.username || 'Player'} • Sign out`
-      : 'Guest • Sign in'
-  }, [authStatus, currentUser?.username])
-
-  useEffect(() => {
     showQuizOverlayRef.current = showQuiz
   }, [showQuiz])
 
@@ -155,7 +144,6 @@ export default function SimpleGame() {
     let isActive = true
 
     const loadLeaderboard = async () => {
-      setLeaderboardLoading(true)
       try {
         const entries = await getLeaderboard(50)
         if (!isActive) return
@@ -166,13 +154,9 @@ export default function SimpleGame() {
           distance: entry.distance,
           createdAt: new Date(entry.createdAt).getTime()
         }))
-        setLeaderboardEntries(mapped)
         setLeaderboard(mapped.slice(0, 10)) // Sync top 10 to game store for display
       } catch {
         if (!isActive) return
-        setLeaderboardEntries([])
-      } finally {
-        if (isActive) setLeaderboardLoading(false)
       }
     }
 
@@ -201,7 +185,8 @@ export default function SimpleGame() {
       malware: new Image(),
       dataBreach: new Image(),
       spamWave: new Image(),
-      dataPacket: new Image()
+      dataPacket: new Image(),
+      background: new Image()
     }
     
     let loadedCount = 0
@@ -229,6 +214,7 @@ export default function SimpleGame() {
     images.dataBreach.src = '/assets/sprites/data-breach.png'
     images.spamWave.src = '/assets/sprites/spam-wave.png'
     images.dataPacket.src = '/assets/sprites/data-packet.png'
+    images.background.src = '/space-background-final.png'
     
     return () => {
       // Clean up image references to prevent memory leaks
@@ -267,7 +253,8 @@ export default function SimpleGame() {
       malware: new Image(),
       dataBreach: new Image(),
       spamWave: new Image(),
-      dataPacket: new Image()
+      dataPacket: new Image(),
+      background: new Image()
     }
     
     images.virus.src = '/assets/sprites/virus.png'
@@ -276,6 +263,7 @@ export default function SimpleGame() {
     images.dataBreach.src = '/assets/sprites/data-breach.png'
     images.spamWave.src = '/assets/sprites/spam-wave.png'
     images.dataPacket.src = '/assets/sprites/data-packet.png'
+    images.background.src = '/space-background-final.png'
     
     // Map threat types to sprites
     const threatToSprite: { [key: string]: HTMLImageElement } = {
@@ -2089,21 +2077,56 @@ const passwordWidth = ctx.measureText(passwordText).width
     }
 // Draw animated cyber background with color progression
     function drawBackground() {
-// CLEAN: Simple deep space background (no clutter)
-      // Cache gradient to avoid recreating it every frame (Chrome performance issue)
-      if (!cachedGradient || cachedGradientWidth !== canvas.width || cachedGradientHeight !== canvas.height) {
-        cachedGradient = ctx.createRadialGradient(
-          canvas.width / 2, canvas.height / 2, 0,
-          canvas.width / 2, canvas.height / 2, canvas.width
+      // Primary background: use the same cosmic image used in the UI mockups.
+      if (images.background.complete && images.background.naturalWidth > 0) {
+        const img = images.background
+        const scale = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight)
+        const drawWidth = img.naturalWidth * scale
+        const drawHeight = img.naturalHeight * scale
+        const drawX = (canvas.width - drawWidth) / 2
+        const drawY = (canvas.height - drawHeight) / 2
+
+        ctx.save()
+        ctx.filter = 'saturate(0.82) brightness(0.88)'
+        ctx.globalAlpha = 0.86
+        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
+        ctx.restore()
+
+        const vignette = ctx.createRadialGradient(
+          canvas.width / 2, canvas.height * 0.42, 0,
+          canvas.width / 2, canvas.height * 0.42, canvas.width * 0.75
         )
-        cachedGradient.addColorStop(0, '#0b1020')
-        cachedGradient.addColorStop(1, '#02030a')
-        cachedGradientWidth = canvas.width
-        cachedGradientHeight = canvas.height
-}
-      ctx.fillStyle = cachedGradient
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-// CLEAN: Simple subtle stars (no effects, no grid, no icons)
+        vignette.addColorStop(0, 'rgba(0,0,0,0.04)')
+        vignette.addColorStop(1, 'rgba(2,4,10,0.46)')
+        ctx.fillStyle = vignette
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+        // Slightly deepen the green horizon tone without over-brightening.
+        const horizonGlow = ctx.createRadialGradient(
+          canvas.width / 2, canvas.height * 0.62, 0,
+          canvas.width / 2, canvas.height * 0.62, canvas.width * 0.5
+        )
+        horizonGlow.addColorStop(0, 'rgba(36, 180, 130, 0.16)')
+        horizonGlow.addColorStop(1, 'rgba(10, 40, 30, 0)')
+        ctx.fillStyle = horizonGlow
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+      } else {
+        // Fallback if image has not loaded yet.
+        if (!cachedGradient || cachedGradientWidth !== canvas.width || cachedGradientHeight !== canvas.height) {
+          cachedGradient = ctx.createRadialGradient(
+            canvas.width / 2, canvas.height / 2, 0,
+            canvas.width / 2, canvas.height / 2, canvas.width
+          )
+          cachedGradient.addColorStop(0, '#0b1020')
+          cachedGradient.addColorStop(1, '#02030a')
+          cachedGradientWidth = canvas.width
+          cachedGradientHeight = canvas.height
+        }
+        ctx.fillStyle = cachedGradient
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+      }
+
+      // Subtle stars layer over the background.
       // Use rectangles instead of arcs for better Chrome performance
       ctx.fillStyle = '#ffffff'
       const now = Date.now()
@@ -2119,7 +2142,7 @@ const passwordWidth = ctx.measureText(passwordText).width
         const twinkle = performanceMode
           ? 0.6
           : Math.sin(now / 800 + particle.x) * 0.3 + 0.7
-        ctx.globalAlpha = twinkle * 0.6
+        ctx.globalAlpha = twinkle * 0.42
         // Use rect instead of arc for Chrome performance (3x faster)
         const size = particle.size * 0.8
         ctx.fillRect(particle.x - size / 2, particle.y - size / 2, size, size)
@@ -2241,286 +2264,44 @@ const passwordWidth = ctx.measureText(passwordText).width
         }
       }
       
-      // Draw kit inventory and progress (RESPONSIVE for mobile!)
-      const isMobile = canvas.width < 768
+      // Draw compact HUD matching reference screenshot
       const isReactQuizOpen = showQuizOverlayRef.current
       const isInGameQuizActive = quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0
       const shouldHideHud = isReactQuizOpen || isInGameQuizActive
-      
-      if (isMobile && !shouldHideHud) {
-        // MOBILE: Collapsible HUD (top-right)
-        const kitX = canvas.width - 110
-        const kitY = 80
-        
-        if (!ui.state.mobileHudExpanded) {
-          // COLLAPSED STATE - Minimal HUD
-          const hudWidth = 100
-          const hudHeight = 80
-          const cornerRadius = 10
-          
-          // Semi-transparent background with pulse effect
-          const pulse = Math.sin(Date.now() / 1000) * 0.1 + 0.85
-          ctx.fillStyle = `rgba(0, 0, 0, ${pulse})`
-          ctx.beginPath()
-          ctx.roundRect(kitX, kitY, hudWidth, hudHeight, cornerRadius)
-          ctx.fill()
-          
-          ctx.strokeStyle = '#00ffff'
-          ctx.lineWidth = 2
-          ctx.stroke()
-          
-          // CLEAN: Level and rank (pure white, high contrast)
-          ctx.font = 'bold 13px monospace'
-          ctx.fillStyle = '#ffffff'
-          ctx.textAlign = 'left'
-          const rank = getRank()
-          ctx.fillText(`L${currentLevel}`, kitX + 8, kitY + 20)
-          ctx.font = '9px monospace'
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText(rank.toUpperCase(), kitX + 8, kitY + 32)
-          
-          // Total kit count
-          const totalKitsInInventory = calculateTotalKits(kitInventory)
-          
-          ctx.font = 'bold 16px monospace'
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText(`❤️${totalKitsInInventory}`, kitX + 8, kitY + 53)
-          
-          // Expand indicator (animated)
-          ctx.font = 'bold 10px monospace'
-          ctx.fillStyle = '#00ffff'
-          const expandY = kitY + 70 + Math.sin(Date.now() / 300) * 2
-          ctx.fillText('TAP ▼', kitX + 28, expandY)
-          
-        } else {
-          // EXPANDED STATE - Full HUD
-          const hudWidth = 140
-          const kitColumns = 3
-          const kitRowHeight = 16
-          const kits = ALL_KIT_TYPES.map((kitId) => ({
-            emoji: getKitIcon(kitId),
-            count: kitInventory[kitId] || 0
-          }))
-          const kitRows = Math.ceil(kits.length / kitColumns)
-          const hudHeight = 110 + kitRows * kitRowHeight
-          const cornerRadius = 10
-          
-          // Semi-transparent background
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'
-          ctx.beginPath()
-          ctx.roundRect(kitX - 20, kitY, hudWidth, hudHeight, cornerRadius)
-          ctx.fill()
-          
-          ctx.strokeStyle = '#00ff00'
-          ctx.lineWidth = 2
-          ctx.stroke()
-          
-          // Level and rank
-          ctx.font = 'bold 12px monospace'
-          ctx.fillStyle = '#ffd700'
-          ctx.textAlign = 'left'
-          const rank = getRank()
-          ctx.fillText(`L${currentLevel} ${rank}`, kitX - 15, kitY + 18)
-          
-          // Kit progress
-          const kitsNeeded = calculateKitsNeededForNextLevel(currentLevel)
-          const progressPercent = Math.min(totalKitsCollected / kitsNeeded, 1)
-          ctx.font = '9px monospace'
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText(`${totalKitsCollected}/${kitsNeeded}`, kitX - 15, kitY + 33)
-          
-          // Progress bar
-          const barWidth = 110
-          const barHeight = 5
-          ctx.fillStyle = '#333333'
-          ctx.fillRect(kitX - 15, kitY + 38, barWidth, barHeight)
-          ctx.fillStyle = '#00ff00'
-          ctx.fillRect(kitX - 15, kitY + 38, barWidth * progressPercent, barHeight)
-          
-          // Kits - ICONS ONLY
-          ctx.font = `13px ${EMOJI_FONT_STACK}`
-          
-          // Draw in compact grid
-          for (let i = 0; i < kits.length; i++) {
-            const col = i % kitColumns
-            const row = Math.floor(i / kitColumns)
-            const x = kitX - 10 + (col * 45)
-            const y = kitY + 65 + (row * kitRowHeight)
-            
-            const kit = kits[i]
-            const count = kit.count || 0
-            ctx.fillStyle = count > 0 ? '#ffffff' : '#555555'
-            ctx.fillText(`${kit.emoji}${count}`, x, y)
-          }
-          
-          // Zone icon
-          const currentZone = getCurrentZone(currentLevel)
-          ctx.font = `18px ${EMOJI_FONT_STACK}`
-          ctx.fillStyle = currentZone.colorScheme.accent
-          const zoneY = kitY + hudHeight - 12
-          ctx.fillText(currentZone.icon, kitX + 35, zoneY)
-          
-          // Collapse indicator
-          ctx.font = 'bold 10px monospace'
-          ctx.fillStyle = '#00ffff'
-          ctx.fillText('TAP ▲', kitX + 28, zoneY)
-        }
-        
-      } else if (!shouldHideHud) {
-        // DESKTOP: Collapsible top-left HUD
-        const hudX = 20
-        const hudY = 80
-        
-        if (!ui.state.desktopHudExpanded) {
-          // COLLAPSED STATE - Minimal info (like mockup)
-          const hudWidth = 340
-          const hudHeight = 70
-          const cornerRadius = 12
-          
-          // Background with pulse - rounded corners
-          const pulse = Math.sin(Date.now() / 1000) * 0.1 + 0.7
-          ctx.fillStyle = `rgba(0, 0, 0, ${pulse})`
-          ctx.beginPath()
-          ctx.roundRect(hudX, hudY, hudWidth, hudHeight, cornerRadius)
-          ctx.fill()
-          
-          ctx.strokeStyle = '#00ffff'
-          ctx.lineWidth = 2
-          ctx.stroke()
-          
-          // CLEAN: High contrast white text, larger fonts
-          // Auth label (top left, very first)
-          const authLabel = authLabelRef.current
-          ctx.font = 'bold 12px monospace'
-          ctx.fillStyle = '#7be9ff'
-          ctx.textAlign = 'left'
-          ctx.fillText(authLabel, hudX + 15, hudY + 12)
-          
-          // Level and rank on left
-          ctx.font = 'bold 16px monospace'
-          ctx.fillStyle = '#ffffff'
-          ctx.textAlign = 'left'
-          const rank = getRank()
-          ctx.fillText(`LEVEL ${currentLevel} · ${rank.toUpperCase()}`, hudX + 15, hudY + 25)
-          
-          // Score on right of same line (high contrast)
-          ctx.font = 'bold 18px monospace'
-          ctx.fillStyle = '#ffffff'
-          ctx.textAlign = 'right'
-          ctx.fillText(`Score: ${score}`, hudX + hudWidth - 15, hudY + 25)
-          
-          // Total kits count with shield emoji
-          const totalKitsInInventory = calculateTotalKits(kitInventory)
-          
-          ctx.font = 'bold 20px monospace'
-          ctx.fillStyle = '#ffffff'
-          ctx.textAlign = 'left'
-          ctx.fillText(`❤️ ${totalKitsInInventory}`, hudX + 15, hudY + 52)
-          
-          // Expand indicator (small chevron)
-          ctx.font = 'bold 10px monospace'
-          ctx.fillStyle = '#00ffff'
-          ctx.textAlign = 'right'
-          const expandY = hudY + 55 + Math.sin(Date.now() / 300) * 1
-          ctx.fillText('▼', hudX + hudWidth - 15, expandY)
-          
-          ctx.textAlign = 'left'
-          
-        } else {
-          // EXPANDED STATE - Full details
-          const kits = ALL_KIT_TYPES.map((kitId) => ({
-            emoji: getKitIcon(kitId),
-            count: kitInventory[kitId] || 0
-          }))
-          const kitColumns = 8
-          const iconSpacingX = 32
-          const iconSpacingY = 24
-          const kitRows = Math.ceil(kits.length / kitColumns)
-          const hudWidth = 460
-          const hudHeight = 90 + (kitRows * iconSpacingY)
-          const cornerRadius = 12
-          
-          // Background - rounded corners
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
-          ctx.beginPath()
-          ctx.roundRect(hudX, hudY, hudWidth, hudHeight, cornerRadius)
-          ctx.fill()
-          
-          ctx.strokeStyle = '#00ff00'
-          ctx.lineWidth = 2
-          ctx.stroke()
-          
-          // Auth label (top left, very first)
-          const authLabel = authLabelRef.current
-          ctx.font = 'bold 12px monospace'
-          ctx.fillStyle = '#7be9ff'
-          ctx.textAlign = 'left'
-          ctx.fillText(authLabel, hudX + 10, hudY + 12)
-          
-          // Level and rank
-          ctx.font = 'bold 14px monospace'
-          ctx.fillStyle = '#ffd700'
-          ctx.textAlign = 'left'
-          const rank = getRank()
-          ctx.fillText(`L${currentLevel} ${rank}`, hudX + 10, hudY + 20)
-          
-          // Score
-          ctx.font = 'bold 12px monospace'
-          ctx.fillStyle = '#ffff00'
-          ctx.fillText(`Score: ${score}`, hudX + 10, hudY + 65)
-          
-          const kitsNeeded = calculateKitsNeededForNextLevel(currentLevel)
-          const progressPercent = Math.min(totalKitsCollected / kitsNeeded, 1)
-          ctx.font = '11px monospace'
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText(`${totalKitsCollected}/${kitsNeeded}`, hudX + 10, hudY + 37)
-          
-          // Mini progress bar
-          const barWidth = 80
-          const barHeight = 6
-          ctx.fillStyle = '#333333'
-          ctx.fillRect(hudX + 10, hudY + 42, barWidth, barHeight)
-          ctx.fillStyle = '#00ff00'
-          ctx.fillRect(hudX + 10, hudY + 42, barWidth * progressPercent, barHeight)
-          
-          // Kit icons in compact grid
-          ctx.font = `16px ${EMOJI_FONT_STACK}`
-          const startX = hudX + 100
-          const startY = hudY + 40
-          
-          for (let i = 0; i < kits.length; i++) {
-            const col = i % kitColumns
-            const row = Math.floor(i / kitColumns)
-            const x = startX + (col * iconSpacingX)
-            const y = startY + (row * iconSpacingY)
-            const kit = kits[i]
-            const count = kit.count || 0
-            
-            // Kit icon
-            ctx.fillStyle = count > 0 ? '#ffffff' : '#555555'
-            ctx.fillText(kit.emoji, x, y)
-            
-            // Count below icon
-            ctx.font = 'bold 9px monospace'
-            ctx.fillStyle = count > 0 ? '#00ff00' : '#555555'
-            ctx.fillText(`${count}`, x + 5, y + 12)
-            ctx.font = '16px monospace'
-          }
-          
-          // Zone indicator
-          const currentZone = getCurrentZone(currentLevel)
-          ctx.font = `20px ${EMOJI_FONT_STACK}`
-          ctx.fillStyle = currentZone.colorScheme.accent
-          ctx.fillText(currentZone.icon, hudX + 50, hudY + 92)
-          
-          // Collapse indicator
-          ctx.font = 'bold 11px monospace'
-          ctx.fillStyle = '#00ffff'
-          ctx.fillText('▲', hudX + hudWidth - 18, hudY + 20)
-        }
+
+      if (!shouldHideHud) {
+        const hudX = 18
+        const hudY = 18
+        const hudWidth = canvas.width < 768 ? 238 : 270
+        const hudHeight = canvas.width < 768 ? 40 : 44
+
+        ctx.fillStyle = 'rgba(3, 10, 20, 0.86)'
+        ctx.beginPath()
+        ctx.roundRect(hudX, hudY, hudWidth, hudHeight, 10)
+        ctx.fill()
+
+        ctx.strokeStyle = 'rgba(50, 245, 255, 0.9)'
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        ctx.font = `20px ${EMOJI_FONT_STACK}`
+        ctx.fillStyle = '#ffb648'
+        ctx.textAlign = 'left'
+        ctx.fillText('🧰', hudX + 10, hudY + 28)
+
+        ctx.font = canvas.width < 768 ? 'bold 19px monospace' : 'bold 22px monospace'
+        ctx.fillStyle = '#d8f8ff'
+        ctx.fillText(`L${currentLevel} • SCORE:`, hudX + 42, hudY + (canvas.width < 768 ? 26 : 29))
+
+        ctx.font = canvas.width < 768 ? 'bold 21px monospace' : 'bold 24px monospace'
+        ctx.fillStyle = '#6ee7ff'
+        const scoreTextX = hudX + hudWidth - 16
+        ctx.textAlign = 'right'
+        ctx.fillText(`${score}`, scoreTextX, hudY + (canvas.width < 768 ? 27 : 30))
+        ctx.textAlign = 'left'
       }
       
-      // Draw Threats From Panel (top-right) - desktop only - HIDDEN DURING QUIZ
+      // Draw Current Threat panel (top-right) - desktop only
       if (canvas.width >= 768 && obstacles.length > 0 && !shouldHideHud) {
         const activeThreats = obstacles.filter(o => o.active && o.sentBy)
         if (activeThreats.length > 0) {
@@ -2544,57 +2325,75 @@ const passwordWidth = ctx.measureText(passwordText).width
           }
           
           const uniqueCategories = [...new Set(activeThreats.map(t => t.category))]
-          const threatIcons = uniqueCategories.slice(0, 3).map(cat => categoryEmojis[cat] || '⚠️')
+          const leadCategory = uniqueCategories[0] || 'password'
+          const threatIcons = [
+            closestThreat.sentBy?.emoji || '🕵️',
+            '⚠️',
+            categoryEmojis[leadCategory] || '🔐',
+          ]
           
-          const panelWidth = 220
-          const panelHeight = 110
+          const panelWidth = 258
+          const panelHeight = 128
           const panelX = canvas.width - panelWidth - 20
-          const panelY = 20
+          const panelY = 16
           const cornerRadius = 12
           
           // Background
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+          ctx.fillStyle = 'rgba(10, 7, 8, 0.88)'
           ctx.beginPath()
           ctx.roundRect(panelX, panelY, panelWidth, panelHeight, cornerRadius)
           ctx.fill()
           
-          ctx.strokeStyle = '#ff3300'
+          ctx.strokeStyle = '#ff6a3d'
           ctx.lineWidth = 2
           ctx.stroke()
           
-          // Header (warmer orange/red)
-          ctx.font = 'bold 12px monospace'
-          ctx.fillStyle = '#ff6600'
+          // Header
+          ctx.font = 'bold 14px monospace'
+          ctx.fillStyle = '#ff9e6b'
           ctx.textAlign = 'center'
-          ctx.fillText('THREATS FROM:', panelX + panelWidth / 2, panelY + 18)
+          ctx.fillText('CURRENT THREAT', panelX + panelWidth / 2, panelY + 22)
           
           // Threat icons in a row
-          ctx.font = '28px monospace'
+          ctx.font = `32px ${EMOJI_FONT_STACK}`
           ctx.fillStyle = '#ffffff'
-          const iconSpacing = 50
+          const iconSpacing = 64
           const startX = panelX + (panelWidth - (threatIcons.length - 1) * iconSpacing) / 2
           threatIcons.forEach((icon, i) => {
-            ctx.fillText(icon, startX + i * iconSpacing, panelY + 52)
+            ctx.fillText(icon, startX + i * iconSpacing, panelY + 64)
           })
           
-          // CLEAN: Attacker name (pure white)
-          ctx.font = 'bold 12px monospace'
+          // Attacker name
+          ctx.font = 'bold 16px monospace'
           ctx.fillStyle = '#ffffff'
           const attackerName = closestThreat.sentBy?.name || 'UNKNOWN'
-          // Truncate name if too long
-          const maxNameLength = 18
+          const maxNameLength = 22
           const displayName = attackerName.length > maxNameLength 
             ? attackerName.substring(0, maxNameLength) + '...' 
             : attackerName
-          ctx.fillText(displayName, panelX + panelWidth / 2, panelY + 75)
+          ctx.fillText(displayName, panelX + panelWidth / 2, panelY + 94)
           
-          // CLEAN: Status (red = bad, green = safe)
-          ctx.font = 'bold 11px monospace'
+          // Status
+          ctx.font = 'bold 14px monospace'
           const distance = Math.floor(Math.hypot(closestThreat.x - playerX, closestThreat.y - playerY))
           const status = distance < 100 ? 'CRITICAL' : distance < 200 ? 'NEAR' : 'SAFE'
-          const statusColor = distance < 100 ? '#ff4d4d' : distance < 200 ? '#ff4d4d' : '#00ff9c'
+          const statusColor = distance < 100 ? '#ff5a4a' : distance < 200 ? '#ff7f66' : '#ffb480'
           ctx.fillStyle = statusColor
-          ctx.fillText(status, panelX + panelWidth / 2, panelY + 95)
+          ctx.fillText(status, panelX + panelWidth / 2, panelY + 112)
+
+          // Segmented danger bar
+          const segments = 7
+          const barWidth = panelWidth - 26
+          const segmentGap = 3
+          const segmentWidth = (barWidth - (segments - 1) * segmentGap) / segments
+          const barX = panelX + 13
+          const barY = panelY + panelHeight - 16
+          const fillCount = distance < 100 ? 7 : distance < 200 ? 5 : 3
+
+          for (let i = 0; i < segments; i++) {
+            ctx.fillStyle = i < fillCount ? '#ff6e4b' : 'rgba(255,120,90,0.2)'
+            ctx.fillRect(barX + i * (segmentWidth + segmentGap), barY, segmentWidth, 6)
+          }
           
           ctx.textAlign = 'left'
         }
@@ -3196,9 +2995,6 @@ powerups = powerups.filter(kit => {
     }
     
     // Start game
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'C',location:'SimpleGame.tsx:2662',message:'game loop start',data:{canvasW:canvas.width,canvasH:canvas.height,performanceMode,isChrome},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion agent log
     setRunning(true)
     animationId = requestAnimationFrame(gameLoop)
     
@@ -3228,7 +3024,6 @@ powerups = powerups.filter(kit => {
   }, [gameStarted, isGameOver, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, setLevel, ui.state.mobileHudExpanded, ui.state.desktopHudExpanded])
 
   const refreshLeaderboard = async () => {
-    setLeaderboardLoading(true)
     try {
       const entries = await getLeaderboard(50)
       const mapped: LeaderboardEntry[] = entries.map((entry, index) => ({
@@ -3238,12 +3033,8 @@ powerups = powerups.filter(kit => {
         distance: entry.distance,
         createdAt: new Date(entry.createdAt).getTime()
       }))
-      setLeaderboardEntries(mapped)
       setLeaderboard(mapped.slice(0, 10)) // Sync top 10 to game store for display
     } catch {
-      setLeaderboardEntries([])
-    } finally {
-      setLeaderboardLoading(false)
     }
   }
 
@@ -3317,17 +3108,9 @@ powerups = powerups.filter(kit => {
     setAuthLoading(true)
     setAuthError(null)
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H2,H4',location:'SimpleGame.tsx:handleAuth',message:'Auth flow starting',data:{mode:authMode},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion agent log
-
       const result = authMode === 'signup'
         ? await signUp(authEmail.trim(), authPassword)
         : await signIn(authEmail.trim(), authPassword)
-
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H2,H4',location:'SimpleGame.tsx:handleAuth',message:'Auth completed, calling getCurrentUser',data:{resultStatus:result.status},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion agent log
 
       if (result.status !== 'OK') {
         const fieldError = result.formFields?.find((field) => field.error)?.error
@@ -3337,10 +3120,6 @@ powerups = powerups.filter(kit => {
       }
 
       const user = await getCurrentUser()
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'debug',hypothesisId:'H2,H3,H4',location:'SimpleGame.tsx:handleAuth',message:'getCurrentUser returned',data:{hasUser:!!user,username:user?.username},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion agent log
 
       setCurrentUser(user)
       setAuthStatus(user ? 'authed' : 'guest')
@@ -3621,44 +3400,7 @@ powerups = powerups.filter(kit => {
         </>
       )}
 
-      {!showQuiz && (
-        <div className="hidden md:block absolute bottom-4 right-4 z-10 pointer-events-none">
-          <LeaderboardPanel title="Top Runs" maxEntries={5} entries={leaderboardEntries} loading={leaderboardLoading} />
-        </div>
-      )}
-
-      {!showQuiz && (
-        <button
-          onClick={() => setShowLeaderboardMobile(true)}
-          className="md:hidden absolute bottom-4 right-4 bg-black/80 border border-cyan-700 text-cyan-200 text-xs font-mono px-3 py-2 rounded-full shadow-lg z-10 pointer-events-auto"
-          title="Show leaderboard"
-        >
-          🏆 Top Runs
-        </button>
-      )}
-
-      {!showQuiz && showLeaderboardMobile && (
-        <div
-          className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setShowLeaderboardMobile(false)}
-        >
-          <div
-            className="w-full max-w-sm"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex justify-end mb-2">
-              <button
-                onClick={() => setShowLeaderboardMobile(false)}
-                className="text-gray-300 hover:text-white text-lg font-bold"
-                aria-label="Close leaderboard"
-              >
-                ✕
-              </button>
-            </div>
-            <LeaderboardPanel title="Top Runs" maxEntries={8} entries={leaderboardEntries} loading={leaderboardLoading} />
-          </div>
-        </div>
-      )}
+      {/* Top runs panel removed from active gameplay per design */}
       
       {/* Game Canvas */}
       <canvas
@@ -3667,21 +3409,6 @@ powerups = powerups.filter(kit => {
         tabIndex={0}
       />
 
-      {/* Feedback Button - During Gameplay */}
-      {!showQuiz && (
-        <button
-          onClick={() => {
-            window.open('mailto:connect@knacksters.co?subject=Byte Runner Feedback&body=Hi! Here\'s my feedback about Byte Runner:%0D%0A%0D%0A', '_blank')
-          }}
-          className="absolute bottom-4 left-3 md:left-4 bg-cyan-500/90 hover:bg-cyan-400 text-white text-xs md:text-sm font-semibold py-2 px-3 md:px-4 rounded-full transition-all shadow-[0_0_16px_rgba(80,200,255,0.6)] hover:scale-105 flex items-center gap-2 z-10 pointer-events-auto backdrop-blur-sm border border-cyan-200/40"
-          aria-label="Send feedback"
-          title="Send feedback"
-        >
-          <span className="text-base">📝</span>
-          <span className="hidden sm:inline">Feedback</span>
-        </button>
-      )}
-      
       {/* Game Over Overlay */}
       {isGameOver && !showQuiz && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/10 p-3 md:p-4 pb-[calc(12px+env(safe-area-inset-bottom))]">
@@ -3945,7 +3672,6 @@ powerups = powerups.filter(kit => {
           level={level}
           onPass={handleQuizPass}
           onFail={handleQuizFail}
-          onClose={() => setShowQuiz(false)}
         />
       )}
     </div>
