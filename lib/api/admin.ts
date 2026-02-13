@@ -181,6 +181,10 @@ async function fetchWithSession(input: string, init: RequestInit = {}, allowRetr
     method: init.method || 'GET',
     status: res.status,
     ok: res.ok,
+    hasHeaderAntiCsrf: Boolean(headerAntiCsrf),
+    hasFrontToken: Boolean(frontToken),
+    hasFrontTokenAntiCsrf: Boolean(frontTokenAntiCsrf),
+    frontTokenPreview: frontToken?.substring(0, 50) || null,
   })
 
   if (res.status === 401 && allowRetry && !input.startsWith('/auth/session/refresh')) {
