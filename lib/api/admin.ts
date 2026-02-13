@@ -50,6 +50,23 @@ function extractAntiCsrfFromFrontToken(frontToken: string | null): string | null
   }
 }
 
+/**
+ * SINGLE SOURCE OF TRUTH: Extract anti-CSRF token from SuperTokens response
+ * Checks all possible locations: body JSON, anti-csrf header, front-token JWT
+ */
+function extractAndStoreAntiCsrf(res: Response, bodyJson?: any): void {
+  const bodyAntiCsrf = bodyJson?.antiCsrfToken || null
+  const headerAntiCsrf = res.headers.get('anti-csrf')
+  const frontToken = res.headers.get('front-token')
+  const frontTokenAntiCsrf = extractAntiCsrfFromFrontToken(frontToken)
+  
+  const antiCsrf = bodyAntiCsrf || headerAntiCsrf || frontTokenAntiCsrf
+  
+  if (antiCsrf) {
+    setAntiCsrf(antiCsrf)
+  }
+}
+
 async function refreshSession(): Promise<boolean> {
   const headers = new Headers()
   headers.set('content-type', 'application/json')
@@ -74,31 +91,28 @@ async function refreshSession(): Promise<boolean> {
   })
   
   let responsePreview = ''
-  let bodyAntiCsrf: string | null = null
+  let bodyJson: any = null
   try {
     const bodyText = await res.clone().text()
     responsePreview = bodyText
-    const bodyJson = JSON.parse(bodyText)
-    bodyAntiCsrf = bodyJson?.antiCsrfToken || null
+    bodyJson = JSON.parse(bodyText)
   } catch {
     responsePreview = ''
   }
 
-  // Extract anti-CSRF from multiple sources
-  const headerAntiCsrf = res.headers.get('anti-csrf')
-  const frontToken = res.headers.get('front-token')
-  const frontTokenAntiCsrf = extractAntiCsrfFromFrontToken(frontToken)
-  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf || frontTokenAntiCsrf
+  // Use single source of truth for anti-CSRF extraction
+  extractAndStoreAntiCsrf(res, bodyJson)
   
-  if (nextAntiCsrf) setAntiCsrf(nextAntiCsrf)
-
+  // Debug logging
+  const frontToken = res.headers.get('front-token')
+  const antiCsrfAfter = getAntiCsrf()
+  
   // #region agent log
   debugLog('H1', 'admin.ts:refreshSession:after', 'Session refresh response', {
     status: res.status,
     ok: res.ok,
-    hasNextAntiCsrf: Boolean(nextAntiCsrf),
+    hasAntiCsrfAfter: Boolean(antiCsrfAfter),
     hasFrontToken: Boolean(frontToken),
-    hasFrontTokenAntiCsrf: Boolean(frontTokenAntiCsrf),
     acao: res.headers.get('access-control-allow-origin'),
     responsePreview: responsePreview.slice(0, 180),
   })
@@ -106,13 +120,9 @@ async function refreshSession(): Promise<boolean> {
   console.log('[contest-submit-debug][H1] refresh response', {
     status: res.status,
     ok: res.ok,
-    hasNextAntiCsrf: Boolean(nextAntiCsrf),
     antiCsrfLengthBefore: antiCsrf?.length || 0,
-    antiCsrfLengthAfter: nextAntiCsrf?.length || 0,
-    hadBodyAntiCsrf: Boolean(bodyAntiCsrf),
-    hadHeaderAntiCsrf: Boolean(headerAntiCsrf),
+    antiCsrfLengthAfter: antiCsrfAfter?.length || 0,
     hasFrontToken: Boolean(frontToken),
-    hasFrontTokenAntiCsrf: Boolean(frontTokenAntiCsrf),
     frontTokenPreview: frontToken?.substring(0, 50) || null,
     responsePreview: responsePreview.slice(0, 180),
   })
@@ -164,24 +174,21 @@ async function fetchWithSession(input: string, init: RequestInit = {}, allowRetr
     throw error
   }
 
-  // Try multiple sources for anti-CSRF token
-  const headerAntiCsrf = res.headers.get('anti-csrf')
-  const frontToken = res.headers.get('front-token')
-  const frontTokenAntiCsrf = extractAntiCsrfFromFrontToken(frontToken)
-  const nextAntiCsrf = headerAntiCsrf || frontTokenAntiCsrf
-  
-  if (nextAntiCsrf) setAntiCsrf(nextAntiCsrf)
+  // Use single source of truth for anti-CSRF extraction
+  extractAndStoreAntiCsrf(res)
 
+  // Debug logging
+  const frontToken = res.headers.get('front-token')
+  const antiCsrfAfter = getAntiCsrf()
+  
   // #region agent log
   debugLog('H2', 'admin.ts:fetchWithSession:after', 'Session fetch response', {
     input,
     method: init.method || 'GET',
     status: res.status,
     ok: res.ok,
-    hasHeaderAntiCsrf: Boolean(headerAntiCsrf),
+    hasAntiCsrfAfter: Boolean(antiCsrfAfter),
     hasFrontToken: Boolean(frontToken),
-    hasFrontTokenAntiCsrf: Boolean(frontTokenAntiCsrf),
-    hasNextAntiCsrf: Boolean(nextAntiCsrf),
     acao: res.headers.get('access-control-allow-origin'),
   })
   // #endregion
@@ -190,9 +197,8 @@ async function fetchWithSession(input: string, init: RequestInit = {}, allowRetr
     method: init.method || 'GET',
     status: res.status,
     ok: res.ok,
-    hasHeaderAntiCsrf: Boolean(headerAntiCsrf),
+    hasAntiCsrfAfter: Boolean(antiCsrfAfter),
     hasFrontToken: Boolean(frontToken),
-    hasFrontTokenAntiCsrf: Boolean(frontTokenAntiCsrf),
     frontTokenPreview: frontToken?.substring(0, 50) || null,
   })
 

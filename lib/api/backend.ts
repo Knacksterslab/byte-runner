@@ -79,6 +79,23 @@ function extractAntiCsrfFromFrontToken(frontToken: string | null): string | null
   }
 }
 
+/**
+ * SINGLE SOURCE OF TRUTH: Extract anti-CSRF token from SuperTokens response
+ * Checks all possible locations: body JSON, anti-csrf header, front-token JWT
+ */
+function extractAndStoreAntiCsrf(res: Response, bodyJson?: any): void {
+  const bodyAntiCsrf = bodyJson?.antiCsrfToken || null
+  const headerAntiCsrf = res.headers.get('anti-csrf')
+  const frontToken = res.headers.get('front-token')
+  const frontTokenAntiCsrf = extractAntiCsrfFromFrontToken(frontToken)
+  
+  const antiCsrf = bodyAntiCsrf || headerAntiCsrf || frontTokenAntiCsrf
+  
+  if (antiCsrf) {
+    setAntiCsrf(antiCsrf)
+  }
+}
+
 async function refreshSession(): Promise<boolean> {
   const headers = new Headers()
   headers.set('content-type', 'application/json')
@@ -95,24 +112,8 @@ async function refreshSession(): Promise<boolean> {
     credentials: 'include',
   })
 
-  let bodyAntiCsrf: string | null = null
-  try {
-    const bodyText = await res.clone().text()
-    const bodyJson = JSON.parse(bodyText)
-    bodyAntiCsrf = bodyJson?.antiCsrfToken || null
-  } catch {
-    // Ignore parse errors
-  }
-
-  // Extract anti-CSRF from multiple sources
-  const headerAntiCsrf = res.headers.get('anti-csrf')
-  const frontToken = res.headers.get('front-token')
-  const frontTokenAntiCsrf = extractAntiCsrfFromFrontToken(frontToken)
-  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf || frontTokenAntiCsrf
-  
-  if (nextAntiCsrf) {
-    setAntiCsrf(nextAntiCsrf)
-  }
+  // Use single source of truth for anti-CSRF extraction
+  extractAndStoreAntiCsrf(res)
 
   return res.ok
 }
@@ -129,15 +130,8 @@ async function fetchWithSession(input: string, init: RequestInit = {}, allowRetr
     credentials: 'include'
   })
 
-  // Try multiple sources for anti-CSRF token
-  const headerAntiCsrf = res.headers.get('anti-csrf')
-  const frontToken = res.headers.get('front-token')
-  const frontTokenAntiCsrf = extractAntiCsrfFromFrontToken(frontToken)
-  const nextAntiCsrf = headerAntiCsrf || frontTokenAntiCsrf
-  
-  if (nextAntiCsrf) {
-    setAntiCsrf(nextAntiCsrf)
-  }
+  // Use single source of truth for anti-CSRF extraction
+  extractAndStoreAntiCsrf(res)
 
   if (res.status === 401 && allowRetry && !input.startsWith('/auth/session/refresh')) {
     try {
@@ -208,12 +202,8 @@ export async function signUp(email: string, password: string): Promise<AuthResul
 
   const jsonResponse = await res.json()
   
-  const bodyAntiCsrf = jsonResponse?.antiCsrfToken || null
-  const headerAntiCsrf = res.headers.get('anti-csrf')
-  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf
-  if (nextAntiCsrf) {
-    setAntiCsrf(nextAntiCsrf)
-  }
+  // Use single source of truth for anti-CSRF extraction
+  extractAndStoreAntiCsrf(res, jsonResponse)
 
   return jsonResponse
 }
@@ -254,12 +244,8 @@ export async function signIn(email: string, password: string): Promise<AuthResul
 
   const jsonResponse = await res.json()
   
-  const bodyAntiCsrf = jsonResponse?.antiCsrfToken || null
-  const headerAntiCsrf = res.headers.get('anti-csrf')
-  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf
-  if (nextAntiCsrf) {
-    setAntiCsrf(nextAntiCsrf)
-  }
+  // Use single source of truth for anti-CSRF extraction
+  extractAndStoreAntiCsrf(res, jsonResponse)
 
   return jsonResponse
 }
