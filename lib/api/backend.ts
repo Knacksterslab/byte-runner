@@ -67,19 +67,27 @@ function setAntiCsrf(value: string) {
 function extractAntiCsrfFromFrontToken(frontToken: string | null): string | null {
   if (!frontToken) return null
   try {
-    // front-token is a JWT-like token: header.payload.signature
     const parts = frontToken.split('.')
-    if (parts.length < 2) {
-      console.warn('[DEBUG] front-token has wrong number of parts:', parts.length)
+    
+    let payload: any
+    
+    if (parts.length === 3) {
+      // JWT format: header.payload.signature
+      console.log('[DEBUG] Decoding JWT format (3 parts)')
+      payload = JSON.parse(atob(parts[1]))
+    } else if (parts.length === 1) {
+      // Simple base64 JSON format
+      console.log('[DEBUG] Decoding simple base64 format (1 part)')
+      payload = JSON.parse(atob(parts[0]))
+    } else {
+      console.warn('[DEBUG] front-token has unexpected number of parts:', parts.length)
       return null
     }
     
-    // Decode the payload (second part)
-    const payload = JSON.parse(atob(parts[1]))
     console.log('[DEBUG] front-token payload:', JSON.stringify(payload, null, 2))
     
     const antiCsrf = payload?.antiCsrfToken || payload?.anti_csrf || payload?.ate || null
-    console.log('[DEBUG] extracted anti-CSRF:', antiCsrf?.substring(0, 30) || 'NULL')
+    console.log('[DEBUG] extracted anti-CSRF:', antiCsrf ? antiCsrf.substring(0, 30) + '...' : 'NULL')
     
     return antiCsrf
   } catch (e) {
