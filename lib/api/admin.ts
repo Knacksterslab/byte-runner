@@ -35,6 +35,21 @@ function setAntiCsrf(value: string) {
   }
 }
 
+function extractAntiCsrfFromFrontToken(frontToken: string | null): string | null {
+  if (!frontToken) return null
+  try {
+    // front-token is a JWT-like token: header.payload.signature
+    const parts = frontToken.split('.')
+    if (parts.length < 2) return null
+    
+    // Decode the payload (second part)
+    const payload = JSON.parse(atob(parts[1]))
+    return payload?.antiCsrfToken || payload?.anti_csrf || null
+  } catch {
+    return null
+  }
+}
+
 async function refreshSession(): Promise<boolean> {
   const headers = new Headers()
   headers.set('content-type', 'application/json')
@@ -140,7 +155,12 @@ async function fetchWithSession(input: string, init: RequestInit = {}, allowRetr
     throw error
   }
 
-  const nextAntiCsrf = res.headers.get('anti-csrf')
+  // Try multiple sources for anti-CSRF token
+  const headerAntiCsrf = res.headers.get('anti-csrf')
+  const frontToken = res.headers.get('front-token')
+  const frontTokenAntiCsrf = extractAntiCsrfFromFrontToken(frontToken)
+  const nextAntiCsrf = headerAntiCsrf || frontTokenAntiCsrf
+  
   if (nextAntiCsrf) setAntiCsrf(nextAntiCsrf)
 
   // #region agent log
@@ -149,6 +169,9 @@ async function fetchWithSession(input: string, init: RequestInit = {}, allowRetr
     method: init.method || 'GET',
     status: res.status,
     ok: res.ok,
+    hasHeaderAntiCsrf: Boolean(headerAntiCsrf),
+    hasFrontToken: Boolean(frontToken),
+    hasFrontTokenAntiCsrf: Boolean(frontTokenAntiCsrf),
     hasNextAntiCsrf: Boolean(nextAntiCsrf),
     acao: res.headers.get('access-control-allow-origin'),
   })
