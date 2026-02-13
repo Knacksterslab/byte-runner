@@ -80,7 +80,17 @@ async function refreshSession(): Promise<boolean> {
     credentials: 'include',
   })
 
-  const nextAntiCsrf = res.headers.get('anti-csrf')
+  let bodyAntiCsrf: string | null = null
+  try {
+    const bodyText = await res.clone().text()
+    const bodyJson = JSON.parse(bodyText)
+    bodyAntiCsrf = bodyJson?.antiCsrfToken || null
+  } catch {
+    // Ignore parse errors
+  }
+
+  const headerAntiCsrf = res.headers.get('anti-csrf')
+  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf
   if (nextAntiCsrf) {
     setAntiCsrf(nextAntiCsrf)
   }
@@ -172,12 +182,14 @@ export async function signUp(email: string, password: string): Promise<AuthResul
     })
   })
 
-  const nextAntiCsrf = res.headers.get('anti-csrf')
+  const jsonResponse = await res.json()
+  
+  const bodyAntiCsrf = jsonResponse?.antiCsrfToken || null
+  const headerAntiCsrf = res.headers.get('anti-csrf')
+  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf
   if (nextAntiCsrf) {
     setAntiCsrf(nextAntiCsrf)
   }
-
-  const jsonResponse = await res.json()
 
   return jsonResponse
 }
@@ -216,12 +228,16 @@ export async function signIn(email: string, password: string): Promise<AuthResul
     })
   })
 
-  const nextAntiCsrf = res.headers.get('anti-csrf')
+  const jsonResponse = await res.json()
+  
+  const bodyAntiCsrf = jsonResponse?.antiCsrfToken || null
+  const headerAntiCsrf = res.headers.get('anti-csrf')
+  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf
   if (nextAntiCsrf) {
     setAntiCsrf(nextAntiCsrf)
   }
 
-  return res.json()
+  return jsonResponse
 }
 
 export async function setUsername(username: string): Promise<BackendUser> {

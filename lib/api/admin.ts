@@ -57,14 +57,20 @@ async function refreshSession(): Promise<boolean> {
     headers,
     credentials: 'include',
   })
+  
   let responsePreview = ''
+  let bodyAntiCsrf: string | null = null
   try {
-    responsePreview = await res.clone().text()
+    const bodyText = await res.clone().text()
+    responsePreview = bodyText
+    const bodyJson = JSON.parse(bodyText)
+    bodyAntiCsrf = bodyJson?.antiCsrfToken || null
   } catch {
     responsePreview = ''
   }
 
-  const nextAntiCsrf = res.headers.get('anti-csrf')
+  const headerAntiCsrf = res.headers.get('anti-csrf')
+  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf
   if (nextAntiCsrf) setAntiCsrf(nextAntiCsrf)
 
   // #region agent log
@@ -82,6 +88,8 @@ async function refreshSession(): Promise<boolean> {
     hasNextAntiCsrf: Boolean(nextAntiCsrf),
     antiCsrfLengthBefore: antiCsrf?.length || 0,
     antiCsrfLengthAfter: nextAntiCsrf?.length || 0,
+    hadBodyAntiCsrf: Boolean(bodyAntiCsrf),
+    hadHeaderAntiCsrf: Boolean(headerAntiCsrf),
     responsePreview: responsePreview.slice(0, 180),
   })
 
