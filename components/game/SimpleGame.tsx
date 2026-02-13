@@ -39,6 +39,16 @@ interface GameObject {
   active?: boolean
 }
 
+interface RecoveryOverlayState {
+  threatName: string
+  protectionName: string
+  whatItStops: string[]
+  realWorldEquivalents: string[]
+  tipText: string
+  timeLeft: number
+  progress: number
+}
+
 export default function SimpleGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [gameStarted, setGameStarted] = useState(false)
@@ -68,6 +78,8 @@ export default function SimpleGame() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [pendingSave, setPendingSave] = useState(false)
   const [activeContests, setActiveContests] = useState<Contest[]>([])
+  const [recoveryOverlay, setRecoveryOverlay] = useState<RecoveryOverlayState | null>(null)
+  const [showRecoveryDetails, setShowRecoveryDetails] = useState(false)
   const showQuizOverlayRef = useRef(false)
   
   // Track all timeouts for cleanup to prevent memory leaks
@@ -80,6 +92,30 @@ export default function SimpleGame() {
   const router = useRouter()
   
   const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, addLeaderboardEntry, setLeaderboard } = useGameStore()
+
+  const buildRecoveryOverlayState = (kitType: string, threatId: string | null): Omit<RecoveryOverlayState, 'timeLeft' | 'progress'> => {
+    const protectionKit = getProtectionKitById(kitType)
+    const threatName = threatId ? getThreatName(threatId) : 'Privacy Threat'
+    const threatData = threatId
+      ? threatTypes.find((threat) => threat.id === threatId) ?? null
+      : null
+
+    return {
+      threatName,
+      protectionName: protectionKit?.name ?? 'Protection Kit',
+      whatItStops: threatData?.educationalContent?.slice(0, 3) ?? [
+        'Reduce exposure',
+        'Block common attacks',
+        'Keep data safe'
+      ],
+      realWorldEquivalents: protectionKit?.howToGetIt?.slice(0, 3) ?? [
+        'Use trusted tools',
+        'Enable built-in protections',
+        'Follow best practices'
+      ],
+      tipText: (threatData?.educationalContent?.[0] ?? 'Review your privacy settings regularly.'),
+    }
+  }
 
   
   // Ensure component is mounted (client-side only)
@@ -722,6 +758,18 @@ export default function SimpleGame() {
         setLastAttacker(lastAttacker ?? null as any, threatId)
       }
       isHealing = true // Freeze player during healing
+
+      // Mobile uses a React bottom sheet for readability.
+      if (canvas.width < 640) {
+        const threatIdForOverlay = threatId || lastThreatType || null
+        const overlayBase = buildRecoveryOverlayState(kitType, threatIdForOverlay)
+        setRecoveryOverlay({
+          ...overlayBase,
+          timeLeft: Math.max(0, Math.ceil(TUTORIAL_DURATION / 1000)),
+          progress: 0,
+        })
+        setShowRecoveryDetails(false)
+      }
     }
     
     // Calculate kits needed for next level (based on total kit types)
@@ -926,10 +974,36 @@ export default function SimpleGame() {
       if (!showingTutorial || tutorialTimer <= 0) {
         showingTutorial = false
         isHealing = false // End healing - player can move again
+        setRecoveryOverlay(null)
+        setShowRecoveryDetails(false)
         return
       }
 
-      drawRecoveryOverlayForKit()
+      const isMobileRecoverySheet = canvas.width < 640
+      if (!isMobileRecoverySheet) {
+        drawRecoveryOverlayForKit()
+      } else {
+        const timeLeft = Math.max(0, Math.ceil(tutorialTimer / 1000))
+        const progress = Math.max(0, Math.min(1, 1 - tutorialTimer / TUTORIAL_DURATION))
+        const threatIdForOverlay = lastHitThreatId || lastThreatType || null
+        const overlayBase = buildRecoveryOverlayState(tutorialKit, threatIdForOverlay)
+        setRecoveryOverlay((prev) => {
+          if (
+            prev &&
+            prev.timeLeft === timeLeft &&
+            Math.abs(prev.progress - progress) < 0.02 &&
+            prev.threatName === overlayBase.threatName &&
+            prev.protectionName === overlayBase.protectionName
+          ) {
+            return prev
+          }
+          return {
+            ...overlayBase,
+            timeLeft,
+            progress,
+          }
+        })
+      }
       tutorialTimer -= 16
       return
       
@@ -2266,8 +2340,9 @@ const passwordWidth = ctx.measureText(passwordText).width
       
       // Draw compact HUD matching reference screenshot
       const isReactQuizOpen = showQuizOverlayRef.current
-      const isInGameQuizActive = quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0
-      const shouldHideHud = isReactQuizOpen || isInGameQuizActive
+      // Hide legacy canvas HUD for the full quiz/recovery lifecycle.
+      const isInGameQuizOverlayActive = quiz.refs.activeRef.current
+      const shouldHideHud = isReactQuizOpen || isInGameQuizOverlayActive || showingTutorial
 
       if (!shouldHideHud) {
         const hudX = 18
@@ -3373,33 +3448,6 @@ powerups = powerups.filter(kit => {
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden">
       {renderAuthModal()}
-      {!showQuiz && (
-        <>
-          {/* HUD - RESPONSIVE FOR MOBILE */}
-          <div className="absolute top-2 md:top-4 left-2 md:left-4 right-2 md:right-4 flex justify-between items-start text-white font-mono text-sm md:text-xl z-10 pointer-events-none">
-            <div className="space-y-1 md:space-y-2 pointer-events-auto">
-              {/* Mobile auth chip */}
-              <button
-                onClick={authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true)}
-                className="md:hidden bg-black/80 border border-cyan-600 rounded px-2 py-1 text-[10px] font-mono text-cyan-100 hover:text-cyan-50 transition-colors"
-                title={authStatus === 'authed' ? 'Sign out' : 'Sign in'}
-              >
-                {authStatus === 'authed'
-                  ? `${currentUser?.username || 'Player'} • Sign out`
-                  : 'Guest • Sign in'}
-              </button>
-              {/* Mobile only - level and score shown in canvas HUD on desktop */}
-              <div className="md:hidden bg-black/80 border border-cyan-600 rounded px-2 py-1">
-                <span className="text-[10px]">L:</span> <span className="text-cyan-400 font-bold text-sm">{level}</span>
-              </div>
-              <div className="md:hidden bg-black/80 border border-yellow-600 rounded px-2 py-1">
-                <span className="text-[10px]">S:</span> <span className="text-yellow-400 font-bold text-sm">{score}</span>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
       {/* Top runs panel removed from active gameplay per design */}
       
       {/* Game Canvas */}
@@ -3408,6 +3456,109 @@ powerups = powerups.filter(kit => {
         className="absolute inset-0 w-full h-full z-0"
         tabIndex={0}
       />
+
+      {/* Mobile Recovery Bottom Sheet */}
+      {recoveryOverlay && (
+        <div className="absolute inset-0 z-20 sm:hidden pointer-events-none">
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-x-0 bottom-0 px-3 pb-[calc(10px+env(safe-area-inset-bottom))] pointer-events-auto">
+            <div
+              className="mx-auto border-2 border-cyan-300/75 bg-[#061225]/95 text-white shadow-[0_0_24px_rgba(34,211,238,0.35)] overflow-y-auto"
+              style={{
+                width: 'min(92vw, 760px)',
+                maxHeight: 'min(78vh, 680px)',
+                padding: 'clamp(14px, 2.5vw, 22px)',
+                borderRadius: 18,
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              <h3
+                className="text-cyan-200 font-black font-mono tracking-wide text-center"
+                style={{ fontSize: 'clamp(18px, 3.8vw, 26px)' }}
+              >
+                Recovery in Progress
+              </h3>
+              <p
+                className="mt-1 text-cyan-100/90 text-center font-semibold font-mono"
+                style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}
+              >
+                You were hit by a privacy threat - protection activated.
+              </p>
+
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                <div className="rounded-xl border border-yellow-400/35 bg-black/25 px-3 py-2">
+                  <p className="text-yellow-300 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
+                    Threat
+                  </p>
+                  <p className="text-white font-semibold font-mono" style={{ fontSize: 'clamp(13px, 2.9vw, 16px)', lineHeight: 1.35 }}>
+                    {recoveryOverlay.threatName}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-300/35 bg-black/25 px-3 py-2">
+                  <p className="text-emerald-300 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
+                    Protection Used
+                  </p>
+                  <p className="text-white font-semibold font-mono" style={{ fontSize: 'clamp(13px, 2.9vw, 16px)', lineHeight: 1.35 }}>
+                    {recoveryOverlay.protectionName}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-xl border border-cyan-300/35 bg-black/25 px-3 py-3">
+                <p className="text-cyan-200 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
+                  What it stops
+                </p>
+                <ul className="mt-2 space-y-1 text-white font-mono">
+                  {recoveryOverlay.whatItStops.map((item, idx) => (
+                    <li key={idx} style={{ fontSize: 'clamp(13px, 2.9vw, 16px)', lineHeight: 1.35 }}>
+                      • {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <button
+                onClick={() => setShowRecoveryDetails((prev) => !prev)}
+                className="mt-3 w-full rounded-xl border border-cyan-300/45 bg-[#0a1a31] px-3 py-2 text-cyan-100 font-semibold font-mono"
+                style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}
+              >
+                {showRecoveryDetails ? 'Hide details' : 'More details'}
+              </button>
+
+              {showRecoveryDetails && (
+                <div className="mt-3 rounded-xl border border-cyan-300/35 bg-black/25 px-3 py-3">
+                  <p className="text-cyan-200 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
+                    Real-world equivalents
+                  </p>
+                  <ul className="mt-2 space-y-1 text-white font-mono">
+                    {recoveryOverlay.realWorldEquivalents.map((item, idx) => (
+                      <li key={idx} style={{ fontSize: 'clamp(13px, 2.9vw, 16px)', lineHeight: 1.35 }}>
+                        • {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-cyan-100/90 font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
+                    Tip: {recoveryOverlay.tipText}
+                  </p>
+                </div>
+              )}
+
+              <p
+                className="mt-3 text-center text-cyan-100 font-bold font-mono"
+                style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}
+              >
+                Recovery completes in {recoveryOverlay.timeLeft}s
+              </p>
+              <div className="mt-2 h-3 w-full rounded-full border border-cyan-300/70 bg-[#0a1220] p-[2px]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-300 transition-all duration-150"
+                  style={{ width: `${Math.max(0, Math.min(1, recoveryOverlay.progress)) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Game Over Overlay */}
       {isGameOver && !showQuiz && (

@@ -96,7 +96,16 @@ export default function QuizModal({ kitType, level, onPass, onFail }: QuizModalP
   }
 
   return (
-    <div className="absolute inset-0 z-30 flex items-start justify-center bg-transparent px-2 sm:px-3 md:px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-[72px] sm:pt-[82px]">
+    <div
+      className="quiz-modal-scroll absolute inset-0 z-30 overflow-y-auto overflow-x-hidden"
+      style={{
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'contain',
+        touchAction: 'pan-y',
+        scrollbarWidth: 'none',
+      }}
+    >
+      <div className="relative min-h-full flex items-start justify-center bg-transparent px-2 sm:px-3 md:px-4 pb-[calc(24px+env(safe-area-inset-bottom))] pt-[72px] sm:pt-[82px]">
       {/* Match home/mockup background look while quiz is open */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div
@@ -224,6 +233,14 @@ export default function QuizModal({ kitType, level, onPass, onFail }: QuizModalP
           </>
         )}
       </div>
+      </div>
+      <style jsx>{`
+        .quiz-modal-scroll::-webkit-scrollbar {
+          width: 0;
+          height: 0;
+          display: none;
+        }
+      `}</style>
     </div>
   )
 }
