@@ -69,12 +69,21 @@ function extractAntiCsrfFromFrontToken(frontToken: string | null): string | null
   try {
     // front-token is a JWT-like token: header.payload.signature
     const parts = frontToken.split('.')
-    if (parts.length < 2) return null
+    if (parts.length < 2) {
+      console.warn('[DEBUG] front-token has wrong number of parts:', parts.length)
+      return null
+    }
     
     // Decode the payload (second part)
     const payload = JSON.parse(atob(parts[1]))
-    return payload?.antiCsrfToken || payload?.anti_csrf || null
-  } catch {
+    console.log('[DEBUG] front-token payload:', JSON.stringify(payload, null, 2))
+    
+    const antiCsrf = payload?.antiCsrfToken || payload?.anti_csrf || payload?.ate || null
+    console.log('[DEBUG] extracted anti-CSRF:', antiCsrf?.substring(0, 30) || 'NULL')
+    
+    return antiCsrf
+  } catch (e) {
+    console.error('[DEBUG] front-token decode error:', e)
     return null
   }
 }
