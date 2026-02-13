@@ -80,6 +80,8 @@ async function refreshSession(): Promise<boolean> {
     status: res.status,
     ok: res.ok,
     hasNextAntiCsrf: Boolean(nextAntiCsrf),
+    antiCsrfLengthBefore: antiCsrf?.length || 0,
+    antiCsrfLengthAfter: nextAntiCsrf?.length || 0,
     responsePreview: responsePreview.slice(0, 180),
   })
 
@@ -100,8 +102,16 @@ async function fetchWithSession(input: string, init: RequestInit = {}, allowRetr
     method: init.method || 'GET',
     allowRetry,
     hasAntiCsrf: Boolean(antiCsrf),
+    antiCsrfLength: antiCsrf?.length || 0,
   })
   // #endregion
+  console.log('[contest-submit-debug][H2] fetch before', {
+    input,
+    method: init.method || 'GET',
+    allowRetry,
+    hasAntiCsrf: Boolean(antiCsrf),
+    antiCsrfLength: antiCsrf?.length || 0,
+  })
 
   let res: Response
   try {
@@ -152,10 +162,19 @@ async function fetchWithSession(input: string, init: RequestInit = {}, allowRetr
       // #endregion
       const refreshed = await refreshSession()
       if (refreshed) {
+        const antiCsrfAfterRefresh = getAntiCsrf()
+        console.log('[contest-submit-debug][H3] retrying after refresh', {
+          input,
+          method: init.method || 'GET',
+          hasAntiCsrfAfterRefresh: Boolean(antiCsrfAfterRefresh),
+          antiCsrfLengthAfterRefresh: antiCsrfAfterRefresh?.length || 0,
+        })
         // #region agent log
         debugLog('H3', 'admin.ts:fetchWithSession:retry', 'Refresh succeeded, retrying request', {
           input,
           method: init.method || 'GET',
+          hasAntiCsrfAfterRefresh: Boolean(antiCsrfAfterRefresh),
+          antiCsrfLengthAfterRefresh: antiCsrfAfterRefresh?.length || 0,
         })
         // #endregion
         return fetchWithSession(input, init, false)
