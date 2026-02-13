@@ -5,6 +5,24 @@ const API_DOMAIN = RAW_API_DOMAIN.startsWith('http://') || RAW_API_DOMAIN.starts
   : `https://${RAW_API_DOMAIN.replace(/\/+$/, '')}`
 const ANTI_CSRF_KEY = 'byte-runner-anti-csrf'
 const FDI_VERSION = '1.18'
+const DEBUG_ENDPOINT = 'http://127.0.0.1:7244/ingest/8044fb5f-bff6-484b-95e6-3e4a2d42e250'
+
+function debugLog(hypothesisId: string, location: string, message: string, data: Record<string, unknown>) {
+  // #region agent log
+  fetch(DEBUG_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      runId: 'contest-submit-debug',
+      hypothesisId,
+      location,
+      message,
+      data,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {})
+  // #endregion
+}
 
 function getAntiCsrf(): string | null {
   if (typeof window === 'undefined') return null
@@ -27,14 +45,43 @@ async function refreshSession(): Promise<boolean> {
   const antiCsrf = getAntiCsrf()
   if (antiCsrf) headers.set('anti-csrf', antiCsrf)
 
+  // #region agent log
+  debugLog('H1', 'admin.ts:refreshSession:before', 'Attempting session refresh', {
+    hasAntiCsrf: Boolean(antiCsrf),
+    apiDomain: API_DOMAIN,
+  })
+  // #endregion
+
   const res = await fetch(`${API_DOMAIN}/auth/session/refresh`, {
     method: 'POST',
     headers,
     credentials: 'include',
   })
+  let responsePreview = ''
+  try {
+    responsePreview = await res.clone().text()
+  } catch {
+    responsePreview = ''
+  }
 
   const nextAntiCsrf = res.headers.get('anti-csrf')
   if (nextAntiCsrf) setAntiCsrf(nextAntiCsrf)
+
+  // #region agent log
+  debugLog('H1', 'admin.ts:refreshSession:after', 'Session refresh response', {
+    status: res.status,
+    ok: res.ok,
+    hasNextAntiCsrf: Boolean(nextAntiCsrf),
+    acao: res.headers.get('access-control-allow-origin'),
+    responsePreview: responsePreview.slice(0, 180),
+  })
+  // #endregion
+  console.log('[contest-submit-debug][H1] refresh response', {
+    status: res.status,
+    ok: res.ok,
+    hasNextAntiCsrf: Boolean(nextAntiCsrf),
+    responsePreview: responsePreview.slice(0, 180),
+  })
 
   return res.ok
 }
@@ -47,22 +94,87 @@ async function fetchWithSession(input: string, init: RequestInit = {}, allowRetr
     
   if (antiCsrf) headers.set('anti-csrf', antiCsrf)
 
-  const res = await fetch(`${API_DOMAIN}${input}`, {
-    ...init,
-    headers,
-    credentials: 'include'
+  // #region agent log
+  debugLog('H2', 'admin.ts:fetchWithSession:before', 'Sending session fetch', {
+    input,
+    method: init.method || 'GET',
+    allowRetry,
+    hasAntiCsrf: Boolean(antiCsrf),
   })
+  // #endregion
+
+  let res: Response
+  try {
+    res = await fetch(`${API_DOMAIN}${input}`, {
+      ...init,
+      headers,
+      credentials: 'include'
+    })
+  } catch (error: any) {
+    // #region agent log
+    debugLog('H2', 'admin.ts:fetchWithSession:error', 'Session fetch threw network error', {
+      input,
+      method: init.method || 'GET',
+      errorName: error?.name || 'unknown',
+      errorMessage: error?.message || String(error),
+    })
+    // #endregion
+    throw error
+  }
 
   const nextAntiCsrf = res.headers.get('anti-csrf')
   if (nextAntiCsrf) setAntiCsrf(nextAntiCsrf)
 
+  // #region agent log
+  debugLog('H2', 'admin.ts:fetchWithSession:after', 'Session fetch response', {
+    input,
+    method: init.method || 'GET',
+    status: res.status,
+    ok: res.ok,
+    hasNextAntiCsrf: Boolean(nextAntiCsrf),
+    acao: res.headers.get('access-control-allow-origin'),
+  })
+  // #endregion
+  console.log('[contest-submit-debug][H2] fetch response', {
+    input,
+    method: init.method || 'GET',
+    status: res.status,
+    ok: res.ok,
+  })
+
   if (res.status === 401 && allowRetry && !input.startsWith('/auth/session/refresh')) {
     try {
+      // #region agent log
+      debugLog('H3', 'admin.ts:fetchWithSession:401', '401 received, trying refresh', {
+        input,
+        method: init.method || 'GET',
+      })
+      // #endregion
       const refreshed = await refreshSession()
       if (refreshed) {
+        // #region agent log
+        debugLog('H3', 'admin.ts:fetchWithSession:retry', 'Refresh succeeded, retrying request', {
+          input,
+          method: init.method || 'GET',
+        })
+        // #endregion
         return fetchWithSession(input, init, false)
       }
+      console.warn('[contest-submit-debug][H3] refresh returned false', {
+        input,
+        method: init.method || 'GET',
+      })
     } catch {
+      // #region agent log
+      debugLog('H3', 'admin.ts:fetchWithSession:refresh-failed', 'Refresh path threw error', {
+        input,
+        method: init.method || 'GET',
+      })
+      // #endregion
+      console.error('[contest-submit-debug][H3] refresh path threw error', {
+        input,
+        method: init.method || 'GET',
+      })
       // Fall through and return original 401 response
     }
   }
