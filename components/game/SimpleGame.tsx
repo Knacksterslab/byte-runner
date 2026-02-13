@@ -3460,10 +3460,10 @@ powerups = powerups.filter(kit => {
       {/* Mobile Recovery Bottom Sheet */}
       {recoveryOverlay && (
         <div className="absolute inset-0 z-20 sm:hidden pointer-events-none">
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute inset-x-0 bottom-0 px-3 pb-[calc(10px+env(safe-area-inset-bottom))] pointer-events-auto">
+          <div className="absolute inset-0 bg-black/45" />
+          <div className="absolute inset-x-0 bottom-0 px-3 pb-[calc(12px+env(safe-area-inset-bottom))] pointer-events-auto">
             <div
-              className="mx-auto border-2 border-cyan-300/75 bg-[#061225]/95 text-white shadow-[0_0_24px_rgba(34,211,238,0.35)] overflow-y-auto"
+              className="mx-auto border-2 border-cyan-300/75 bg-[#061225]/95 text-white shadow-[0_0_26px_rgba(34,211,238,0.4)] overflow-y-auto"
               style={{
                 width: 'min(92vw, 760px)',
                 maxHeight: 'min(78vh, 680px)',
@@ -3472,10 +3472,8 @@ powerups = powerups.filter(kit => {
                 WebkitOverflowScrolling: 'touch',
               }}
             >
-              <h3
-                className="text-cyan-200 font-black font-mono tracking-wide text-center"
-                style={{ fontSize: 'clamp(18px, 3.8vw, 26px)' }}
-              >
+              <div className="text-center text-cyan-100 text-[clamp(14px,3.2vw,18px)]">🛡️</div>
+              <h3 className="text-cyan-200 font-black font-mono tracking-wide text-center" style={{ fontSize: 'clamp(18px, 3.8vw, 26px)' }}>
                 Recovery in Progress
               </h3>
               <p
@@ -3484,56 +3482,57 @@ powerups = powerups.filter(kit => {
               >
                 You were hit by a privacy threat - protection activated.
               </p>
+              <div className="mt-2 h-px w-full bg-cyan-200/20" />
 
-              <div className="mt-3 grid grid-cols-1 gap-2">
-                <div className="rounded-xl border border-yellow-400/35 bg-black/25 px-3 py-2">
+              <div className="mt-3 grid grid-cols-2 gap-0 rounded-xl border border-cyan-200/20 bg-black/20 overflow-hidden">
+                <div className="px-3 py-2 border-r border-cyan-200/15">
                   <p className="text-yellow-300 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
-                    Threat
+                    Threat:
                   </p>
-                  <p className="text-white font-semibold font-mono" style={{ fontSize: 'clamp(13px, 2.9vw, 16px)', lineHeight: 1.35 }}>
+                  <p className="mt-0.5 text-white font-bold font-mono" style={{ fontSize: 'clamp(13px, 2.9vw, 16px)', lineHeight: 1.35 }}>
                     {recoveryOverlay.threatName}
                   </p>
-                </div>
-                <div className="rounded-xl border border-emerald-300/35 bg-black/25 px-3 py-2">
-                  <p className="text-emerald-300 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
-                    Protection Used
+                  <p className="mt-2 text-cyan-100 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
+                    What it stops:
                   </p>
-                  <p className="text-white font-semibold font-mono" style={{ fontSize: 'clamp(13px, 2.9vw, 16px)', lineHeight: 1.35 }}>
+                  <ul className="mt-1 space-y-0.5 text-white font-mono">
+                    {recoveryOverlay.whatItStops.slice(0, 3).map((item, idx) => (
+                      <li key={idx} style={{ fontSize: 'clamp(12px, 2.7vw, 14px)', lineHeight: 1.35 }}>
+                        ✓ {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="px-3 py-2">
+                  <p className="text-cyan-300 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
+                    Protection Used:
+                  </p>
+                  <p className="mt-0.5 text-white font-bold font-mono" style={{ fontSize: 'clamp(13px, 2.9vw, 16px)', lineHeight: 1.35 }}>
                     {recoveryOverlay.protectionName}
                   </p>
+                  <p className="mt-2 text-cyan-100 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
+                    Real-world equivalents:
+                  </p>
+                  <button
+                    onClick={() => setShowRecoveryDetails((prev) => !prev)}
+                    className="mt-1 w-full rounded-md border border-cyan-200/20 bg-[#0a1a31]/85 px-2 py-1 text-left text-cyan-100 font-semibold font-mono flex items-center justify-between"
+                    style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}
+                  >
+                    <span>{showRecoveryDetails ? 'Less' : 'More'}</span>
+                    <span>{showRecoveryDetails ? '▴' : '▾'}</span>
+                  </button>
                 </div>
               </div>
 
-              <div className="mt-3 rounded-xl border border-cyan-300/35 bg-black/25 px-3 py-3">
-                <p className="text-cyan-200 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
-                  What it stops
-                </p>
-                <ul className="mt-2 space-y-1 text-white font-mono">
-                  {recoveryOverlay.whatItStops.map((item, idx) => (
-                    <li key={idx} style={{ fontSize: 'clamp(13px, 2.9vw, 16px)', lineHeight: 1.35 }}>
-                      • {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <button
-                onClick={() => setShowRecoveryDetails((prev) => !prev)}
-                className="mt-3 w-full rounded-xl border border-cyan-300/45 bg-[#0a1a31] px-3 py-2 text-cyan-100 font-semibold font-mono"
-                style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}
-              >
-                {showRecoveryDetails ? 'Hide details' : 'More details'}
-              </button>
-
               {showRecoveryDetails && (
-                <div className="mt-3 rounded-xl border border-cyan-300/35 bg-black/25 px-3 py-3">
+                <div className="mt-3 rounded-xl border border-cyan-300/30 bg-black/25 px-3 py-3">
                   <p className="text-cyan-200 font-bold font-mono" style={{ fontSize: 'clamp(12px, 2.6vw, 14px)' }}>
                     Real-world equivalents
                   </p>
                   <ul className="mt-2 space-y-1 text-white font-mono">
                     {recoveryOverlay.realWorldEquivalents.map((item, idx) => (
-                      <li key={idx} style={{ fontSize: 'clamp(13px, 2.9vw, 16px)', lineHeight: 1.35 }}>
-                        • {item}
+                      <li key={idx} style={{ fontSize: 'clamp(12px, 2.7vw, 14px)', lineHeight: 1.35 }}>
+                        ✓ {item}
                       </li>
                     ))}
                   </ul>
@@ -3549,11 +3548,14 @@ powerups = powerups.filter(kit => {
               >
                 Recovery completes in {recoveryOverlay.timeLeft}s
               </p>
-              <div className="mt-2 h-3 w-full rounded-full border border-cyan-300/70 bg-[#0a1220] p-[2px]">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-300 transition-all duration-150"
-                  style={{ width: `${Math.max(0, Math.min(1, recoveryOverlay.progress)) * 100}%` }}
-                />
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-[15px]">🙂</span>
+                <div className="h-3 flex-1 rounded-full border border-cyan-300/70 bg-[#0a1220] p-[2px]">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-300 transition-all duration-150"
+                    style={{ width: `${Math.max(0, Math.min(1, recoveryOverlay.progress)) * 100}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
