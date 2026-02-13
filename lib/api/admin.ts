@@ -57,8 +57,9 @@ function extractAntiCsrfFromFrontToken(frontToken: string | null): string | null
     
     console.log('[DEBUG] front-token payload:', JSON.stringify(payload, null, 2))
     
-    const antiCsrf = payload?.antiCsrfToken || payload?.anti_csrf || payload?.ate || null
-    console.log('[DEBUG] extracted anti-CSRF:', antiCsrf ? antiCsrf.substring(0, 30) + '...' : 'NULL')
+    // Check nested 'up' object first (production format), then top-level
+    const antiCsrf = payload?.up?.antiCsrfToken || payload?.antiCsrfToken || payload?.anti_csrf || null
+    console.log('[DEBUG] extracted anti-CSRF:', antiCsrf && typeof antiCsrf === 'string' ? antiCsrf.substring(0, 30) + '...' : 'NULL')
     
     return antiCsrf
   } catch (e) {
