@@ -3,14 +3,47 @@ const RAW_API_DOMAIN = process.env.NEXT_PUBLIC_API_DOMAIN || 'http://localhost:4
 const API_DOMAIN = RAW_API_DOMAIN.startsWith('http://') || RAW_API_DOMAIN.startsWith('https://')
   ? RAW_API_DOMAIN.replace(/\/+$/, '')
   : `https://${RAW_API_DOMAIN.replace(/\/+$/, '')}`
+const ANTI_CSRF_KEY = 'byte-runner-anti-csrf'
+const FDI_VERSION = '1.18'
 
-async function fetchWithSession(input: string, init: RequestInit = {}) {
+function getAntiCsrf(): string | null {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(ANTI_CSRF_KEY)
+}
+
+function setAntiCsrf(value: string) {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(ANTI_CSRF_KEY, value)
+  }
+}
+
+async function refreshSession(): Promise<boolean> {
+  const headers = new Headers()
+  headers.set('content-type', 'application/json')
+  headers.set('rid', 'session')
+  headers.set('fdi-version', FDI_VERSION)
+  headers.set('st-auth-mode', 'cookie')
+
+  const antiCsrf = getAntiCsrf()
+  if (antiCsrf) headers.set('anti-csrf', antiCsrf)
+
+  const res = await fetch(`${API_DOMAIN}/auth/session/refresh`, {
+    method: 'POST',
+    headers,
+    credentials: 'include',
+  })
+
+  const nextAntiCsrf = res.headers.get('anti-csrf')
+  if (nextAntiCsrf) setAntiCsrf(nextAntiCsrf)
+
+  return res.ok
+}
+
+async function fetchWithSession(input: string, init: RequestInit = {}, allowRetry = true): Promise<Response> {
   const headers = new Headers(init.headers || {})
   headers.set('content-type', 'application/json')
   
-  const antiCsrf = typeof window !== 'undefined' 
-    ? window.localStorage.getItem('byte-runner-anti-csrf')
-    : null
+  const antiCsrf = getAntiCsrf()
     
   if (antiCsrf) headers.set('anti-csrf', antiCsrf)
 
@@ -21,8 +54,17 @@ async function fetchWithSession(input: string, init: RequestInit = {}) {
   })
 
   const nextAntiCsrf = res.headers.get('anti-csrf')
-  if (nextAntiCsrf && typeof window !== 'undefined') {
-    window.localStorage.setItem('byte-runner-anti-csrf', nextAntiCsrf)
+  if (nextAntiCsrf) setAntiCsrf(nextAntiCsrf)
+
+  if (res.status === 401 && allowRetry && !input.startsWith('/auth/session/refresh')) {
+    try {
+      const refreshed = await refreshSession()
+      if (refreshed) {
+        return fetchWithSession(input, init, false)
+      }
+    } catch {
+      // Fall through and return original 401 response
+    }
   }
 
   return res
