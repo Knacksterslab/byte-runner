@@ -104,8 +104,12 @@ async function refreshSession(): Promise<boolean> {
     // Ignore parse errors
   }
 
+  // Extract anti-CSRF from multiple sources
   const headerAntiCsrf = res.headers.get('anti-csrf')
-  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf
+  const frontToken = res.headers.get('front-token')
+  const frontTokenAntiCsrf = extractAntiCsrfFromFrontToken(frontToken)
+  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf || frontTokenAntiCsrf
+  
   if (nextAntiCsrf) {
     setAntiCsrf(nextAntiCsrf)
   }

@@ -84,8 +84,12 @@ async function refreshSession(): Promise<boolean> {
     responsePreview = ''
   }
 
+  // Extract anti-CSRF from multiple sources
   const headerAntiCsrf = res.headers.get('anti-csrf')
-  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf
+  const frontToken = res.headers.get('front-token')
+  const frontTokenAntiCsrf = extractAntiCsrfFromFrontToken(frontToken)
+  const nextAntiCsrf = bodyAntiCsrf || headerAntiCsrf || frontTokenAntiCsrf
+  
   if (nextAntiCsrf) setAntiCsrf(nextAntiCsrf)
 
   // #region agent log
@@ -93,6 +97,8 @@ async function refreshSession(): Promise<boolean> {
     status: res.status,
     ok: res.ok,
     hasNextAntiCsrf: Boolean(nextAntiCsrf),
+    hasFrontToken: Boolean(frontToken),
+    hasFrontTokenAntiCsrf: Boolean(frontTokenAntiCsrf),
     acao: res.headers.get('access-control-allow-origin'),
     responsePreview: responsePreview.slice(0, 180),
   })
@@ -105,6 +111,9 @@ async function refreshSession(): Promise<boolean> {
     antiCsrfLengthAfter: nextAntiCsrf?.length || 0,
     hadBodyAntiCsrf: Boolean(bodyAntiCsrf),
     hadHeaderAntiCsrf: Boolean(headerAntiCsrf),
+    hasFrontToken: Boolean(frontToken),
+    hasFrontTokenAntiCsrf: Boolean(frontTokenAntiCsrf),
+    frontTokenPreview: frontToken?.substring(0, 50) || null,
     responsePreview: responsePreview.slice(0, 180),
   })
 
