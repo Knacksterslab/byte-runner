@@ -209,13 +209,14 @@ export function StartScreenNew({
                         <span className="text-xs">left</span>
                       </div>
                     </div>
-                    <a
-                      href={`/contests/${contest.id}`}
+                    <button
+                      type="button"
+                      onClick={onStart}
                       className="contest-cta"
                     >
-                      <span>Enter Contest</span>
+                      <span>Play to Enter</span>
                       <span className="text-lg">→</span>
-                    </a>
+                    </button>
                   </div>
                 )
               })}

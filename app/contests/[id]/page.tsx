@@ -103,6 +103,13 @@ export default function ContestDetailPage({ params }: { params: { id: string } }
     return { days, hours, minutes }
   }
 
+  const formatInTimeZone = (iso: string, timeZone: string) =>
+    new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone,
+    }).format(new Date(iso))
+
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="w-5 h-5 text-yellow-400" />
     if (rank === 2) return <Medal className="w-5 h-5 text-gray-300" />
@@ -258,6 +265,16 @@ export default function ContestDetailPage({ params }: { params: { id: string } }
               <p className="text-red-300 font-bold text-sm">🏁 Contest Ended</p>
             </div>
           )}
+        </div>
+
+        <div className="mb-8 bg-gray-900/45 border border-cyan-700/40 rounded-lg p-4 backdrop-blur-sm">
+          <p className="text-cyan-300 font-semibold mb-2">Contest Schedule</p>
+          <p className="text-gray-200 text-sm">
+            Your time: {new Date(contest.start_date).toLocaleString()} → {new Date(contest.end_date).toLocaleString()}
+          </p>
+          <p className="text-cyan-200/90 text-sm mt-1">
+            Official ({contest.contest_timezone || 'UTC'}): {formatInTimeZone(contest.start_date, contest.contest_timezone || 'UTC')} → {formatInTimeZone(contest.end_date, contest.contest_timezone || 'UTC')}
+          </p>
         </div>
 
         {/* Prize Pool */}

@@ -1,13 +1,103 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAllContests, getCurrentUser, type Contest } from '@/lib/api/backend'
 import { checkIsAdmin, createContest, updateContest, deleteContest, updateContestStatuses, type CreateContestData } from '@/lib/api/admin'
 import { Shield, Plus, Edit, Trash2, Save, X, RefreshCw } from 'lucide-react'
 
+const FALLBACK_TIMEZONES = [
+  'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'Europe/London',
+  'Europe/Berlin',
+  'Asia/Dubai',
+  'Asia/Kolkata',
+  'Asia/Singapore',
+  'Asia/Tokyo',
+  'Australia/Sydney',
+]
+
+const getSupportedTimeZones = (): string[] => {
+  try {
+    const supportedValuesOf = (Intl as any).supportedValuesOf
+    if (typeof supportedValuesOf === 'function') {
+      return supportedValuesOf('timeZone')
+    }
+  } catch {
+    // Fallback below
+  }
+  return FALLBACK_TIMEZONES
+}
+
+const toPartsInTimeZone = (date: Date, timeZone: string) => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+    hour12: false,
+  })
+  const parts = formatter.formatToParts(date)
+  const pick = (type: string) => parts.find((part) => part.type === type)?.value || '00'
+  return {
+    year: Number(pick('year')),
+    month: Number(pick('month')),
+    day: Number(pick('day')),
+    hour: Number(pick('hour')),
+    minute: Number(pick('minute')),
+    second: Number(pick('second')),
+  }
+}
+
+const zonedDateTimeToIso = (datetimeLocal: string, timeZone: string): string => {
+  if (!datetimeLocal) return ''
+  const [datePart, timePart = '00:00'] = datetimeLocal.split('T')
+  const [year, month, day] = datePart.split('-').map(Number)
+  const [hour, minute] = timePart.split(':').map(Number)
+  const targetUtcMillis = Date.UTC(year, month - 1, day, hour, minute, 0)
+
+  let guessUtcMillis = targetUtcMillis
+  for (let i = 0; i < 4; i += 1) {
+    const guessParts = toPartsInTimeZone(new Date(guessUtcMillis), timeZone)
+    const guessAsUtcMillis = Date.UTC(
+      guessParts.year,
+      guessParts.month - 1,
+      guessParts.day,
+      guessParts.hour,
+      guessParts.minute,
+      guessParts.second,
+    )
+    guessUtcMillis += targetUtcMillis - guessAsUtcMillis
+  }
+
+  return new Date(guessUtcMillis).toISOString()
+}
+
+const isoToDatetimeLocalInZone = (isoString: string, timeZone: string): string => {
+  if (!isoString) return ''
+  const parts = toPartsInTimeZone(new Date(isoString), timeZone)
+  return `${parts.year.toString().padStart(4, '0')}-${parts.month.toString().padStart(2, '0')}-${parts.day.toString().padStart(2, '0')}T${parts.hour.toString().padStart(2, '0')}:${parts.minute.toString().padStart(2, '0')}`
+}
+
+const formatDateInTimeZone = (isoString: string, timeZone: string): string => {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone,
+  }).format(new Date(isoString))
+}
+
 export default function AdminPage() {
   const router = useRouter()
+  const supportedTimeZones = useMemo(() => getSupportedTimeZones(), [])
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [contests, setContests] = useState<Contest[]>([])
@@ -18,6 +108,7 @@ export default function AdminPage() {
     description: '',
     startDate: new Date().toISOString(),
     endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+    contestTimezone: 'UTC',
     status: 'upcoming',
     prizePool: {},
     maxEntriesPerUser: 999
@@ -101,6 +192,7 @@ export default function AdminPage() {
       description: contest.description || '',
       startDate: contest.start_date,
       endDate: contest.end_date,
+      contestTimezone: contest.contest_timezone || 'UTC',
       status: contest.status,
       prizePool: contest.prize_pool || {},
       rules: contest.rules || {},
@@ -139,6 +231,7 @@ export default function AdminPage() {
       description: '',
       startDate: new Date().toISOString(),
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+      contestTimezone: 'UTC',
       status: 'upcoming',
       prizePool: {},
       maxEntriesPerUser: 999
@@ -188,18 +281,6 @@ export default function AdminPage() {
     }
   }
 
-  // Convert ISO string to datetime-local format (YYYY-MM-DDTHH:mm)
-  const toDatetimeLocal = (isoString: string): string => {
-    if (!isoString) return ''
-    const date = new Date(isoString)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day}T${hours}:${minutes}`
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
@@ -217,14 +298,9 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-950 text-white p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-cyan-400" />
-            <h1 className="text-4xl font-bold text-cyan-400">Admin Panel</h1>
-          </div>
-          <a href="/" className="text-gray-400 hover:text-cyan-400 transition-colors">
-            ← Back to Game
-          </a>
+        <div className="flex items-center gap-3 mb-8">
+          <Shield className="w-8 h-8 text-cyan-400" />
+          <h1 className="text-4xl font-bold text-cyan-400">Admin Panel</h1>
         </div>
 
         {/* Action Buttons */}
@@ -301,8 +377,8 @@ export default function AdminPage() {
                   <input
                     type="datetime-local"
                     required
-                    value={toDatetimeLocal(formData.startDate)}
-                    onChange={(e) => setFormData({ ...formData, startDate: new Date(e.target.value).toISOString() })}
+                    value={isoToDatetimeLocalInZone(formData.startDate, formData.contestTimezone || 'UTC')}
+                    onChange={(e) => setFormData({ ...formData, startDate: zonedDateTimeToIso(e.target.value, formData.contestTimezone || 'UTC') })}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-cyan-500 focus:outline-none"
                   />
                 </div>
@@ -312,11 +388,29 @@ export default function AdminPage() {
                   <input
                     type="datetime-local"
                     required
-                    value={toDatetimeLocal(formData.endDate)}
-                    onChange={(e) => setFormData({ ...formData, endDate: new Date(e.target.value).toISOString() })}
+                    value={isoToDatetimeLocalInZone(formData.endDate, formData.contestTimezone || 'UTC')}
+                    onChange={(e) => setFormData({ ...formData, endDate: zonedDateTimeToIso(e.target.value, formData.contestTimezone || 'UTC') })}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-cyan-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-mono text-gray-300 mb-2">Contest Timezone *</label>
+                <select
+                  value={formData.contestTimezone || 'UTC'}
+                  onChange={(e) => setFormData({ ...formData, contestTimezone: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-cyan-500 focus:outline-none"
+                >
+                  {supportedTimeZones.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  Start/end inputs are interpreted in this timezone and stored in UTC.
+                </p>
               </div>
 
               <div>
@@ -435,6 +529,9 @@ export default function AdminPage() {
                         <span>{new Date(contest.start_date).toLocaleString()}</span>
                         <span className="mx-2">→</span>
                         <span>{new Date(contest.end_date).toLocaleString()}</span>
+                      </div>
+                      <div className="text-xs text-cyan-300/90 font-mono mt-1">
+                        Official ({contest.contest_timezone || 'UTC'}): {formatDateInTimeZone(contest.start_date, contest.contest_timezone || 'UTC')} → {formatDateInTimeZone(contest.end_date, contest.contest_timezone || 'UTC')}
                       </div>
                       {contest.prize_pool && (
                         <div className="mt-2 text-xs text-yellow-400">

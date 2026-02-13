@@ -21,9 +21,9 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-cyan-400 mb-4">3. Educational Purpose Disclaimer</h2>
+            <h2 className="text-2xl font-bold text-cyan-400 mb-4">3. Learning Content Disclaimer</h2>
             <p className="leading-relaxed mb-4">
-              <strong className="text-yellow-400">IMPORTANT:</strong> Byte Runner is an educational game and is NOT a substitute for professional cybersecurity training or certification.
+              <strong className="text-yellow-400">IMPORTANT:</strong> Byte Runner provides high-level cybersecurity awareness content.
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4">
               <li>The game simplifies complex security concepts for entertainment and learning purposes</li>
@@ -166,7 +166,7 @@ export default function TermsPage() {
 
           <section className="border-t border-cyan-800 pt-6">
             <p className="text-sm text-gray-500 italic">
-              Summary: This is an educational game, not professional security training. Use at your own risk. We provide no warranties. Don't hack or abuse the game. We own the content. We can change or terminate the service anytime.
+              Summary: Use at your own risk. We provide no warranties. Don't hack or abuse the game. We own the content. We can change or terminate the service anytime.
             </p>
           </section>
         </div>

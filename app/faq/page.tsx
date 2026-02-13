@@ -54,7 +54,7 @@ export default function FAQPage() {
     },
     {
       question: "Is the educational content accurate?",
-      answer: "Yes! All threats, tools, and breach examples are based on real cybersecurity research and incidents. We cite specific breaches (with dates), recommend actual tools professionals use (Bitwarden, ProtonVPN, Authy, etc.), and provide step-by-step setup guides. However, Byte Runner is a simplified educational game and should not replace professional security training or certification programs."
+      answer: "Yes! All threats, tools, and breach examples are based on real cybersecurity research and incidents. We cite specific breaches (with dates), recommend actual tools professionals use (Bitwarden, ProtonVPN, Authy, etc.), and provide step-by-step setup guides."
     },
     {
       question: "Why can't I move during the healing tutorial?",

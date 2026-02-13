@@ -277,6 +277,7 @@ export interface Contest {
   description: string | null
   start_date: string
   end_date: string
+  contest_timezone: string
   status: 'upcoming' | 'active' | 'ended' | 'cancelled'
   prize_pool: Record<string, string> | null
   rules: Record<string, any> | null

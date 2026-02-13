@@ -33,6 +33,7 @@ export interface CreateContestData {
   description?: string
   startDate: string
   endDate: string
+  contestTimezone?: string
   status?: 'upcoming' | 'active' | 'ended' | 'cancelled'
   prizePool?: Record<string, string>
   rules?: Record<string, any>

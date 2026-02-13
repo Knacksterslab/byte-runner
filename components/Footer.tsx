@@ -47,12 +47,6 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Disclaimer */}
-        <div className="mt-4 pt-4 border-t border-gray-800 text-xs text-center text-gray-500">
-          <p>
-            Educational game. Not a substitute for professional cybersecurity training.
-          </p>
-        </div>
       </div>
     </footer>
   )

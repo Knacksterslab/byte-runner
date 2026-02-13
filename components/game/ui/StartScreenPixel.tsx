@@ -195,12 +195,13 @@ export function StartScreenPixel({ onStart, onShowTutorial, onSignIn, signInLabe
                         </p>
                       </div>
                     </div>
-                    <a
-                      href={`/contests/${contest.id}`}
+                    <button
+                      type="button"
+                      onClick={onStart}
                       className="block w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white text-xs font-bold py-2 rounded-lg transition-all text-center shadow-[0_0_12px_rgba(234,179,8,0.3)]"
                     >
-                      Enter Contest →
-                    </a>
+                      Play to Enter →
+                    </button>
                   </div>
                 )
               })}

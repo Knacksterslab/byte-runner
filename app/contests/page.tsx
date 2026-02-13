@@ -56,8 +56,23 @@ export default function ContestsPage() {
     return `${hours}h remaining`
   }
 
+  const formatInTimeZone = (iso: string, timeZone: string) =>
+    new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone,
+    }).format(new Date(iso))
+
   return (
-    <div className="relative min-h-screen text-white overflow-hidden space-background">
+    <div
+      className="contests-scroll-wrapper relative min-h-[100dvh] text-white overflow-y-auto overflow-x-hidden space-background"
+      style={{
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'contain',
+        touchAction: 'pan-y',
+        scrollbarWidth: 'none',
+      }}
+    >
       <div className="absolute inset-0 vignette pointer-events-none" />
       
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 sm:py-12">
@@ -142,6 +157,9 @@ export default function ContestsPage() {
                       {new Date(contest.start_date).toLocaleDateString()} - {new Date(contest.end_date).toLocaleDateString()}
                     </span>
                   </div>
+                  <div className="text-xs text-cyan-200/80 font-mono">
+                    Official ({contest.contest_timezone || 'UTC'}): {formatInTimeZone(contest.start_date, contest.contest_timezone || 'UTC')} → {formatInTimeZone(contest.end_date, contest.contest_timezone || 'UTC')}
+                  </div>
                   {contest.status === 'active' && (
                     <div className="flex items-center gap-2 text-sm text-green-400 font-bold">
                       <Clock className="w-4 h-4" />
@@ -189,6 +207,12 @@ export default function ContestsPage() {
       </div>
 
       <style jsx>{`
+        .contests-scroll-wrapper::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+        }
+
         .space-background {
           background-image: url('/space-background.png');
           background-size: cover;
