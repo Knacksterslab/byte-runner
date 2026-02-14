@@ -50,7 +50,8 @@ async function generateFavicons() {
       
       await sharp(LOGO_PATH)
         .resize(size, size, {
-          fit: 'contain',
+          fit: 'cover',
+          position: 'center',
           background: { r: 0, g: 0, b: 0, alpha: 0 } // Transparent background
         })
         .png()
@@ -67,7 +68,8 @@ async function generateFavicons() {
     // (True multi-size .ico requires additional libraries)
     await sharp(LOGO_PATH)
       .resize(32, 32, {
-        fit: 'contain',
+        fit: 'cover',
+        position: 'center',
         background: { r: 0, g: 0, b: 0, alpha: 0 }
       })
       .png()
