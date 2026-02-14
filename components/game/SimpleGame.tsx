@@ -2587,8 +2587,8 @@ const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
           ctx.shadowBlur = 0
           ctx.textAlign = 'left'
 }
-// Check collision with obstacles (skip if player is invincible during quiz)
-        const isPlayerInvincible = quiz.refs.activeRef.current || isHealing || isRestoring
+// Check collision with obstacles (skip if player is invincible)
+        const isPlayerInvincible = quiz.refs.activeRef.current || isHealing || isRestoring || levelUpTimer > 0
         if (!isPlayerInvincible && checkCollision(
           { x: playerX - playerSize / 2, y: playerY - playerSize / 2, width: playerSize, height: playerSize },
           { x: obstacle.x - obstacle.width / 2, y: obstacle.y - obstacle.height / 2, width: obstacle.width, height: obstacle.height }
