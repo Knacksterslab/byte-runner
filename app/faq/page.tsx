@@ -14,7 +14,7 @@ export default function FAQPage() {
     },
     {
       question: "Is it free? Will there be premium features?",
-      answer: "The game is currently 100% free to play with no ads and no data collection. In the future, we may add premium features like advanced threat types, daily challenges, and leaderboards. The core educational content will always remain free. We're also exploring options for enterprise licensing for company security training."
+      answer: "The game is currently 100% free to play with no ads and no data collection. We already have contests with real prizes! In the future, we may add premium features like advanced threat types, daily challenges, and exclusive contests. The core educational content will always remain free. We're also exploring options for enterprise licensing for company security training."
     },
     {
       question: "How do I report bugs or give feedback?",
@@ -38,7 +38,7 @@ export default function FAQPage() {
     },
     {
       question: "Is there a leaderboard or multiplayer?",
-      answer: "Not yet! Leaderboards and social features are on our roadmap. Currently, you compete against \"ghost players\" (AI opponents who send threats at you), but there's no real-time multiplayer. We're considering adding global leaderboards, friend challenges, and daily competitions in future updates. Let us know if these features interest you!"
+      answer: "Yes! We have contests with leaderboards where you can compete for prizes. Visit /contests to see active competitions. Each contest has its own leaderboard showing player rankings. Currently, you compete against \"ghost players\" (AI opponents who send threats at you), but there's no real-time multiplayer yet. Friend challenges and live multiplayer are on our roadmap!"
     },
     {
       question: "What's the difference between zones?",

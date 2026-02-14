@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 import { Keyboard, AlertTriangle, Shield, Skull, Trophy } from 'lucide-react'
 import { useGameStore } from '@/lib/store/gameStore'
 
 interface Contest {
   id: string
   name: string
+  slug: string
   end_date: string
   prize_pool: Record<string, string> | null
   status: string
@@ -17,7 +19,6 @@ export interface StartScreenNewProps {
   onShowTutorial: () => void
   onSignIn?: () => void
   signInLabel?: string
-  onViewLeaderboard?: () => void
   activeContests?: Contest[]
 }
 
@@ -25,8 +26,7 @@ export function StartScreenNew({
   onStart, 
   onShowTutorial, 
   onSignIn, 
-  signInLabel = 'Sign in', 
-  onViewLeaderboard,
+  signInLabel = 'Sign in',
   activeContests = [] 
 }: StartScreenNewProps) {
   const leaderboard = useGameStore((state) => state.leaderboard)
@@ -158,15 +158,6 @@ export function StartScreenNew({
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 text-center">
-                  <button
-                    onClick={onViewLeaderboard}
-                    className="leaderboard-link text-sm text-white font-semibold hover:text-cyan-300 transition-colors"
-                    disabled={!onViewLeaderboard}
-                  >
-                    View full leaderboard →
-                  </button>
-                </div>
               </>
             )}
           </div>
@@ -209,14 +200,15 @@ export function StartScreenNew({
                         <span className="text-xs">left</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={onStart}
-                      className="contest-cta"
-                    >
-                      <span>Play to Enter</span>
-                      <span className="text-lg">→</span>
-                    </button>
+                    <Link href={`/contests/${contest.slug || contest.id}`}>
+                      <button
+                        type="button"
+                        className="contest-cta"
+                      >
+                        <span>View Contest</span>
+                        <span className="text-lg">→</span>
+                      </button>
+                    </Link>
                   </div>
                 )
               })}
@@ -264,12 +256,12 @@ export function StartScreenNew({
 
           {activeContests.length > 2 && (
             <div className="mt-4 text-center">
-              <a
+              <Link
                 href="/contests"
-                className="text-cyan-400 hover:text-cyan-300 text-sm font-mono font-semibold transition-colors"
+                className="text-cyan-400 hover:text-cyan-300 text-base font-mono font-bold transition-colors inline-block px-4 py-2 rounded-lg hover:bg-cyan-400/10"
               >
-                View all {activeContests.length} contests →
-              </a>
+                View All Contests & Standings →
+              </Link>
             </div>
           )}
         </div>

@@ -189,6 +189,7 @@ export default function AdminPage() {
     setEditingId(contest.id)
     setFormData({
       name: contest.name,
+      slug: contest.slug,
       description: contest.description || '',
       startDate: contest.start_date,
       endDate: contest.end_date,
@@ -354,10 +355,34 @@ export default function AdminPage() {
                   type="text"
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => {
+                    const newName = e.target.value
+                    const autoSlug = newName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-')
+                    setFormData({ ...formData, name: newName, slug: formData.slug || autoSlug })
+                  }}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-cyan-500 focus:outline-none"
                   placeholder="Launch Week Championship"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-mono text-gray-300 mb-2">
+                  URL Slug (leave empty to auto-generate)
+                </label>
+                <input
+                  type="text"
+                  value={formData.slug || ''}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-cyan-500 focus:outline-none font-mono text-sm"
+                  placeholder="launch-week-championship"
+                  pattern="[a-z0-9-]+"
+                  title="Only lowercase letters, numbers, and hyphens allowed"
+                />
+                {formData.slug && (
+                  <p className="text-xs text-cyan-400 mt-1 font-mono">
+                    URL: /contests/{formData.slug}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -524,6 +549,7 @@ export default function AdminPage() {
                           {contest.status.toUpperCase()}
                         </span>
                       </div>
+                      <p className="text-cyan-400 text-xs font-mono mb-2">/contests/{contest.slug}</p>
                       <p className="text-gray-400 text-sm mb-2">{contest.description}</p>
                       <div className="text-sm text-gray-500 font-mono">
                         <span>{new Date(contest.start_date).toLocaleString()}</span>

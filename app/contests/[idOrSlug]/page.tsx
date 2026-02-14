@@ -6,8 +6,8 @@ import { Trophy, Calendar, Clock, Crown, Medal, User, Award } from 'lucide-react
 import Link from 'next/link'
 import { PrizeClaimModal } from '@/components/PrizeClaimModal'
 
-export default function ContestDetailPage({ params }: { params: { id: string } }) {
-  const contestId = params.id
+export default function ContestDetailPage({ params }: { params: { idOrSlug: string } }) {
+  const contestId = params.idOrSlug
   
   const [contest, setContest] = useState<Contest | null>(null)
   const [leaderboard, setLeaderboard] = useState<ContestLeaderboardEntry[]>([])
@@ -215,6 +215,15 @@ export default function ContestDetailPage({ params }: { params: { id: string } }
       <div className="absolute inset-0 vignette pointer-events-none" />
       
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 pb-20">
+        {/* Breadcrumb Navigation */}
+        <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
+          <Link href="/" className="hover:text-cyan-400 transition-colors">Home</Link>
+          <span>→</span>
+          <Link href="/contests" className="hover:text-cyan-400 transition-colors">Contests</Link>
+          <span>→</span>
+          <span className="text-cyan-400">{contest.name}</span>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-8">
           <img
@@ -267,6 +276,22 @@ export default function ContestDetailPage({ params }: { params: { id: string } }
           )}
         </div>
 
+        {/* Play to Enter Button (Active contests only) */}
+        {contest.status === 'active' && (
+          <div className="mb-8 text-center">
+            <Link href="/?play=true">
+              <button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold text-lg px-8 py-4 rounded-xl shadow-[0_0_30px_rgba(34,211,238,0.5)] hover:shadow-[0_0_40px_rgba(34,211,238,0.7)] transition-all transform hover:scale-105 active:scale-95">
+                🎮 Play to Enter Contest
+              </button>
+            </Link>
+            {myEntries && myEntries.entries.length > 0 && (
+              <p className="text-gray-400 text-sm mt-3">
+                You've already entered! Play again to improve your rank.
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="mb-8 bg-gray-900/45 border border-cyan-700/40 rounded-lg p-4 backdrop-blur-sm">
           <p className="text-cyan-300 font-semibold mb-2">Contest Schedule</p>
           <p className="text-gray-200 text-sm">
@@ -297,23 +322,40 @@ export default function ContestDetailPage({ params }: { params: { id: string } }
 
         {/* Your Status (if logged in) */}
         {currentUser && myEntries && (
-          <div className="mb-8 bg-cyan-900/30 border-2 border-cyan-500/50 rounded-lg p-6 backdrop-blur-sm">
-            <h2 className="text-xl font-bold text-cyan-400 mb-4">Your Status</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <p className="text-gray-400 text-sm">Your Rank</p>
-                <p className="text-2xl font-bold text-white">
-                  {myEntries.rank ? `#${myEntries.rank}` : 'Not ranked'}
+          <div className="mb-8 bg-gradient-to-br from-cyan-900/40 to-blue-900/30 border-2 border-cyan-400/60 rounded-lg p-6 backdrop-blur-sm shadow-[0_0_20px_rgba(34,211,238,0.3)]">
+            <h2 className="text-2xl font-bold text-cyan-300 mb-6 flex items-center gap-2">
+              <User className="w-6 h-6" />
+              Your Contest Status
+            </h2>
+            
+            {/* Prominent Rank Display */}
+            {myEntries.rank && (
+              <div className="mb-6 text-center bg-cyan-500/20 border-2 border-cyan-400/50 rounded-xl py-6 px-4">
+                <p className="text-cyan-300 text-sm font-semibold mb-2">CURRENT RANK</p>
+                <p className="text-5xl sm:text-6xl font-black text-white mb-2">
+                  #{myEntries.rank}
+                </p>
+                <p className="text-gray-300 text-sm">
+                  out of {leaderboard.length} {leaderboard.length === 1 ? 'player' : 'players'}
                 </p>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm">Entries</p>
-                <p className="text-2xl font-bold text-white">{myEntries.entries.length}</p>
+            )}
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-black/30 rounded-lg p-4 border border-cyan-500/30">
+                <p className="text-gray-400 text-sm mb-1">Entries Submitted</p>
+                <p className="text-3xl font-bold text-white">{myEntries.entries.length}</p>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm">Best Score</p>
-                <p className="text-2xl font-bold text-white">
+              <div className="bg-black/30 rounded-lg p-4 border border-cyan-500/30">
+                <p className="text-gray-400 text-sm mb-1">Best Score</p>
+                <p className="text-3xl font-bold text-white">
                   {myEntries.entries.length > 0 ? myEntries.entries[0].score.toLocaleString() : '—'}
+                </p>
+              </div>
+              <div className="bg-black/30 rounded-lg p-4 border border-cyan-500/30">
+                <p className="text-gray-400 text-sm mb-1">Best Distance</p>
+                <p className="text-3xl font-bold text-white">
+                  {myEntries.entries.length > 0 ? `${myEntries.entries[0].distance}m` : '—'}
                 </p>
               </div>
             </div>
@@ -413,10 +455,10 @@ export default function ContestDetailPage({ params }: { params: { id: string } }
         </div>
 
         {/* Back button */}
-        <div className="text-center">
-          <a href="/contests" className="text-cyan-400 hover:text-cyan-300 underline text-base font-mono">
-            ← Back to Contests
-          </a>
+        <div className="text-center mt-8">
+          <Link href="/contests" className="inline-block text-cyan-400 hover:text-cyan-300 text-base font-mono font-semibold px-6 py-3 rounded-lg border border-cyan-400/30 hover:border-cyan-400/60 hover:bg-cyan-400/10 transition-all">
+            ← Back to All Contests
+          </Link>
         </div>
       </div>
 

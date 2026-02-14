@@ -211,6 +211,25 @@ export default function SimpleGame() {
     }
   }, [bonusKitType])
 
+  // Auto-start game if ?play=true in URL
+  useEffect(() => {
+    if (!isMounted || isLoading || gameStarted) return
+    
+    const urlParams = new URLSearchParams(window.location.search)
+    const shouldAutoStart = urlParams.get('play') === 'true'
+    
+    if (shouldAutoStart) {
+      console.log('🎮 Auto-starting game from URL parameter')
+      // Small delay to ensure everything is loaded
+      const tid = setTimeout(() => {
+        handleStart()
+        // Clean URL after starting
+        router.replace('/')
+      }, 100)
+      return () => clearTimeout(tid)
+    }
+  }, [isMounted, isLoading, gameStarted])
+
   // Preload sprites and show loading screen
   useEffect(() => {
     if (!isMounted) return
@@ -3312,10 +3331,6 @@ powerups = powerups.filter(kit => {
     }
   }
 
-  const handleViewLeaderboard = () => {
-    router.push('/leaderboard')
-  }
-  
   const handleStart = () => {
     trackGameStart()
     resetGame()
@@ -3440,7 +3455,6 @@ powerups = powerups.filter(kit => {
               ? `Signed in as ${currentUser?.username || 'Player'} • Sign out`
               : 'Guest • Sign in'
             }
-            onViewLeaderboard={handleViewLeaderboard}
             activeContests={activeContests}
           />
           {renderAuthModal()}

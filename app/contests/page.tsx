@@ -131,7 +131,7 @@ export default function ContestsPage() {
             {contests.map((contest) => (
               <Link
                 key={contest.id}
-                href={`/contests/${contest.id}`}
+                href={`/contests/${contest.slug || contest.id}`}
                 className="block bg-gradient-to-br from-gray-900/60 to-gray-800/40 border-2 border-cyan-700/50 hover:border-cyan-500/80 rounded-lg p-6 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,255,255,0.3)]"
               >
                 {/* Header */}

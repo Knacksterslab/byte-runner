@@ -236,10 +236,10 @@ export default function ProfilePage() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
           <a
-            href="/leaderboard"
+            href="/contests"
             className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105 text-center"
           >
-            View Leaderboard
+            View Contests
           </a>
           <a
             href="/"

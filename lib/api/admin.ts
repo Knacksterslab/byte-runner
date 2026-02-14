@@ -271,6 +271,7 @@ async function fetchWithSession(input: string, init: RequestInit = {}, allowRetr
 
 export interface CreateContestData {
   name: string
+  slug?: string
   description?: string
   startDate: string
   endDate: string

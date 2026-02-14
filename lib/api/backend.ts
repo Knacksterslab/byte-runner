@@ -353,6 +353,7 @@ export async function getShareCount(): Promise<number> {
 export interface Contest {
   id: string
   name: string
+  slug: string
   description: string | null
   start_date: string
   end_date: string
