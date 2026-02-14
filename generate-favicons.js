@@ -48,7 +48,19 @@ async function generateFavicons() {
     for (const { name, size } of sizes) {
       const outputPath = path.join(PUBLIC_DIR, name);
       
+      // Get image metadata to calculate zoom crop
+      const metadata = await sharp(LOGO_PATH).metadata();
+      const { width, height } = metadata;
+      
+      // Zoom factor: crop to 70% of center to make logo bigger
+      const zoomFactor = 0.7;
+      const cropWidth = Math.floor(width * zoomFactor);
+      const cropHeight = Math.floor(height * zoomFactor);
+      const left = Math.floor((width - cropWidth) / 2);
+      const top = Math.floor((height - cropHeight) / 2);
+      
       await sharp(LOGO_PATH)
+        .extract({ left, top, width: cropWidth, height: cropHeight })
         .resize(size, size, {
           fit: 'cover',
           position: 'center',
@@ -64,9 +76,21 @@ async function generateFavicons() {
     console.log('\n🔨 Generating favicon.ico...');
     const icoPath = path.join(PUBLIC_DIR, 'favicon.ico');
     
+    // Get image metadata for zoom crop
+    const metadata = await sharp(LOGO_PATH).metadata();
+    const { width, height } = metadata;
+    
+    // Zoom factor: crop to 70% of center to make logo bigger
+    const zoomFactor = 0.7;
+    const cropWidth = Math.floor(width * zoomFactor);
+    const cropHeight = Math.floor(height * zoomFactor);
+    const left = Math.floor((width - cropWidth) / 2);
+    const top = Math.floor((height - cropHeight) / 2);
+    
     // For .ico file, we'll just use the 32x32 as a fallback
     // (True multi-size .ico requires additional libraries)
     await sharp(LOGO_PATH)
+      .extract({ left, top, width: cropWidth, height: cropHeight })
       .resize(32, 32, {
         fit: 'cover',
         position: 'center',

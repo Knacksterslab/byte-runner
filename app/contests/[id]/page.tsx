@@ -170,7 +170,7 @@ export default function ContestDetailPage({ params }: { params: { id: string } }
 
   if (loading) {
     return (
-      <div className="relative min-h-screen text-white flex items-center justify-center overflow-hidden space-background">
+      <div className="relative min-h-screen text-white flex items-center justify-center overflow-y-auto overflow-x-hidden space-background" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="relative z-10 text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-cyan-400 border-t-transparent"></div>
           <p className="text-gray-400 mt-4 font-mono">Loading contest...</p>
@@ -190,7 +190,7 @@ export default function ContestDetailPage({ params }: { params: { id: string } }
 
   if (!contest) {
     return (
-      <div className="relative min-h-screen text-white flex items-center justify-center overflow-hidden space-background">
+      <div className="relative min-h-screen text-white flex items-center justify-center overflow-y-auto overflow-x-hidden space-background" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="relative z-10 text-center">
           <p className="text-gray-400 text-lg">Contest not found</p>
           <a href="/contests" className="text-cyan-400 hover:text-cyan-300 underline mt-4 inline-block">
@@ -211,10 +211,10 @@ export default function ContestDetailPage({ params }: { params: { id: string } }
   }
 
   return (
-    <div className="relative min-h-screen text-white overflow-hidden space-background">
+    <div className="relative min-h-screen text-white overflow-y-auto overflow-x-hidden space-background" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
       <div className="absolute inset-0 vignette pointer-events-none" />
       
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 pb-20">
         {/* Header */}
         <div className="text-center mb-8">
           <img

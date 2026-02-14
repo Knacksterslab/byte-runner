@@ -91,7 +91,7 @@ export default function SimpleGame() {
   const ui = useUIState()
   const router = useRouter()
   
-  const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, addLeaderboardEntry, setLeaderboard } = useGameStore()
+  const { distance, score, isGameOver, lastAttacker, lastThreatType, setDistance, setScore, setGameOver, setRunning, setLastAttacker, resetGame, addLeaderboardEntry, setLeaderboard } = useGameStore()
 
   const buildRecoveryOverlayState = (kitType: string, threatId: string | null): Omit<RecoveryOverlayState, 'timeLeft' | 'progress'> => {
     const protectionKit = getProtectionKitById(kitType)
@@ -353,6 +353,7 @@ export default function SimpleGame() {
     let playerY = canvas.height / 2
     let playerSize = 45 // Bigger player for better visibility
     let playerSpeed = 5
+    let localScore = 0 // Single source of truth for score during gameplay
     
     // Level state
     let currentLevel = 1
@@ -1680,7 +1681,7 @@ export default function SimpleGame() {
         // Apply speed bonus
         if (quiz.refs.currentQuizRef.current) {
           obstacleSpeed *= quiz.refs.currentQuizRef.current.speedBonus
-          addScore(500) // Bonus points for completing quiz
+          localScore += 500 // Bonus points for completing quiz
           
           // Show success message
           showQuizCompletionMessage = true
@@ -2372,7 +2373,7 @@ const passwordWidth = ctx.measureText(passwordText).width
         ctx.fillStyle = '#6ee7ff'
         const scoreTextX = hudX + hudWidth - 16
         ctx.textAlign = 'right'
-        ctx.fillText(`${score}`, scoreTextX, hudY + (canvas.width < 768 ? 27 : 30))
+        ctx.fillText(`${localScore}`, scoreTextX, hudY + (canvas.width < 768 ? 27 : 30))
         ctx.textAlign = 'left'
       }
       
@@ -2604,7 +2605,7 @@ const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
             lastHitThreatId = obstacle.threatId
             setLastAttacker(obstacle.sentBy, obstacle.threatId)
             showTutorial(requiredKit, obstacle.threatId)
-            addScore(-25) // Cost for consuming kit
+            localScore -= 25 // Cost for consuming kit
             returnObstacleToPool(obstacle)
             return false
           } else {
@@ -2623,22 +2624,25 @@ const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
               obstacles = []
               
               // Bonus score for survival via backup
-              addScore(-100) // Cost for consuming backup kit
+              localScore -= 100 // Cost for consuming backup kit
               
               // Remove the threat
               returnObstacleToPool(obstacle)
               return false
             } else {
               // No kit AND no backup - game over
+              // Sync local score to Zustand store
+              setScore(localScore)
+              
               // Save game state for quiz continuation option
               setSavedGameState({
                 level: currentLevel,
                 kits: { ...kitInventory },
-                score: score
+                score: localScore
               })
               lastHitThreatId = obstacle.threatId
               setLastAttacker(obstacle.sentBy, obstacle.threatId)
-              trackGameOver(currentLevel, score, obstacle.threatId)
+              trackGameOver(currentLevel, localScore, obstacle.threatId)
               setGameOver(true)
               setRunning(false)
               // Track first death for tutorial tooltip
@@ -2739,7 +2743,7 @@ powerups = powerups.filter(kit => {
             quiz.actions.collectItem(itemId, isCorrect)
             
             if (isCorrect) {
-              addScore(100)
+              localScore += 100
               
               // Green flash for correct
               ctx.fillStyle = 'rgba(0, 255, 0, 0.3)'
@@ -2761,7 +2765,7 @@ powerups = powerups.filter(kit => {
           if (kitType && kitInventory[kitType] !== undefined && kitInventory[kitType] < MAX_KIT_CAPACITY) {
             kitInventory[kitType]++
             totalKitsCollected++
-            addScore(50)
+            localScore += 50
             trackKitCollected(kitType, totalKitsCollected)
             
             // ⭐ TRIGGER CELEBRATION ANIMATION! ⭐
@@ -3096,7 +3100,7 @@ powerups = powerups.filter(kit => {
         img.src = ''
       })
     }
-  }, [gameStarted, isGameOver, setDistance, addScore, setGameOver, setRunning, setLastAttacker, resetGame, setLevel, ui.state.mobileHudExpanded, ui.state.desktopHudExpanded])
+  }, [gameStarted, isGameOver, setDistance, setScore, setGameOver, setRunning, setLastAttacker, resetGame, setLevel, ui.state.mobileHudExpanded, ui.state.desktopHudExpanded])
 
   const refreshLeaderboard = async () => {
     try {
