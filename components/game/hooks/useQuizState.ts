@@ -9,6 +9,9 @@ export interface QuizState {
   timeRemaining: number
   completed: boolean
   score: { correct: number; incorrect: number }
+  points: number // Total points accumulated
+  combo: number // Current combo multiplier
+  passed: boolean | null // null = in progress, true = passed, false = failed
 }
 
 export interface QuizActions {
@@ -27,6 +30,9 @@ export function useQuizState() {
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [completed, setCompleted] = useState(false)
   const [score, setScore] = useState({ correct: 0, incorrect: 0 })
+  const [points, setPoints] = useState(0)
+  const [combo, setCombo] = useState(0)
+  const [passed, setPassed] = useState<boolean | null>(null)
 
   // Refs for game loop access (avoid closure issues)
   const activeRef = useRef(false)
@@ -35,6 +41,9 @@ export function useQuizState() {
   const itemsCollectedRef = useRef<string[]>([])
   const timeRemainingRef = useRef(0)
   const completedRef = useRef(false)
+  const pointsRef = useRef(0)
+  const comboRef = useRef(0)
+  const passedRef = useRef<boolean | null>(null)
 
   // Sync state to refs
   useEffect(() => {
@@ -60,6 +69,18 @@ export function useQuizState() {
   useEffect(() => {
     completedRef.current = completed
   }, [completed])
+
+  useEffect(() => {
+    pointsRef.current = points
+  }, [points])
+
+  useEffect(() => {
+    comboRef.current = combo
+  }, [combo])
+
+  useEffect(() => {
+    passedRef.current = passed
+  }, [passed])
 
   // Countdown before quiz starts
   useEffect(() => {
@@ -94,6 +115,9 @@ export function useQuizState() {
       setItemsCollected([])
       setCompleted(false)
       setScore({ correct: 0, incorrect: 0 })
+      setPoints(0)
+      setCombo(0)
+      setPassed(null)
     },
 
     endQuiz: () => {
@@ -110,10 +134,36 @@ export function useQuizState() {
         correct: prev.correct + (isCorrect ? 1 : 0),
         incorrect: prev.incorrect + (isCorrect ? 0 : 1)
       }))
+
+      // Update combo and points
+      if (isCorrect) {
+        setCombo(prev => prev + 1)
+        setPoints(prev => {
+          const quiz = currentQuizRef.current
+          if (!quiz) return prev
+          
+          const basePoints = quiz.pointsForCorrect
+          const comboMultiplier = Math.min(comboRef.current + 1, 4) // Cap at 4x
+          const pointsGained = basePoints * comboMultiplier
+          return prev + pointsGained
+        })
+      } else {
+        setCombo(0) // Reset combo on incorrect
+        setPoints(prev => {
+          const quiz = currentQuizRef.current
+          if (!quiz) return prev
+          return Math.max(0, prev + quiz.pointsForIncorrect) // Don't go below 0
+        })
+      }
     },
 
     markCompleted: () => {
       setCompleted(true)
+      // Check if passed based on score
+      const quiz = currentQuizRef.current
+      if (quiz) {
+        setPassed(pointsRef.current >= quiz.passingScore)
+      }
     },
 
     reset: () => {
@@ -124,6 +174,9 @@ export function useQuizState() {
       setTimeRemaining(0)
       setCompleted(false)
       setScore({ correct: 0, incorrect: 0 })
+      setPoints(0)
+      setCombo(0)
+      setPassed(null)
     }
   }
 
@@ -134,7 +187,10 @@ export function useQuizState() {
     itemsCollected,
     timeRemaining,
     completed,
-    score
+    score,
+    points,
+    combo,
+    passed
   }
 
   return {
@@ -145,7 +201,10 @@ export function useQuizState() {
       currentQuizRef,
       itemsCollectedRef,
       timeRemainingRef,
-      completedRef
+      completedRef,
+      pointsRef,
+      comboRef,
+      passedRef
     },
     actions
   }

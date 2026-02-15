@@ -372,10 +372,10 @@ export default function SimpleGame() {
     let playerY = canvas.height / 2
     let playerSize = 45 // Bigger player for better visibility
     let playerSpeed = 5
-    let localScore = 0 // Single source of truth for score during gameplay
+    let localScore = savedGameState ? savedGameState.score : 0 // Restore score if continuing from quiz
     
     // Level state
-    let currentLevel = 1
+    let currentLevel = savedGameState ? savedGameState.level : 1 // Restore level if continuing from quiz
     let obstacleSpeed = 4
     let powerupsNeeded = 0
     let powerupsCollected = 0
@@ -400,6 +400,26 @@ export default function SimpleGame() {
     let celebrationTimer = 0
     const CELEBRATION_DURATION = 300 // ms
     
+    // Confetti particle system
+    interface ConfettiParticle {
+      x: number
+      y: number
+      vx: number
+      vy: number
+      color: string
+      rotation: number
+      rotationSpeed: number
+      life: number
+      shape: 'rect' | 'circle'
+      size: number
+    }
+    let confettiParticles: ConfettiParticle[] = []
+    
+    // Victory dance state
+    let isVictoryDancing = false
+    let victoryDanceTimer = 0
+    const VICTORY_DANCE_DURATION = 2000 // 2 seconds
+    
     // Color cache for ghost player names (avoids parseInt on every frame)
     const colorCache = new Map<string, {r: number, g: number, b: number}>()
     function hexToRgb(hex: string): {r: number, g: number, b: number} {
@@ -412,6 +432,81 @@ export default function SimpleGame() {
       const rgb = { r, g, b }
       colorCache.set(hex, rgb)
       return rgb
+    }
+    
+    // Confetti spawning function
+    function spawnConfetti(x: number, y: number, count: number) {
+      const colors = ['#00ff88', '#00ffff', '#ffff00', '#ff00ff', '#ff0080', '#0080ff', '#80ff00']
+      const isMobile = canvas.width < 768
+      const maxParticles = isMobile ? 30 : 60 // Limit particles on mobile
+      
+      // Don't exceed max particles
+      if (confettiParticles.length >= maxParticles) return
+      
+      const spawnCount = Math.min(count, maxParticles - confettiParticles.length)
+      
+      for (let i = 0; i < spawnCount; i++) {
+        const angle = (Math.PI * 2 * i) / spawnCount + (Math.random() - 0.5) * 0.5
+        const speed = 3 + Math.random() * 4
+        confettiParticles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 3, // Upward bias
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 0.3,
+          life: 1,
+          shape: Math.random() > 0.5 ? 'rect' : 'circle',
+          size: isMobile ? 4 + Math.random() * 4 : 6 + Math.random() * 6
+        })
+      }
+    }
+    
+    // Update confetti particles
+    function updateConfetti(frameMs: number) {
+      const gravity = 0.15
+      const decay = 0.015
+      
+      // Normalize to 60fps (16.67ms per frame)
+      const timeScale = frameMs / 16.67
+      
+      for (let i = confettiParticles.length - 1; i >= 0; i--) {
+        const particle = confettiParticles[i]
+        
+        // Update physics (scaled by time)
+        particle.vy += gravity * timeScale
+        particle.x += particle.vx * timeScale
+        particle.y += particle.vy * timeScale
+        particle.rotation += particle.rotationSpeed * timeScale
+        particle.life -= decay * timeScale
+        
+        // Remove dead particles
+        if (particle.life <= 0 || particle.y > canvas.height + 50) {
+          confettiParticles.splice(i, 1)
+        }
+      }
+    }
+    
+    // Draw confetti particles
+    function drawConfetti() {
+      for (const particle of confettiParticles) {
+        ctx.save()
+        ctx.globalAlpha = particle.life
+        ctx.translate(particle.x, particle.y)
+        ctx.rotate(particle.rotation)
+        ctx.fillStyle = particle.color
+        
+        if (particle.shape === 'rect') {
+          ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size)
+        } else {
+          ctx.beginPath()
+          ctx.arc(0, 0, particle.size / 2, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        
+        ctx.restore()
+      }
     }
     
     let obstacles: GameObject[] = []
@@ -1319,6 +1414,11 @@ export default function SimpleGame() {
     
     // Draw level-up overlay
     function drawLevelUpOverlay() {
+      // Don't show level up overlay during quiz
+      if (quiz.refs.activeRef.current) {
+        return
+      }
+      
       if (!showingLevelUp || levelUpTimer <= 0) {
         showingLevelUp = false
         return
@@ -1616,6 +1716,7 @@ export default function SimpleGame() {
       }
       
       const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7
+      const isMobile = canvas.width < 768
       
       // Flash effect
       if (quizCompletionSuccess) {
@@ -1626,8 +1727,8 @@ export default function SimpleGame() {
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
       // Message box
-      const overlayWidth = 600
-      const overlayHeight = 200
+      const overlayWidth = isMobile ? 320 : 600
+      const overlayHeight = isMobile ? 180 : 240
       const overlayX = canvas.width / 2 - overlayWidth / 2
       const overlayY = canvas.height / 2 - overlayHeight / 2
       
@@ -1643,22 +1744,29 @@ export default function SimpleGame() {
       ctx.shadowBlur = 0
       
       // Message
-      ctx.font = `bold ${Math.floor(48 * pulse)}px monospace`
+      ctx.font = `bold ${Math.floor((isMobile ? 32 : 48) * pulse)}px monospace`
       ctx.fillStyle = quizCompletionSuccess ? '#00ff00' : '#ff0000'
       ctx.textAlign = 'center'
       ctx.fillText(
         quizCompletionSuccess ? '✅ QUIZ PASSED!' : '❌ QUIZ FAILED',
         canvas.width / 2,
-        canvas.height / 2 - 20
+        canvas.height / 2 - (isMobile ? 30 : 40)
       )
       
+      // Score display
+      const finalPoints = quiz.refs.pointsRef.current
+      const passingScore = quiz.refs.currentQuizRef.current?.passingScore || 50
+      ctx.font = `bold ${isMobile ? 24 : 32}px monospace`
+      ctx.fillStyle = '#ffff00'
+      ctx.fillText(`${finalPoints} / ${passingScore} Points`, canvas.width / 2, canvas.height / 2 + (isMobile ? 5 : 10))
+      
       // Sub text
-      ctx.font = 'bold 24px monospace'
+      ctx.font = `bold ${isMobile ? 16 : 24}px monospace`
       ctx.fillStyle = '#ffffff'
       if (quizCompletionSuccess) {
-        ctx.fillText('Speed Boost Activated! +500 Points', canvas.width / 2, canvas.height / 2 + 40)
+        ctx.fillText('Keep Your Gear! +500 Points', canvas.width / 2, canvas.height / 2 + (isMobile ? 40 : 60))
       } else {
-        ctx.fillText('Continue with current speed', canvas.width / 2, canvas.height / 2 + 40)
+        ctx.fillText('All Powerups Lost!', canvas.width / 2, canvas.height / 2 + (isMobile ? 40 : 60))
       }
       
       ctx.textAlign = 'left'
@@ -1678,7 +1786,8 @@ export default function SimpleGame() {
     // In-game quiz functions
     function startInGameQuiz(quizChallenge: QuizChallenge) {
       // Activate quiz through hook action
-      quiz.actions.startQuiz(currentLevel)
+      // Use React state 'level' instead of local 'currentLevel' to avoid savedGameState timing issues
+      quiz.actions.startQuiz(level)
       
       // IMMEDIATELY clear all obstacles for safety
       obstacles.length = 0
@@ -1697,18 +1806,27 @@ export default function SimpleGame() {
       quiz.actions.markCompleted()
       
       if (success) {
-        // Apply speed bonus
+        // Reward for passing quiz (no speed increase - we want consistent difficulty)
         if (quiz.refs.currentQuizRef.current) {
-          obstacleSpeed *= quiz.refs.currentQuizRef.current.speedBonus
+          // No speed bonus - speed stays constant in early levels
+          // obstacleSpeed *= quiz.refs.currentQuizRef.current.speedBonus // REMOVED
           localScore += 500 // Bonus points for completing quiz
           
           // Show success message
           showQuizCompletionMessage = true
           quizCompletionSuccess = true
           quizCompletionTimer = 2000
+          
+          // Big confetti burst for quiz pass!
+          const isMobile = canvas.width < 768
+          spawnConfetti(canvas.width / 2, canvas.height / 2, isMobile ? 40 : 80)
+          
+          // Victory dance
+          isVictoryDancing = true
+          victoryDanceTimer = VICTORY_DANCE_DURATION
         }
       } else {
-        // Show failure message
+        // FAIL: Show failure message (player loses gear is handled elsewhere)
         showQuizCompletionMessage = true
         quizCompletionSuccess = false
         quizCompletionTimer = 2000
@@ -1767,16 +1885,11 @@ export default function SimpleGame() {
       const allItemsGone = powerups.filter(p => p.type === 'quiz-item').length === 0
       
       
-      if (allItemsGone || quiz.refs.timeRemainingRef.current === 0) {
-        // Calculate score using REF (not state)
-        const correctAnswers = quiz.refs.currentQuizRef.current.correctAnswers
-        const correctCollected = quiz.refs.itemsCollectedRef.current.filter(id => correctAnswers.includes(id)).length
-        const incorrectCollected = quiz.refs.itemsCollectedRef.current.filter(id => !correctAnswers.includes(id)).length
-        
-        // Need to collect at least 2/3 correct answers to pass
-        const passingScore = Math.ceil(correctAnswers.length * 0.67)
-        const success = correctCollected >= passingScore && incorrectCollected === 0
-        
+      if (allItemsGone || quiz.refs.timeRemainingRef.current <= 0) {
+        // Use point-based system to determine pass/fail
+        const currentPoints = quiz.refs.pointsRef.current
+        const passingScore = quiz.refs.currentQuizRef.current.passingScore
+        const success = currentPoints >= passingScore
         
         endInGameQuiz(success)
       }
@@ -1794,15 +1907,26 @@ export default function SimpleGame() {
       playerX = 200 + Math.random() * (canvas.width - 400)
       playerY = 200 + Math.random() * (canvas.height - 400)
       
-      // Zone-based difficulty progression (bigger jumps at zone transitions!)
-      if (isZoneTransition(currentLevel)) {
-        // Zone transition = major difficulty spike
-        obstacleSpeed += 1.0
-        spawnFrequency = Math.max(260, spawnFrequency - 70)
+      // NEW DIFFICULTY PROGRESSION:
+      // Levels 1-4: Speed stays constant, difficulty comes from directional complexity
+      // Level 1: Top only
+      // Level 2: Top + Bottom
+      // Level 3: Top + Bottom + Right (+ Password Quiz!)
+      // Level 4: All 4 directions
+      // Level 5+: Gradual speed increases resume
+      
+      if (currentLevel <= 4) {
+        // Levels 1-4: Keep base speed constant, only very minor spawn frequency changes
+        // Difficulty comes purely from adding new threat directions
+        spawnFrequency = Math.max(580, spawnFrequency - 10) // Gentle spawn increase only
+      } else if (isZoneTransition(currentLevel)) {
+        // Zone transitions (levels 7, 10, etc): Major difficulty spike
+        obstacleSpeed += 0.8
+        spawnFrequency = Math.max(260, spawnFrequency - 60)
       } else {
-        // Within zone = gradual increase
-        obstacleSpeed += 0.3
-        spawnFrequency = Math.max(320, spawnFrequency - 20)
+        // After level 4: Gradual speed and spawn increases
+        obstacleSpeed += 0.25
+        spawnFrequency = Math.max(320, spawnFrequency - 15)
       }
       
       // Show level-up overlay
@@ -1880,7 +2004,8 @@ export default function SimpleGame() {
       if (!obstacle) return // Pool exhausted, skip this spawn
       
       // Calculate speed based on level
-      const speedMultiplier = 1 + (currentLevel * 0.1) // Gradual increase
+      // Levels 1-4: No speed scaling (difficulty from directions only)
+      const speedMultiplier = currentLevel <= 4 ? 1.0 : (1 + (currentLevel * 0.1))
       
       // Select zone-weighted threat type and matching ghost player
       const threat = getZoneWeightedThreat()
@@ -1989,8 +2114,7 @@ export default function SimpleGame() {
       
       const quizData = quiz.refs.currentQuizRef.current
       const countdown = quiz.refs.countdownRef.current
-      if (/[^\x20-\x7E]/.test(quizData.question) || /[^\x20-\x7E]/.test(quizData.instructions)) {
-}
+      const isMobile = canvas.width < 768
       
       // Show countdown intro before actual quiz
       if (countdown > 0) {
@@ -2000,7 +2124,7 @@ export default function SimpleGame() {
         
         // Pulsing countdown number
         const pulse = Math.sin(Date.now() / 150) * 0.3 + 0.7
-        ctx.font = `bold ${Math.floor(180 * pulse)}px monospace`
+        ctx.font = `bold ${Math.floor((isMobile ? 120 : 180) * pulse)}px monospace`
         ctx.fillStyle = '#00ffff'
         ctx.textAlign = 'center'
         ctx.shadowBlur = 40
@@ -2008,13 +2132,13 @@ export default function SimpleGame() {
         ctx.fillText(countdown.toString(), canvas.width / 2, canvas.height / 2)
         
         // "Get Ready" text
-        ctx.font = 'bold 32px monospace'
+        ctx.font = `bold ${isMobile ? 20 : 32}px monospace`
         ctx.fillStyle = '#ffff00'
         ctx.shadowBlur = 10
         ctx.fillText('⚡ SECURITY CHALLENGE INCOMING ⚡', canvas.width / 2, canvas.height / 2 - 120)
         
         // Quiz type
-        ctx.font = 'bold 24px monospace'
+        ctx.font = `bold ${isMobile ? 18 : 24}px monospace`
         ctx.fillStyle = '#ffffff'
         ctx.fillText(quizData.question, canvas.width / 2, canvas.height / 2 + 100)
         
@@ -2023,148 +2147,185 @@ export default function SimpleGame() {
         return // Don't render quiz items during countdown
       }
       
-      // Enhanced dark overlay with vignette effect for better focus
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)' // Slightly darker
+      // Draw background first (so grid and cards appear on top of cosmic space)
+      // Background is already drawn in main game loop, just add darker overlay
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
-      // Add subtle vignette effect
-      const vignette = ctx.createRadialGradient(
-        canvas.width / 2, canvas.height / 2, canvas.width * 0.2,
-        canvas.width / 2, canvas.height / 2, canvas.width * 0.7
-      )
-      vignette.addColorStop(0, 'rgba(0, 0, 0, 0)')
-      vignette.addColorStop(1, 'rgba(0, 0, 0, 0.4)')
-      ctx.fillStyle = vignette
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      // Draw 3D perspective grid floor (like mockup)
+      ctx.save()
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.25)'
+      ctx.lineWidth = isMobile ? 1 : 2
+      const gridSize = isMobile ? 40 : 60
+      const gridStartY = canvas.height * 0.65
+      const vanishX = canvas.width / 2
+      const vanishY = canvas.height * 0.3
       
-      // CLEAN: Simple quiz banner (high contrast, no effects)
-      const bannerHeight = 100
+      // Vertical lines with perspective
+      for (let i = 0; i <= canvas.width; i += gridSize) {
+        ctx.beginPath()
+        ctx.moveTo(i, gridStartY)
+        // Create perspective by converging lines toward vanishing point
+        const perspectiveX = vanishX + (i - vanishX) * 0.3
+        ctx.lineTo(perspectiveX, canvas.height)
+        ctx.stroke()
+      }
+      
+      // Horizontal lines with depth
+      const numHorizontalLines = Math.floor((canvas.height - gridStartY) / gridSize)
+      for (let i = 0; i <= numHorizontalLines; i++) {
+        const y = gridStartY + (i * gridSize)
+        const depthFactor = i / numHorizontalLines
+        const leftX = vanishX - (vanishX * depthFactor)
+        const rightX = vanishX + (canvas.width - vanishX) * depthFactor
+        ctx.beginPath()
+        ctx.moveTo(leftX, y)
+        ctx.lineTo(rightX, y)
+        ctx.stroke()
+      }
+      ctx.restore()
+      
+      // Header banner
+      const bannerHeight = isMobile ? 90 : 120
       ctx.fillStyle = 'rgba(10, 27, 63, 0.95)'
       ctx.fillRect(0, 0, canvas.width, bannerHeight)
       
       ctx.strokeStyle = '#00ffff'
-      ctx.lineWidth = 2
+      ctx.lineWidth = 3
       ctx.strokeRect(0, 0, canvas.width, bannerHeight)
       
-      // CLEAN: Large, clear title (no shadows)
-      ctx.font = 'bold 28px monospace'
+      // Title
+      ctx.font = `bold ${isMobile ? 20 : 32}px monospace`
       ctx.fillStyle = '#ffffff'
       ctx.textAlign = 'center'
-      ctx.fillText(quizData.question, canvas.width / 2, 35)
+      ctx.fillText(quizData.question, canvas.width / 2, isMobile ? 30 : 40)
       
-      // CLEAN: Simple instructions with color coding
-      ctx.font = '16px monospace'
-      ctx.fillStyle = '#ffffff'
-      const collectText = 'Collect '
-      const strongText = 'STRONG'
-      const avoidText = ' · Avoid '
-      const weakText = 'WEAK'
-      
-      const collectWidth = ctx.measureText(collectText).width
-      const strongWidth = ctx.measureText(strongText).width
-      const avoidWidth = ctx.measureText(avoidText).width
-      
-      const totalWidth = collectWidth + strongWidth + avoidWidth + ctx.measureText(weakText).width
-      let xPos = canvas.width / 2 - totalWidth / 2
-      
-      ctx.fillText(collectText, xPos, 60)
-      xPos += collectWidth
+      // Instructions with point values
+      ctx.font = `bold ${isMobile ? 14 : 18}px monospace`
       ctx.fillStyle = '#00ff9c'
-      ctx.fillText(strongText, xPos, 60)
-      xPos += strongWidth
-      ctx.fillStyle = '#ffffff'
-      ctx.fillText(avoidText, xPos, 60)
-      xPos += avoidWidth
+      ctx.fillText(`COLLECT STRONG +${quizData.pointsForCorrect}`, canvas.width / 2, isMobile ? 52 : 70)
       ctx.fillStyle = '#ff4d4d'
-      ctx.fillText(weakText, xPos, 60)
+      ctx.fillText(`AVOID WEAK ${quizData.pointsForIncorrect}`, canvas.width / 2, isMobile ? 72 : 95)
       
-      // CLEAN: High contrast score and timer
-      ctx.font = 'bold 18px monospace'
-      ctx.fillStyle = '#00ff9c'
+      // Score display (top-left) - Large and prominent
       ctx.textAlign = 'left'
-      ctx.fillText(`✅ ${quiz.state.score.correct}`, 40, 85)
+      ctx.font = `bold ${isMobile ? 28 : 42}px monospace`
+      ctx.fillStyle = '#6ee7ff'
+      ctx.shadowBlur = 10
+      ctx.shadowColor = '#00ffff'
+      const scoreText = quiz.state.points.toString().padStart(2, '0')
+      ctx.fillText(`⚡ ${scoreText}`, isMobile ? 20 : 40, isMobile ? 150 : 180)
+      ctx.shadowBlur = 0
       
-      ctx.fillStyle = '#ff4d4d'
-      ctx.fillText(`❌ ${quiz.state.score.incorrect}`, 140, 85)
-      
-      ctx.fillStyle = '#ffffff'
+      // Timer display (top-right) - Large and prominent
       ctx.textAlign = 'right'
       const timeWarning = quiz.state.timeRemaining < 10
-      ctx.fillStyle = timeWarning ? '#ff4d4d' : '#ffffff'
-      ctx.fillText(`⏱ ${quiz.state.timeRemaining}s`, canvas.width - 40, 85)
-      
+      ctx.fillStyle = timeWarning ? '#ff4d4d' : '#6ee7ff'
+      ctx.shadowBlur = timeWarning ? 15 : 10
+      ctx.shadowColor = timeWarning ? '#ff0000' : '#00ffff'
+      const minutes = Math.floor(quiz.state.timeRemaining / 60)
+      const seconds = quiz.state.timeRemaining % 60
+      ctx.fillText(`${minutes}:${seconds.toString().padStart(2, '0')}`, canvas.width - (isMobile ? 20 : 40), isMobile ? 150 : 180)
       ctx.shadowBlur = 0
-      ctx.textAlign = 'left'
       
-      // Instructions at bottom (controls reminder)
-      ctx.font = 'bold 18px monospace'
-      ctx.fillStyle = '#ffffff'
+      // Combo indicator (bottom-right)
+      if (quiz.state.combo > 0) {
+        ctx.textAlign = 'right'
+        ctx.font = `bold ${isMobile ? 24 : 36}px monospace`
+        ctx.fillStyle = '#ffff00'
+        ctx.shadowBlur = 15
+        ctx.shadowColor = '#ffff00'
+        const comboMultiplier = Math.min(quiz.state.combo, 4)
+        ctx.fillText(`${comboMultiplier}x COMBO`, canvas.width - (isMobile ? 20 : 40), canvas.height - (isMobile ? 100 : 140))
+        
+        // Combo counter
+        ctx.font = `bold ${isMobile ? 16 : 20}px monospace`
+        ctx.fillStyle = '#ffffff'
+        const comboText = Array.from({length: quiz.state.combo}, (_, i) => `+${i+1}`).join(', ')
+        ctx.fillText(comboText, canvas.width - (isMobile ? 20 : 40), canvas.height - (isMobile ? 75 : 105))
+        ctx.shadowBlur = 0
+      }
+      
+      // Educational tip at bottom
       ctx.textAlign = 'center'
+      ctx.font = `bold ${isMobile ? 14 : 18}px monospace`
+      ctx.fillStyle = '#ffffff'
       ctx.shadowBlur = 3
       ctx.shadowColor = '#000000'
-      ctx.fillText('💻 WASD / 📱 Touch to Move • Game in Slow Motion', canvas.width / 2, canvas.height - 30)
+      ctx.fillText(quizData.educationalNote, canvas.width / 2, canvas.height - (isMobile ? 45 : 60))
+      
+      // Controls reminder
+      ctx.font = `${isMobile ? 12 : 16}px monospace`
+      ctx.fillStyle = '#aaaaaa'
+      const controlsText = isMobile ? '📱 Swipe to Move' : '💻 WASD to Move'
+      ctx.fillText(controlsText, canvas.width / 2, canvas.height - (isMobile ? 25 : 35))
       ctx.shadowBlur = 0
       ctx.textAlign = 'left'
       
-      // Render quiz items with labels
+      // Render quiz items as 3D cards with enhanced visuals (matching mockup exactly)
       powerups.forEach(item => {
         if (item.type === 'quiz-item') {
-// Draw larger, well-spaced item (like mockup)
-          const size = 120
-          const pulse = Math.sin(Date.now() / 200) * 0.1 + 0.95
+          const size = isMobile ? 100 : 140
+          const pulse = Math.sin(Date.now() / 200) * 0.15 + 0.9
+          const isCorrect = item.color === '#00ff00'
           
-          // Background box
-          ctx.fillStyle = item.color
+          // Intense glow effect
+          ctx.shadowBlur = (isMobile ? 35 : 45) * pulse
+          ctx.shadowColor = isCorrect ? '#00ff00' : '#ff0000'
+          
+          // Card background - VIBRANT bright green/red (matching mockup)
+          ctx.fillStyle = isCorrect ? 'rgba(0, 255, 0, 0.7)' : 'rgba(255, 0, 0, 0.7)'
           ctx.fillRect(item.x - size / 2, item.y - size / 2, size, size)
           
-          // Border
-          ctx.strokeStyle = item.color === '#00ff00' ? '#00cc00' : '#cc0000'
-          ctx.lineWidth = 3
+          // Inner darker layer for depth
+          ctx.fillStyle = isCorrect ? 'rgba(0, 150, 0, 0.5)' : 'rgba(150, 0, 0, 0.5)'
+          ctx.fillRect(item.x - size / 2 + 4, item.y - size / 2 + 4, size - 8, size - 8)
+          
+          // Card border with intense glow
+          ctx.strokeStyle = isCorrect ? '#00ff00' : '#ff0000'
+          ctx.lineWidth = isMobile ? 4 : 5
           ctx.strokeRect(item.x - size / 2, item.y - size / 2, size, size)
           
-          // Password text - clear and readable (no emojis)
-          ctx.font = 'bold 16px monospace'
+          ctx.shadowBlur = 0
+          
+          // Point indicator at TOP (header area)
+          ctx.font = `bold ${isMobile ? 20 : 28}px monospace`
+          ctx.fillStyle = '#ffffff'
           ctx.textAlign = 'center'
+          ctx.shadowBlur = 5
+          ctx.shadowColor = '#000000'
+          const pointText = isCorrect ? `+${quizData.pointsForCorrect}` : `${quizData.pointsForIncorrect}`
+          ctx.fillText(pointText, item.x, item.y - size / 2 + (isMobile ? 26 : 32))
+          
+          // Password text in header (first instance)
+          ctx.font = `bold ${isMobile ? 11 : 14}px monospace`
           const rawName = item.sentBy.name
           const passwordText = rawName.replace(/[^\x20-\x7E]/g, '')
-const passwordWidth = ctx.measureText(passwordText).width
-          const textBgPaddingX = 6
-          const textBgHeight = 20
-          const textTopY = item.y - size / 2 + 26
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
-          ctx.fillRect(
-            item.x - passwordWidth / 2 - textBgPaddingX,
-            textTopY - textBgHeight + 6,
-            passwordWidth + textBgPaddingX * 2,
-            textBgHeight
-          )
           ctx.fillStyle = '#ffffff'
+          ctx.fillText(passwordText, item.x, item.y - size / 2 + (isMobile ? 44 : 52))
+          
+          // Visual indicator emoji (checkmark or X) in CENTER
+          ctx.font = `${isMobile ? 28 : 36}px sans-serif`
+          ctx.fillStyle = isCorrect ? '#00ff00' : '#ff0000'
+          ctx.shadowBlur = 8
+          ctx.shadowColor = isCorrect ? '#00ff00' : '#ff0000'
+          ctx.fillText(isCorrect ? '✔' : '❌', item.x, item.y + (isMobile ? 2 : 5))
+          ctx.shadowBlur = 0
+          
+          // Password text AGAIN in middle (second instance - like mockup)
+          ctx.font = `bold ${isMobile ? 10 : 13}px monospace`
+          ctx.fillStyle = '#ffffff'
+          ctx.shadowBlur = 4
           ctx.shadowColor = '#000000'
-          ctx.shadowBlur = 3
-          ctx.fillText(passwordText, item.x, textTopY)
+          ctx.fillText(passwordText, item.x, item.y + (isMobile ? 22 : 28))
+          
+          // Character count badge at BOTTOM
+          const charCount = rawName.length
+          ctx.font = `bold ${isMobile ? 9 : 11}px monospace`
+          ctx.fillStyle = '#cccccc'
+          ctx.fillText(`${charCount} characters`, item.x, item.y + size / 2 - (isMobile ? 10 : 12))
+          
           ctx.shadowBlur = 0
-          
-          // Character count badge at bottom (like mockup)
-          const charCount = item.sentBy.name.length
-          const badgeText = `${charCount} characters`
-          const badgeColor = charCount >= 8 ? '#00ff00' : '#ff0000'
-          
-          ctx.font = 'bold 11px monospace'
-          const badgeWidth = 100
-          const badgeHeight = 18
-          ctx.fillStyle = badgeColor
-          ctx.fillRect(item.x - badgeWidth / 2, item.y + 28, badgeWidth, badgeHeight)
-          ctx.fillStyle = '#000000'
-          ctx.fillText(badgeText, item.x, item.y + 41)
-          
-          // Subtle glow effect
-          ctx.shadowBlur = 15 * pulse
-          ctx.shadowColor = item.color
-          ctx.strokeStyle = item.color
-          ctx.lineWidth = 2
-          ctx.strokeRect(item.x - size / 2, item.y - size / 2, size, size)
-          ctx.shadowBlur = 0
-          
           ctx.textAlign = 'left'
         }
       })
@@ -2263,9 +2424,18 @@ const passwordWidth = ctx.measureText(passwordText).width
       frameScale = Math.min(frameMs / 16.67, 10)
 // Apply slow-motion effect during quiz (only after countdown finishes)
       const slowMotionMultiplier = (quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0) ? 0.15 : 1.0
-      speedFactor = Math.min(1.6, Math.max(0.55, 0.55 + (currentLevel - 1) * 0.08))
-      threatSpeedFactor = Math.min(1.4, Math.max(0.38, 0.38 + (currentLevel - 1) * 0.07))
-      spawnFactor = Math.min(1.6, Math.max(1.1, 1.1 + (currentLevel - 1) * 0.05))
+      
+      // Levels 1-4: Keep all speed factors constant (difficulty from directions only)
+      if (currentLevel <= 4) {
+        speedFactor = 0.55 // Base player speed factor
+        threatSpeedFactor = 0.38 // Base threat speed factor
+        spawnFactor = 1.1 // Base spawn factor
+      } else {
+        // After level 4: Resume progressive scaling
+        speedFactor = Math.min(1.6, Math.max(0.55, 0.55 + (currentLevel - 1) * 0.08))
+        threatSpeedFactor = Math.min(1.4, Math.max(0.38, 0.38 + (currentLevel - 1) * 0.07))
+        spawnFactor = Math.min(1.6, Math.max(1.1, 1.1 + (currentLevel - 1) * 0.05))
+      }
       effectiveObstacleSpeed = obstacleSpeed * threatSpeedFactor
       effectivePlayerSpeed = playerSpeed * speedFactor
       effectiveSpawnFrequency = spawnFrequency / spawnFactor
@@ -2286,6 +2456,9 @@ const passwordWidth = ctx.measureText(passwordText).width
       if (quiz.refs.activeRef.current && quiz.refs.currentQuizRef.current) {
         renderQuizOverlay()
       }
+      
+      // Draw confetti particles (on top of everything)
+      drawConfetti()
       
       // Check quiz completion
       if (quiz.refs.activeRef.current) {
@@ -2330,6 +2503,17 @@ const passwordWidth = ctx.measureText(passwordText).width
       if (celebrationTimer > 0) {
         celebrationTimer -= frameMs // Decrease by frame time
       }
+      
+      // 5. Update victory dance timer
+      if (victoryDanceTimer > 0) {
+        victoryDanceTimer -= frameMs
+        if (victoryDanceTimer <= 0) {
+          isVictoryDancing = false
+        }
+      }
+      
+      // 6. Update confetti particles
+      updateConfetti(frameMs)
       
       // Update previous position for next frame
       previousPlayerX = playerX
@@ -2697,49 +2881,45 @@ powerups = powerups.filter(kit => {
           // Hide regular powerups during quiz but keep them in array
           return true
         }
-        if (isQuizItem) {
-}
         
-        // Draw kit with pulsing glow
+        // Calculate size for both quiz items and regular kits (needed for collision detection)
         const pulse = Math.sin(timestamp * 0.005) * 0.3 + 0.7
-        const size = 35 * pulse
+        const size = isQuizItem ? 120 : (35 * pulse) // Quiz items are larger
         
-        ctx.shadowBlur = performanceMode ? 0 : 30 * pulse
-        ctx.shadowColor = kit.color
-        
-        // Kit icon based on type
-        let icon = '🔐'
-        if (!isQuizItem && kit.type.startsWith('kit-')) {
-          const kitId = kit.type.replace('kit-', '')
-          icon = getKitIcon(kitId)
-        }
-        
-        // Draw kit box
-        ctx.fillStyle = kit.color + '88'
-        ctx.fillRect(kit.x - size / 2, kit.y - size / 2, size, size)
-        
-        ctx.strokeStyle = kit.color
-        ctx.lineWidth = 3
-        ctx.strokeRect(kit.x - size / 2, kit.y - size / 2, size, size)
-        
-        // Draw icon; for quiz items, overlay password text on top
-        ctx.font = `bold 24px ${EMOJI_FONT_STACK}`
-        ctx.fillStyle = '#ffffff'
-        ctx.textAlign = 'center'
-        ctx.fillText(icon, kit.x, kit.y + 8)
+        // Skip rendering quiz items here - they're rendered in renderQuizOverlay()
         if (isQuizItem) {
-          const rawQuizName = kit.sentBy?.name || ''
-          const quizName = rawQuizName.replace(/[^\x20-\x7E]/g, '')
-          ctx.font = 'bold 12px monospace'
+          // Don't draw quiz items in powerups loop (already drawn in quiz overlay)
+          // But still need to check collision below, so continue to that logic
+        } else {
+          // Draw regular kit with pulsing glow
+          
+          ctx.shadowBlur = performanceMode ? 0 : 30 * pulse
+          ctx.shadowColor = kit.color
+          
+          // Kit icon based on type
+          let icon = '🔐'
+          if (kit.type.startsWith('kit-')) {
+            const kitId = kit.type.replace('kit-', '')
+            icon = getKitIcon(kitId)
+          }
+          
+          // Draw kit box
+          ctx.fillStyle = kit.color + '88'
+          ctx.fillRect(kit.x - size / 2, kit.y - size / 2, size, size)
+          
+          ctx.strokeStyle = kit.color
+          ctx.lineWidth = 3
+          ctx.strokeRect(kit.x - size / 2, kit.y - size / 2, size, size)
+          
+          // Draw icon
+          ctx.font = `bold 24px ${EMOJI_FONT_STACK}`
           ctx.fillStyle = '#ffffff'
-          ctx.shadowColor = '#000000'
-          ctx.shadowBlur = 3
-          ctx.fillText(quizName, kit.x, kit.y - 10)
+          ctx.textAlign = 'center'
+          ctx.fillText(icon, kit.x, kit.y + 8)
+          ctx.textAlign = 'left'
+          
           ctx.shadowBlur = 0
-}
-        ctx.textAlign = 'left'
-        
-        ctx.shadowBlur = 0
+        }
         
         // Skip collection while healing to keep tutorial focus
         if (isHealing) {
@@ -2767,6 +2947,14 @@ powerups = powerups.filter(kit => {
               // Green flash for correct
               ctx.fillStyle = 'rgba(0, 255, 0, 0.3)'
               ctx.fillRect(0, 0, canvas.width, canvas.height)
+              
+              // Spawn confetti at collection point
+              const isMobile = canvas.width < 768
+              spawnConfetti(kit.x + kit.width / 2, kit.y + kit.height / 2, isMobile ? 8 : 12)
+              
+              // Start victory dance
+              isVictoryDancing = true
+              victoryDanceTimer = VICTORY_DANCE_DURATION
             } else {
               // Red flash for incorrect
               ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'
@@ -2833,24 +3021,30 @@ powerups = powerups.filter(kit => {
 // No boss mode anymore - continuous gameplay!
       
       // Draw player LAST so it's always visible on top of everything
-      // Dynamic glow based on kits collected
+      // Dynamic glow based on kits collected or quiz state
       const totalKitsInInventory = calculateTotalKits(kitInventory)
       const glowIntensity = 20 + (totalKitsInInventory * 10) + (totalKitsCollected * 2)
       const glowSize = 30 + (totalKitsInInventory * 5)
       
-      // Color changes based on rank
+      // Color changes based on rank OR quiz state
       let glowColor = '#00ffff' // Newbie - cyan
-      const currentRank = getRank()
-      if (currentRank === 'Analyst') {
-        glowColor = '#00ff00' // Green
-      } else if (currentRank === 'Expert') {
-        glowColor = '#ffaa00' // Orange
-      } else if (currentRank === 'Commando') {
-        glowColor = '#ffd700' // Gold
+      
+      // During quiz, use golden glow to match INVINCIBLE status
+      if (quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0) {
+        glowColor = '#ffd700' // Gold for invincibility
+      } else {
+        const currentRank = getRank()
+        if (currentRank === 'Analyst') {
+          glowColor = '#00ff00' // Green
+        } else if (currentRank === 'Expert') {
+          glowColor = '#ffaa00' // Orange
+        } else if (currentRank === 'Commando') {
+          glowColor = '#ffd700' // Gold
+        }
       }
       
       // Multi-layered glow effect
-      ctx.shadowBlur = performanceMode ? 0 : glowSize
+      ctx.shadowBlur = performanceMode ? 0 : (quiz.refs.activeRef.current ? 40 : glowSize)
       ctx.shadowColor = glowColor
       
       // Add pulsing effect for higher ranks
@@ -2975,23 +3169,13 @@ powerups = powerups.filter(kit => {
         
         ctx.restore()
         
-        // Shield icon above player
-        ctx.font = 'bold 32px monospace'
+        // "INVINCIBLE" text above player (prominent, matching mockup)
+        ctx.font = 'bold 16px monospace'
         ctx.fillStyle = `rgba(0, 255, 255, ${shieldPulse})`
         ctx.textAlign = 'center'
         ctx.shadowBlur = 15
         ctx.shadowColor = '#00ffff'
-        ctx.fillText('🛡️', playerX, playerY - playerSize - 35)
-        ctx.shadowBlur = 0
-        ctx.textAlign = 'left'
-        
-        // "INVINCIBLE" text above shield icon
-        ctx.font = 'bold 14px monospace'
-        ctx.fillStyle = `rgba(0, 255, 255, ${shieldPulse})`
-        ctx.textAlign = 'center'
-        ctx.shadowBlur = 10
-        ctx.shadowColor = '#00ffff'
-        ctx.fillText('INVINCIBLE', playerX, playerY - playerSize - 55)
+        ctx.fillText('INVINCIBLE', playerX, playerY - playerSize - 50)
         ctx.shadowBlur = 0
         ctx.textAlign = 'left'
       }
@@ -3013,9 +3197,22 @@ powerups = powerups.filter(kit => {
       const limbLength = playerSize * 0.3
       const limbWidth = playerSize * 0.12
       
+      // Victory dance animation
+      let danceJump = 0
+      let danceArmAngle = armSwing
+      if (isVictoryDancing) {
+        // Bouncing motion
+        const bounceProgress = (VICTORY_DANCE_DURATION - victoryDanceTimer) / VICTORY_DANCE_DURATION
+        const bounceSpeed = 8 // Faster bounce
+        danceJump = Math.abs(Math.sin(bounceProgress * Math.PI * bounceSpeed)) * 15
+        
+        // Exaggerated arm waving
+        danceArmAngle = Math.sin(bounceProgress * Math.PI * bounceSpeed * 2) * 60
+      }
+      
       // Draw character from center point with tilt
       ctx.save()
-      ctx.translate(playerX, playerY)
+      ctx.translate(playerX, playerY - danceJump) // Apply jump offset
       ctx.rotate((playerTilt * Math.PI) / 180) // Tilt character when moving left/right
       
       // HEAD
@@ -3024,12 +3221,27 @@ powerups = powerups.filter(kit => {
       ctx.arc(0, -bodyHeight / 2 - headRadius, headRadius, 0, Math.PI * 2)
       ctx.fill()
       
-      // Eyes (simple dots)
+      // Eyes (simple dots or happy eyes during victory dance)
       ctx.fillStyle = '#000000'
-      ctx.beginPath()
-      ctx.arc(-headRadius * 0.3, -bodyHeight / 2 - headRadius - 2, headRadius * 0.15, 0, Math.PI * 2)
-      ctx.arc(headRadius * 0.3, -bodyHeight / 2 - headRadius - 2, headRadius * 0.15, 0, Math.PI * 2)
-      ctx.fill()
+      ctx.lineWidth = 2
+      if (isVictoryDancing) {
+        // Happy eyes (^_^)
+        ctx.beginPath()
+        ctx.arc(-headRadius * 0.35, -bodyHeight / 2 - headRadius - 2, headRadius * 0.25, 0, Math.PI, true)
+        ctx.arc(headRadius * 0.35, -bodyHeight / 2 - headRadius - 2, headRadius * 0.25, 0, Math.PI, true)
+        ctx.stroke()
+        
+        // Big smile
+        ctx.beginPath()
+        ctx.arc(0, -bodyHeight / 2 - headRadius + 3, headRadius * 0.4, 0.2, Math.PI - 0.2)
+        ctx.stroke()
+      } else {
+        // Normal eyes (dots)
+        ctx.beginPath()
+        ctx.arc(-headRadius * 0.3, -bodyHeight / 2 - headRadius - 2, headRadius * 0.15, 0, Math.PI * 2)
+        ctx.arc(headRadius * 0.3, -bodyHeight / 2 - headRadius - 2, headRadius * 0.15, 0, Math.PI * 2)
+        ctx.fill()
+      }
       
       // BODY
       ctx.fillStyle = glowColor
@@ -3051,18 +3263,18 @@ powerups = powerups.filter(kit => {
       ctx.fillRect(-limbWidth / 2, 0, limbWidth, limbLength)
       ctx.restore()
       
-      // LEFT ARM (opposite of left leg)
+      // LEFT ARM (opposite of left leg, or dance wave)
       ctx.save()
       ctx.translate(-playerSize * 0.25, -bodyHeight * 0.3)
-      ctx.rotate((-armSwing * Math.PI) / 180)
+      ctx.rotate((isVictoryDancing ? -danceArmAngle : -armSwing) * Math.PI / 180)
       ctx.fillStyle = glowColor
       ctx.fillRect(-limbWidth / 2, 0, limbWidth, limbLength)
       ctx.restore()
       
-      // RIGHT ARM (opposite of right leg)
+      // RIGHT ARM (opposite of right leg, or dance wave)
       ctx.save()
       ctx.translate(playerSize * 0.25, -bodyHeight * 0.3)
-      ctx.rotate((armSwing * Math.PI) / 180)
+      ctx.rotate((isVictoryDancing ? danceArmAngle : armSwing) * Math.PI / 180)
       ctx.fillStyle = glowColor
       ctx.fillRect(-limbWidth / 2, 0, limbWidth, limbLength)
       ctx.restore()
@@ -3363,13 +3575,15 @@ powerups = powerups.filter(kit => {
     // Continue from saved checkpoint!
     setShowQuiz(false)
     if (savedGameState) {
+      // DIRECTLY restore level and score (don't rely on useEffect timing)
       setLevel(savedGameState.level)
-      // Score and kits will be restored from savedGameState in useEffect
+      setScore(savedGameState.score)
+      // Kits will be restored from savedGameState in game loop
     }
     setGameOver(false)
     setGameStarted(true)
-    // Clear saved state after a brief delay (after game loop starts)
-    const tid = setTimeout(() => setSavedGameState(null), 100)
+    // Clear saved state after longer delay to ensure game loop reads kits
+    const tid = setTimeout(() => setSavedGameState(null), 500)
     timeoutRefs.current.push(tid)
   }
   

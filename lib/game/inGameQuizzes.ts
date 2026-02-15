@@ -12,6 +12,9 @@ export interface QuizChallenge {
   items: QuizItem[]
   correctAnswers: string[] // IDs of correct items
   speedBonus: number // Speed multiplier after completion
+  pointsForCorrect: number // Points gained for correct item
+  pointsForIncorrect: number // Points lost for incorrect item (negative)
+  passingScore: number // Minimum score to pass
 }
 
 export interface QuizItem {
@@ -31,6 +34,9 @@ export const emailSecurityQuiz: QuizChallenge = {
   educationalNote: 'Check domains carefully! Phishing uses typos like netfIix.com',
   duration: 20,
   speedBonus: 1.2,
+  pointsForCorrect: 10,
+  pointsForIncorrect: -5,
+  passingScore: 50,
   items: [
     {
       id: 'email-1',
@@ -83,50 +89,53 @@ export const passwordStrengthQuiz: QuizChallenge = {
   id: 'password-strength',
   type: 'password',
   question: 'PASSWORD STRENGTH CHALLENGE',
-  instructions: 'Collect STRONG passwords. Avoid WEAK passwords.',
-  educationalNote: 'Strong = 16+ characters, mix of letters/numbers/symbols',
-  duration: 20,
+  instructions: 'Collect STRONG +10 · Avoid WEAK -5',
+  educationalNote: 'TIP: Longer, unpredictable passwords are stronger',
+  duration: 40,
   speedBonus: 1.2,
+  pointsForCorrect: 10,
+  pointsForIncorrect: -5,
+  passingScore: 50,
   items: [
     {
       id: 'pass-1',
-      visual: '',
-      label: 'MyP@ssw0rd2024!',
+      visual: '✓',
+      label: 'MyP@ssw0rd2024',
       color: '#00ff00',
       isCorrect: true
     },
     {
       id: 'pass-2',
-      visual: '',
+      visual: '✗',
       label: 'password123',
       color: '#ff0000',
       isCorrect: false
     },
     {
       id: 'pass-3',
-      visual: '',
+      visual: '✓',
       label: 'correct-horse-24',
       color: '#00ff00',
       isCorrect: true
     },
     {
       id: 'pass-4',
-      visual: '',
-      label: '12345678',
+      visual: '✗',
+      label: 'qwerty',
       color: '#ff0000',
       isCorrect: false
     },
     {
       id: 'pass-5',
-      visual: '',
-      label: 'Tr0ub4dor&3-X9',
+      visual: '✓',
+      label: 'Tr0ubAdor3-X3',
       color: '#00ff00',
       isCorrect: true
     },
     {
       id: 'pass-6',
-      visual: '',
-      label: 'qwerty',
+      visual: '✗',
+      label: '12345678',
       color: '#ff0000',
       isCorrect: false
     }
@@ -143,6 +152,9 @@ export const wifiSecurityQuiz: QuizChallenge = {
   educationalNote: 'Public WiFi is dangerous! Always use VPN on untrusted networks',
   duration: 20,
   speedBonus: 1.2,
+  pointsForCorrect: 10,
+  pointsForIncorrect: -5,
+  passingScore: 50,
   items: [
     {
       id: 'wifi-1',
@@ -199,6 +211,9 @@ export const linkSafetyQuiz: QuizChallenge = {
   educationalNote: 'Look for HTTPS, correct spelling, and legitimate domains',
   duration: 20,
   speedBonus: 1.2,
+  pointsForCorrect: 10,
+  pointsForIncorrect: -5,
+  passingScore: 50,
   items: [
     {
       id: 'link-1',
@@ -255,6 +270,9 @@ export const updatePriorityQuiz: QuizChallenge = {
   educationalNote: 'Security patches should always be installed first!',
   duration: 20,
   speedBonus: 1.2,
+  pointsForCorrect: 10,
+  pointsForIncorrect: -5,
+  passingScore: 50,
   items: [
     {
       id: 'update-1',
@@ -311,6 +329,9 @@ export const dataClassificationQuiz: QuizChallenge = {
   educationalNote: 'Label data correctly before sharing or storing it.',
   duration: 20,
   speedBonus: 1.2,
+  pointsForCorrect: 10,
+  pointsForIncorrect: -5,
+  passingScore: 50,
   items: [
     { id: 'class-1', visual: '', label: 'HR Records', color: '#00ff00', isCorrect: true },
     { id: 'class-2', visual: '', label: 'Press Release', color: '#ff0000', isCorrect: false },
@@ -331,6 +352,9 @@ export const secureDisposalQuiz: QuizChallenge = {
   educationalNote: 'Shred or securely destroy sensitive documents.',
   duration: 20,
   speedBonus: 1.2,
+  pointsForCorrect: 10,
+  pointsForIncorrect: -5,
+  passingScore: 50,
   items: [
     { id: 'disp-1', visual: '', label: 'Old ID Badge', color: '#00ff00', isCorrect: true },
     { id: 'disp-2', visual: '', label: 'Lunch Menu', color: '#ff0000', isCorrect: false },
@@ -351,6 +375,9 @@ export const meetingSecurityQuiz: QuizChallenge = {
   educationalNote: 'Use waiting rooms and passwords to keep meetings safe.',
   duration: 20,
   speedBonus: 1.2,
+  pointsForCorrect: 10,
+  pointsForIncorrect: -5,
+  passingScore: 50,
   items: [
     { id: 'meet-1', visual: '', label: 'invited@team', color: '#00ff00', isCorrect: true },
     { id: 'meet-2', visual: '', label: 'unknown@guest', color: '#ff0000', isCorrect: false },

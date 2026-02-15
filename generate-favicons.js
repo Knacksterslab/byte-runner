@@ -52,8 +52,8 @@ async function generateFavicons() {
       const metadata = await sharp(LOGO_PATH).metadata();
       const { width, height } = metadata;
       
-      // Zoom factor: crop to 70% of center to make logo bigger
-      const zoomFactor = 0.7;
+      // Zoom factor: crop to 50% of center to make logo bigger (smaller = more zoom)
+      const zoomFactor = 0.5;
       const cropWidth = Math.floor(width * zoomFactor);
       const cropHeight = Math.floor(height * zoomFactor);
       const left = Math.floor((width - cropWidth) / 2);
@@ -80,8 +80,8 @@ async function generateFavicons() {
     const metadata = await sharp(LOGO_PATH).metadata();
     const { width, height } = metadata;
     
-    // Zoom factor: crop to 70% of center to make logo bigger
-    const zoomFactor = 0.7;
+    // Zoom factor: crop to 50% of center to make logo bigger (smaller = more zoom)
+    const zoomFactor = 0.5;
     const cropWidth = Math.floor(width * zoomFactor);
     const cropHeight = Math.floor(height * zoomFactor);
     const left = Math.floor((width - cropWidth) / 2);
