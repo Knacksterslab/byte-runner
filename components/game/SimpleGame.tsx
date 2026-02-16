@@ -1786,8 +1786,8 @@ export default function SimpleGame() {
     // In-game quiz functions
     function startInGameQuiz(quizChallenge: QuizChallenge) {
       // Activate quiz through hook action
-      // Use React state 'level' instead of local 'currentLevel' to avoid savedGameState timing issues
-      quiz.actions.startQuiz(level)
+      // Use local 'currentLevel' for immediate level-up quizzes (no async state delay)
+      quiz.actions.startQuiz(currentLevel)
       
       // IMMEDIATELY clear all obstacles for safety
       obstacles.length = 0
@@ -2213,35 +2213,35 @@ export default function SimpleGame() {
       ctx.fillStyle = '#6ee7ff'
       ctx.shadowBlur = 10
       ctx.shadowColor = '#00ffff'
-      const scoreText = quiz.state.points.toString().padStart(2, '0')
+      const scoreText = quiz.refs.pointsRef.current.toString().padStart(2, '0')
       ctx.fillText(`⚡ ${scoreText}`, isMobile ? 20 : 40, isMobile ? 150 : 180)
       ctx.shadowBlur = 0
       
       // Timer display (top-right) - Large and prominent
       ctx.textAlign = 'right'
-      const timeWarning = quiz.state.timeRemaining < 10
+      const timeWarning = quiz.refs.timeRemainingRef.current < 10
       ctx.fillStyle = timeWarning ? '#ff4d4d' : '#6ee7ff'
       ctx.shadowBlur = timeWarning ? 15 : 10
       ctx.shadowColor = timeWarning ? '#ff0000' : '#00ffff'
-      const minutes = Math.floor(quiz.state.timeRemaining / 60)
-      const seconds = quiz.state.timeRemaining % 60
+      const minutes = Math.floor(quiz.refs.timeRemainingRef.current / 60)
+      const seconds = quiz.refs.timeRemainingRef.current % 60
       ctx.fillText(`${minutes}:${seconds.toString().padStart(2, '0')}`, canvas.width - (isMobile ? 20 : 40), isMobile ? 150 : 180)
       ctx.shadowBlur = 0
       
       // Combo indicator (bottom-right)
-      if (quiz.state.combo > 0) {
+      if (quiz.refs.comboRef.current > 0) {
         ctx.textAlign = 'right'
         ctx.font = `bold ${isMobile ? 24 : 36}px monospace`
         ctx.fillStyle = '#ffff00'
         ctx.shadowBlur = 15
         ctx.shadowColor = '#ffff00'
-        const comboMultiplier = Math.min(quiz.state.combo, 4)
+        const comboMultiplier = Math.min(quiz.refs.comboRef.current, 4)
         ctx.fillText(`${comboMultiplier}x COMBO`, canvas.width - (isMobile ? 20 : 40), canvas.height - (isMobile ? 100 : 140))
         
         // Combo counter
         ctx.font = `bold ${isMobile ? 16 : 20}px monospace`
         ctx.fillStyle = '#ffffff'
-        const comboText = Array.from({length: quiz.state.combo}, (_, i) => `+${i+1}`).join(', ')
+        const comboText = Array.from({length: quiz.refs.comboRef.current}, (_, i) => `+${i+1}`).join(', ')
         ctx.fillText(comboText, canvas.width - (isMobile ? 20 : 40), canvas.height - (isMobile ? 75 : 105))
         ctx.shadowBlur = 0
       }
