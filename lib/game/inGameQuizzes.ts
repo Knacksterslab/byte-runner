@@ -23,6 +23,7 @@ export interface QuizItem {
   label: string // Short text (15 chars max)
   color: string // Visual indicator
   isCorrect: boolean
+  description?: string // Descriptive label for neutral quiz design
 }
 
 // Email Security Challenge
@@ -88,9 +89,9 @@ export const emailSecurityQuiz: QuizChallenge = {
 export const passwordStrengthQuiz: QuizChallenge = {
   id: 'password-strength',
   type: 'password',
-  question: 'PASSWORD STRENGTH CHALLENGE',
-  instructions: 'Collect STRONG +10 · Avoid WEAK -5',
-  educationalNote: 'TIP: Longer, unpredictable passwords are stronger',
+  question: 'DATA BREACH',
+  instructions: 'Pick the strongest passwords.',
+  educationalNote: 'Longer passwords & real tools keep you safe!',
   duration: 40,
   speedBonus: 1.2,
   pointsForCorrect: 10,
@@ -99,45 +100,51 @@ export const passwordStrengthQuiz: QuizChallenge = {
   items: [
     {
       id: 'pass-1',
-      visual: '✓',
+      visual: '',
       label: 'MyP@ssw0rd2024',
-      color: '#00ff00',
-      isCorrect: true
+      color: '#00ccff', // Neutral cyan
+      isCorrect: true,
+      description: 'common word + symbol'
     },
     {
       id: 'pass-2',
-      visual: '✗',
+      visual: '',
       label: 'password123',
-      color: '#ff0000',
-      isCorrect: false
+      color: '#00ccff',
+      isCorrect: false,
+      description: 'common word'
     },
     {
       id: 'pass-3',
-      visual: '✓',
+      visual: '',
       label: 'correct-horse-24',
-      color: '#00ff00',
-      isCorrect: true
+      color: '#00ccff',
+      isCorrect: true,
+      description: 'random words'
     },
     {
       id: 'pass-4',
-      visual: '✗',
+      visual: '',
       label: 'qwerty',
-      color: '#ff0000',
-      isCorrect: false
+      color: '#00ccff',
+      isCorrect: false,
+      description: 'keyboard pattern'
     },
     {
       id: 'pass-5',
-      visual: '✓',
+      visual: '',
       label: 'Tr0ubAdor3-X3',
-      color: '#00ff00',
-      isCorrect: true
+      color: '#00ccff',
+      isCorrect: true,
+      description: 'long + unique'
     },
     {
       id: 'pass-6',
-      visual: '✗',
+      visual: '',
       label: '12345678',
-      color: '#ff0000',
-      isCorrect: false
+      color: '#00ccff',
+      isCorrect: false,
+      description: 'keyboard pattern'
     }
   ],
   correctAnswers: ['pass-1', 'pass-3', 'pass-5']

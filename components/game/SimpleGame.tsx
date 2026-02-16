@@ -1850,17 +1850,20 @@ export default function SimpleGame() {
       const isMobile = canvas.width < 768
       
       // Desktop: 2x3 grid (2 rows, 3 columns) | Mobile: 3x2 grid (3 rows, 2 columns)
-      const itemWidth = isMobile ? 140 : 120
-      const itemHeight = isMobile ? 140 : 120
-      const horizontalSpacing = isMobile ? 180 : 450 // Tighter on mobile
-      const verticalSpacing = isMobile ? 200 : 350 // More rows on mobile
+      const itemWidth = isMobile ? 110 : 120 // Smaller on mobile for more space
+      const itemHeight = isMobile ? 110 : 120
+      const horizontalSpacing = isMobile ? 170 : 450 // More space between columns on mobile
+      const verticalSpacing = isMobile ? 180 : 350 // More space between rows on mobile
       const columnsCount = isMobile ? 2 : 3
       const startX = (canvas.width - (horizontalSpacing * (columnsCount - 1))) / 2
       const startY = isMobile 
-        ? 240 // Below header and score/timer on mobile
+        ? 260 // Lower start to avoid header and give player space
         : (canvas.height - (verticalSpacing * 1)) / 2 - 50 // Center on desktop
       
-      quizChallenge.items.forEach((item, index) => {
+      // Shuffle items for random positioning (prevents predictable green/red patterns)
+      const shuffledItems = [...quizChallenge.items].sort(() => Math.random() - 0.5)
+      
+      shuffledItems.forEach((item, index) => {
         const row = Math.floor(index / columnsCount)
         const col = index % columnsCount
         
@@ -1874,10 +1877,14 @@ export default function SimpleGame() {
           type: 'quiz-item',
           color: item.color,
           threatId: item.id,
-          sentBy: { id: item.id, name: item.label, level: 0, speciality: item.visual, category: 'password' },
+          sentBy: { id: item.id, name: item.label, level: 0, speciality: item.description || item.visual, category: 'password' },
           category: quizChallenge.type
         })
       })
+      
+      // Position player in safe center spot (not inside any box)
+      playerX = canvas.width / 2
+      playerY = isMobile ? 180 : canvas.height / 2
     }
     
     function checkQuizCompletion() {
@@ -2200,27 +2207,18 @@ export default function SimpleGame() {
       ctx.strokeRect(0, 0, canvas.width, bannerHeight)
       
       // Title
-      ctx.font = `bold ${isMobile ? 20 : 32}px monospace`
+      ctx.font = `bold ${isMobile ? 24 : 32}px monospace`
       ctx.fillStyle = '#ffffff'
       ctx.textAlign = 'center'
-      ctx.fillText(quizData.question, canvas.width / 2, isMobile ? 30 : 40)
+      ctx.fillText(quizData.question, canvas.width / 2, isMobile ? 32 : 40)
       
-      // Instructions with point values
-      ctx.font = `bold ${isMobile ? 14 : 18}px monospace`
-      ctx.fillStyle = '#00ff9c'
-      ctx.fillText(`COLLECT STRONG +${quizData.pointsForCorrect}`, canvas.width / 2, isMobile ? 52 : 70)
-      ctx.fillStyle = '#ff4d4d'
-      ctx.fillText(`AVOID WEAK ${quizData.pointsForIncorrect}`, canvas.width / 2, isMobile ? 72 : 95)
-      
-      // Score display (top-left) - Large and prominent
-      ctx.textAlign = 'left'
-      ctx.font = `bold ${isMobile ? 28 : 42}px monospace`
+      // Instructions (neutral - no point values shown)
+      ctx.font = `${isMobile ? 16 : 20}px monospace`
       ctx.fillStyle = '#6ee7ff'
-      ctx.shadowBlur = 10
-      ctx.shadowColor = '#00ffff'
-      const scoreText = quiz.refs.pointsRef.current.toString().padStart(2, '0')
-      ctx.fillText(`⚡ ${scoreText}`, isMobile ? 20 : 40, isMobile ? 150 : 180)
-      ctx.shadowBlur = 0
+      ctx.fillText(quizData.instructions, canvas.width / 2, isMobile ? 58 : 75)
+      
+      // Score display (top-left) - Hidden during neutral quiz to avoid revealing answers
+      // Will be shown at the end with pass/fail result
       
       // Timer display (top-right) - Large and prominent
       ctx.textAlign = 'right'
@@ -2233,23 +2231,7 @@ export default function SimpleGame() {
       ctx.fillText(`${minutes}:${seconds.toString().padStart(2, '0')}`, canvas.width - (isMobile ? 20 : 40), isMobile ? 150 : 180)
       ctx.shadowBlur = 0
       
-      // Combo indicator (bottom-right)
-      if (quiz.refs.comboRef.current > 0) {
-        ctx.textAlign = 'right'
-        ctx.font = `bold ${isMobile ? 24 : 36}px monospace`
-        ctx.fillStyle = '#ffff00'
-        ctx.shadowBlur = 15
-        ctx.shadowColor = '#ffff00'
-        const comboMultiplier = Math.min(quiz.refs.comboRef.current, 4)
-        ctx.fillText(`${comboMultiplier}x COMBO`, canvas.width - (isMobile ? 20 : 40), canvas.height - (isMobile ? 100 : 140))
-        
-        // Combo counter
-        ctx.font = `bold ${isMobile ? 16 : 20}px monospace`
-        ctx.fillStyle = '#ffffff'
-        const comboText = Array.from({length: quiz.refs.comboRef.current}, (_, i) => `+${i+1}`).join(', ')
-        ctx.fillText(comboText, canvas.width - (isMobile ? 20 : 40), canvas.height - (isMobile ? 75 : 105))
-        ctx.shadowBlur = 0
-      }
+      // Combo indicator - Hidden during neutral quiz to avoid revealing answers
       
       // Educational tip at bottom
       ctx.textAlign = 'center'
@@ -2267,68 +2249,52 @@ export default function SimpleGame() {
       ctx.shadowBlur = 0
       ctx.textAlign = 'left'
       
-      // Render quiz items as 3D cards with enhanced visuals (matching mockup exactly)
+      // Render quiz items as neutral cyan cards (quiz evaluation mode)
       powerups.forEach(item => {
         if (item.type === 'quiz-item') {
-          const size = isMobile ? 140 : 140 // Consistent with spawn size
+          const size = isMobile ? 110 : 140
           const pulse = Math.sin(Date.now() / 200) * 0.15 + 0.9
-          const isCorrect = item.color === '#00ff00'
           
-          // Intense glow effect
-          ctx.shadowBlur = (isMobile ? 35 : 45) * pulse
-          ctx.shadowColor = isCorrect ? '#00ff00' : '#ff0000'
+          // Neutral cyan glow effect (same for all cards)
+          ctx.shadowBlur = (isMobile ? 30 : 45) * pulse
+          ctx.shadowColor = '#00ccff'
           
-          // Card background - VIBRANT bright green/red (matching mockup)
-          ctx.fillStyle = isCorrect ? 'rgba(0, 255, 0, 0.7)' : 'rgba(255, 0, 0, 0.7)'
+          // Card background - Dark semi-transparent
+          ctx.fillStyle = 'rgba(10, 30, 50, 0.85)'
           ctx.fillRect(item.x - size / 2, item.y - size / 2, size, size)
           
-          // Inner darker layer for depth
-          ctx.fillStyle = isCorrect ? 'rgba(0, 150, 0, 0.5)' : 'rgba(150, 0, 0, 0.5)'
+          // Inner highlight for depth
+          ctx.fillStyle = 'rgba(0, 200, 255, 0.15)'
           ctx.fillRect(item.x - size / 2 + 4, item.y - size / 2 + 4, size - 8, size - 8)
           
-          // Card border with intense glow
-          ctx.strokeStyle = isCorrect ? '#00ff00' : '#ff0000'
-          ctx.lineWidth = isMobile ? 4 : 5
+          // Cyan border (neutral - no color coding)
+          ctx.strokeStyle = '#00ccff'
+          ctx.lineWidth = isMobile ? 3 : 4
           ctx.strokeRect(item.x - size / 2, item.y - size / 2, size, size)
           
           ctx.shadowBlur = 0
           
-          // Point indicator at TOP (header area)
-          ctx.font = `bold ${isMobile ? 22 : 28}px monospace`
+          // Password text at TOP (larger, more prominent)
+          ctx.font = `bold ${isMobile ? 14 : 18}px monospace`
           ctx.fillStyle = '#ffffff'
           ctx.textAlign = 'center'
-          ctx.shadowBlur = 5
+          ctx.shadowBlur = 3
           ctx.shadowColor = '#000000'
-          const pointText = isCorrect ? `+${quizData.pointsForCorrect}` : `${quizData.pointsForIncorrect}`
-          ctx.fillText(pointText, item.x, item.y - size / 2 + (isMobile ? 30 : 32))
-          
-          // Password text in header (first instance)
-          ctx.font = `bold ${isMobile ? 13 : 14}px monospace`
           const rawName = item.sentBy.name
           const passwordText = rawName.replace(/[^\x20-\x7E]/g, '')
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText(passwordText, item.x, item.y - size / 2 + (isMobile ? 50 : 52))
+          ctx.fillText(passwordText, item.x, item.y - size / 2 + (isMobile ? 28 : 36))
           
-          // Visual indicator emoji (checkmark or X) in CENTER
-          ctx.font = `${isMobile ? 32 : 36}px sans-serif`
-          ctx.fillStyle = isCorrect ? '#00ff00' : '#ff0000'
-          ctx.shadowBlur = 8
-          ctx.shadowColor = isCorrect ? '#00ff00' : '#ff0000'
-          ctx.fillText(isCorrect ? '✔' : '❌', item.x, item.y + (isMobile ? 5 : 5))
-          ctx.shadowBlur = 0
-          
-          // Password text AGAIN in middle (second instance - like mockup)
-          ctx.font = `bold ${isMobile ? 12 : 13}px monospace`
-          ctx.fillStyle = '#ffffff'
-          ctx.shadowBlur = 4
-          ctx.shadowColor = '#000000'
-          ctx.fillText(passwordText, item.x, item.y + (isMobile ? 28 : 28))
+          // Description label in CENTER (key feature of neutral design)
+          const description = (item.sentBy.speciality as string) || 'password type'
+          ctx.font = `${isMobile ? 11 : 14}px monospace`
+          ctx.fillStyle = '#6ee7ff'
+          ctx.fillText(description, item.x, item.y + (isMobile ? 5 : 8))
           
           // Character count badge at BOTTOM
           const charCount = rawName.length
-          ctx.font = `bold ${isMobile ? 10 : 11}px monospace`
-          ctx.fillStyle = '#cccccc'
-          ctx.fillText(`${charCount} characters`, item.x, item.y + size / 2 - (isMobile ? 12 : 12))
+          ctx.font = `bold ${isMobile ? 10 : 12}px monospace`
+          ctx.fillStyle = '#aaaaaa'
+          ctx.fillText(`${charCount} characters`, item.x, item.y + size / 2 - (isMobile ? 12 : 16))
           
           ctx.shadowBlur = 0
           ctx.textAlign = 'left'
@@ -2889,7 +2855,8 @@ powerups = powerups.filter(kit => {
         
         // Calculate size for both quiz items and regular kits (needed for collision detection)
         const pulse = Math.sin(timestamp * 0.005) * 0.3 + 0.7
-        const size = isQuizItem ? 140 : (35 * pulse) // Quiz items are larger
+        const isMobile = canvas.width < 768
+        const size = isQuizItem ? (isMobile ? 110 : 140) : (35 * pulse) // Quiz items are larger
         
         // Skip rendering quiz items here - they're rendered in renderQuizOverlay()
         if (isQuizItem) {
@@ -2946,25 +2913,14 @@ powerups = powerups.filter(kit => {
             // Update via quiz action
             quiz.actions.collectItem(itemId, isCorrect)
             
+            // Add score silently (no visual feedback until quiz ends)
             if (isCorrect) {
               localScore += 100
-              
-              // Green flash for correct
-              ctx.fillStyle = 'rgba(0, 255, 0, 0.3)'
-              ctx.fillRect(0, 0, canvas.width, canvas.height)
-              
-              // Spawn confetti at collection point
-              const isMobile = canvas.width < 768
-              spawnConfetti(kit.x + kit.width / 2, kit.y + kit.height / 2, isMobile ? 8 : 12)
-              
-              // Start victory dance
-              isVictoryDancing = true
-              victoryDanceTimer = VICTORY_DANCE_DURATION
-            } else {
-              // Red flash for incorrect
-              ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'
-              ctx.fillRect(0, 0, canvas.width, canvas.height)
             }
+            
+            // Neutral collection flash (same for all items - no answer revealed)
+            ctx.fillStyle = 'rgba(0, 200, 255, 0.2)'
+            ctx.fillRect(0, 0, canvas.width, canvas.height)
             
             // Remove this quiz item
             return false
