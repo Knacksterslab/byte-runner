@@ -1847,17 +1847,22 @@ export default function SimpleGame() {
       // Clear existing powerups
       powerups.length = 0
       
-      // Spawn quiz items in a well-spaced 2x3 grid (like mockup)
-      const itemWidth = 120
-      const itemHeight = 120
-      const horizontalSpacing = 450 // Much wider spacing
-      const verticalSpacing = 350 // Taller spacing
-      const startX = (canvas.width - (horizontalSpacing * 2)) / 2
-      const startY = (canvas.height - (verticalSpacing * 1)) / 2 - 50 // Center better
+      const isMobile = canvas.width < 768
+      
+      // Desktop: 2x3 grid (2 rows, 3 columns) | Mobile: 3x2 grid (3 rows, 2 columns)
+      const itemWidth = isMobile ? 140 : 120
+      const itemHeight = isMobile ? 140 : 120
+      const horizontalSpacing = isMobile ? 180 : 450 // Tighter on mobile
+      const verticalSpacing = isMobile ? 200 : 350 // More rows on mobile
+      const columnsCount = isMobile ? 2 : 3
+      const startX = (canvas.width - (horizontalSpacing * (columnsCount - 1))) / 2
+      const startY = isMobile 
+        ? 240 // Below header and score/timer on mobile
+        : (canvas.height - (verticalSpacing * 1)) / 2 - 50 // Center on desktop
       
       quizChallenge.items.forEach((item, index) => {
-        const row = Math.floor(index / 3)
-        const col = index % 3
+        const row = Math.floor(index / columnsCount)
+        const col = index % columnsCount
         
         powerups.push({
           x: startX + (col * horizontalSpacing),
@@ -2265,7 +2270,7 @@ export default function SimpleGame() {
       // Render quiz items as 3D cards with enhanced visuals (matching mockup exactly)
       powerups.forEach(item => {
         if (item.type === 'quiz-item') {
-          const size = isMobile ? 100 : 140
+          const size = isMobile ? 140 : 140 // Consistent with spawn size
           const pulse = Math.sin(Date.now() / 200) * 0.15 + 0.9
           const isCorrect = item.color === '#00ff00'
           
@@ -2289,41 +2294,41 @@ export default function SimpleGame() {
           ctx.shadowBlur = 0
           
           // Point indicator at TOP (header area)
-          ctx.font = `bold ${isMobile ? 20 : 28}px monospace`
+          ctx.font = `bold ${isMobile ? 22 : 28}px monospace`
           ctx.fillStyle = '#ffffff'
           ctx.textAlign = 'center'
           ctx.shadowBlur = 5
           ctx.shadowColor = '#000000'
           const pointText = isCorrect ? `+${quizData.pointsForCorrect}` : `${quizData.pointsForIncorrect}`
-          ctx.fillText(pointText, item.x, item.y - size / 2 + (isMobile ? 26 : 32))
+          ctx.fillText(pointText, item.x, item.y - size / 2 + (isMobile ? 30 : 32))
           
           // Password text in header (first instance)
-          ctx.font = `bold ${isMobile ? 11 : 14}px monospace`
+          ctx.font = `bold ${isMobile ? 13 : 14}px monospace`
           const rawName = item.sentBy.name
           const passwordText = rawName.replace(/[^\x20-\x7E]/g, '')
           ctx.fillStyle = '#ffffff'
-          ctx.fillText(passwordText, item.x, item.y - size / 2 + (isMobile ? 44 : 52))
+          ctx.fillText(passwordText, item.x, item.y - size / 2 + (isMobile ? 50 : 52))
           
           // Visual indicator emoji (checkmark or X) in CENTER
-          ctx.font = `${isMobile ? 28 : 36}px sans-serif`
+          ctx.font = `${isMobile ? 32 : 36}px sans-serif`
           ctx.fillStyle = isCorrect ? '#00ff00' : '#ff0000'
           ctx.shadowBlur = 8
           ctx.shadowColor = isCorrect ? '#00ff00' : '#ff0000'
-          ctx.fillText(isCorrect ? '✔' : '❌', item.x, item.y + (isMobile ? 2 : 5))
+          ctx.fillText(isCorrect ? '✔' : '❌', item.x, item.y + (isMobile ? 5 : 5))
           ctx.shadowBlur = 0
           
           // Password text AGAIN in middle (second instance - like mockup)
-          ctx.font = `bold ${isMobile ? 10 : 13}px monospace`
+          ctx.font = `bold ${isMobile ? 12 : 13}px monospace`
           ctx.fillStyle = '#ffffff'
           ctx.shadowBlur = 4
           ctx.shadowColor = '#000000'
-          ctx.fillText(passwordText, item.x, item.y + (isMobile ? 22 : 28))
+          ctx.fillText(passwordText, item.x, item.y + (isMobile ? 28 : 28))
           
           // Character count badge at BOTTOM
           const charCount = rawName.length
-          ctx.font = `bold ${isMobile ? 9 : 11}px monospace`
+          ctx.font = `bold ${isMobile ? 10 : 11}px monospace`
           ctx.fillStyle = '#cccccc'
-          ctx.fillText(`${charCount} characters`, item.x, item.y + size / 2 - (isMobile ? 10 : 12))
+          ctx.fillText(`${charCount} characters`, item.x, item.y + size / 2 - (isMobile ? 12 : 12))
           
           ctx.shadowBlur = 0
           ctx.textAlign = 'left'
@@ -2884,7 +2889,7 @@ powerups = powerups.filter(kit => {
         
         // Calculate size for both quiz items and regular kits (needed for collision detection)
         const pulse = Math.sin(timestamp * 0.005) * 0.3 + 0.7
-        const size = isQuizItem ? 120 : (35 * pulse) // Quiz items are larger
+        const size = isQuizItem ? 140 : (35 * pulse) // Quiz items are larger
         
         // Skip rendering quiz items here - they're rendered in renderQuizOverlay()
         if (isQuizItem) {
