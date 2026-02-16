@@ -380,7 +380,7 @@ export default function SimpleGame() {
     let powerupsNeeded = 0
     let powerupsCollected = 0
     let isAdvancingLevel = false // Prevent multiple level advances
-    let spawnFrequency = 620 // ms between obstacle spawns (reduced threat density)
+    let spawnFrequency = 750 // ms between obstacle spawns (reduced threat density for easier early game)
     let speedFactor = 0.55
     let threatSpeedFactor = 0.38
     let spawnFactor = 1.1
@@ -1923,7 +1923,7 @@ export default function SimpleGame() {
       if (currentLevel <= 4) {
         // Levels 1-4: Keep base speed constant, only very minor spawn frequency changes
         // Difficulty comes purely from adding new threat directions
-        spawnFrequency = Math.max(580, spawnFrequency - 10) // Gentle spawn increase only
+        spawnFrequency = Math.max(710, spawnFrequency - 10) // Gentle spawn increase only
       } else if (isZoneTransition(currentLevel)) {
         // Zone transitions (levels 7, 10, etc): Major difficulty spike
         obstacleSpeed += 0.8
