@@ -96,58 +96,34 @@ export const passwordStrengthQuiz: QuizChallenge = {
   speedBonus: 1.2,
   pointsForCorrect: 10,
   pointsForIncorrect: -5,
-  passingScore: 50,
+  passingScore: 10,
   items: [
     {
       id: 'pass-1',
       visual: '',
-      label: 'MyP@ssw0rd2024',
+      label: 'p1zz@',
       color: '#00ccff', // Neutral cyan
-      isCorrect: true,
+      isCorrect: false,
       description: 'common word + symbol'
     },
     {
       id: 'pass-2',
       visual: '',
-      label: 'password123',
-      color: '#00ccff',
-      isCorrect: false,
-      description: 'common word'
-    },
-    {
-      id: 'pass-3',
-      visual: '',
-      label: 'correct-horse-24',
-      color: '#00ccff',
-      isCorrect: true,
-      description: 'random words'
-    },
-    {
-      id: 'pass-4',
-      visual: '',
-      label: 'qwerty',
+      label: '12345678',
       color: '#00ccff',
       isCorrect: false,
       description: 'keyboard pattern'
     },
     {
-      id: 'pass-5',
+      id: 'pass-3',
       visual: '',
       label: 'Tr0ubAdor3-X3',
       color: '#00ccff',
       isCorrect: true,
       description: 'long + unique'
-    },
-    {
-      id: 'pass-6',
-      visual: '',
-      label: '12345678',
-      color: '#00ccff',
-      isCorrect: false,
-      description: 'keyboard pattern'
     }
   ],
-  correctAnswers: ['pass-1', 'pass-3', 'pass-5']
+  correctAnswers: ['pass-3']
 }
 
 // WiFi Security Challenge

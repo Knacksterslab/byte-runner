@@ -1805,6 +1805,9 @@ export default function SimpleGame() {
       
       quiz.actions.markCompleted()
       
+      // Clear all threats to give player a clean restart
+      obstacles.length = 0
+      
       if (success) {
         // Reward for passing quiz (no speed increase - we want consistent difficulty)
         if (quiz.refs.currentQuizRef.current) {
@@ -1849,27 +1852,30 @@ export default function SimpleGame() {
       
       const isMobile = canvas.width < 768
       
-      // Desktop: 2x3 grid (2 rows, 3 columns) | Mobile: 3x2 grid (3 rows, 2 columns)
-      const itemWidth = isMobile ? 110 : 120 // Smaller on mobile for more space
-      const itemHeight = isMobile ? 110 : 120
-      const horizontalSpacing = isMobile ? 170 : 450 // More space between columns on mobile
-      const verticalSpacing = isMobile ? 180 : 350 // More space between rows on mobile
-      const columnsCount = isMobile ? 2 : 3
-      const startX = (canvas.width - (horizontalSpacing * (columnsCount - 1))) / 2
-      const startY = isMobile 
-        ? 260 // Lower start to avoid header and give player space
-        : (canvas.height - (verticalSpacing * 1)) / 2 - 50 // Center on desktop
+      // Triangular layout: 2 cards on top, 1 card on bottom (exactly as mockup)
+      const itemWidth = isMobile ? 130 : 180
+      const itemHeight = isMobile ? 130 : 180
+      const horizontalSpacing = isMobile ? 230 : 320 // Wider spacing for clear navigation paths
+      const verticalSpacing = isMobile ? 260 : 300 // More vertical space on mobile
       
-      // Shuffle items for random positioning (prevents predictable green/red patterns)
-      const shuffledItems = [...quizChallenge.items].sort(() => Math.random() - 0.5)
+      // Position for 3-item triangular layout
+      // Top row: 2 cards (left and right) - positioned lower on mobile
+      // Bottom row: 1 card (center)
+      const positions = [
+        // Top left
+        { x: canvas.width / 2 - horizontalSpacing / 2, y: isMobile ? 300 : 280 },
+        // Top right
+        { x: canvas.width / 2 + horizontalSpacing / 2, y: isMobile ? 300 : 280 },
+        // Bottom center
+        { x: canvas.width / 2, y: isMobile ? 300 + verticalSpacing : 280 + verticalSpacing }
+      ]
       
-      shuffledItems.forEach((item, index) => {
-        const row = Math.floor(index / columnsCount)
-        const col = index % columnsCount
+      quizChallenge.items.forEach((item, index) => {
+        const pos = positions[index]
         
         powerups.push({
-          x: startX + (col * horizontalSpacing),
-          y: startY + (row * verticalSpacing),
+          x: pos.x,
+          y: pos.y,
           width: itemWidth,
           height: itemHeight,
           vx: 0,
@@ -1882,9 +1888,9 @@ export default function SimpleGame() {
         })
       })
       
-      // Position player in safe center spot (not inside any box)
+      // Position player in safe center spot with ample space above cards
       playerX = canvas.width / 2
-      playerY = isMobile ? 180 : canvas.height / 2
+      playerY = isMobile ? 220 : canvas.height / 2 - 50
     }
     
     function checkQuizCompletion() {
@@ -1896,11 +1902,13 @@ export default function SimpleGame() {
       // Check if all quiz items have been collected or time ran out
       const allItemsGone = powerups.filter(p => p.type === 'quiz-item').length === 0
       
+      // Check if passing score reached (end immediately on correct answer)
+      const currentPoints = quiz.refs.pointsRef.current
+      const passingScore = quiz.refs.currentQuizRef.current.passingScore
+      const hasPassingScore = currentPoints >= passingScore
       
-      if (allItemsGone || quiz.refs.timeRemainingRef.current <= 0) {
+      if (allItemsGone || quiz.refs.timeRemainingRef.current <= 0 || hasPassingScore) {
         // Use point-based system to determine pass/fail
-        const currentPoints = quiz.refs.pointsRef.current
-        const passingScore = quiz.refs.currentQuizRef.current.passingScore
         const success = currentPoints >= passingScore
         
         endInGameQuiz(success)
@@ -2198,12 +2206,12 @@ export default function SimpleGame() {
       ctx.restore()
       
       // Header banner
-      const bannerHeight = isMobile ? 90 : 120
+      const bannerHeight = isMobile ? 155 : 120
       ctx.fillStyle = 'rgba(10, 27, 63, 0.95)'
       ctx.fillRect(0, 0, canvas.width, bannerHeight)
       
       ctx.strokeStyle = '#00ffff'
-      ctx.lineWidth = 3
+      ctx.lineWidth = isMobile ? 2 : 3
       ctx.strokeRect(0, 0, canvas.width, bannerHeight)
       
       // Title
@@ -2217,8 +2225,15 @@ export default function SimpleGame() {
       ctx.fillStyle = '#6ee7ff'
       ctx.fillText(quizData.instructions, canvas.width / 2, isMobile ? 58 : 75)
       
-      // Score display (top-left) - Hidden during neutral quiz to avoid revealing answers
-      // Will be shown at the end with pass/fail result
+      // Score display (top-left) - Large and prominent
+      ctx.textAlign = 'left'
+      ctx.font = `bold ${isMobile ? 32 : 42}px monospace`
+      ctx.fillStyle = '#6ee7ff'
+      ctx.shadowBlur = 10
+      ctx.shadowColor = '#00ffff'
+      const scoreText = quiz.refs.pointsRef.current.toString().padStart(2, '0')
+      ctx.fillText(`⚡ ${scoreText}`, isMobile ? 20 : 40, isMobile ? 110 : 180)
+      ctx.shadowBlur = 0
       
       // Timer display (top-right) - Large and prominent
       ctx.textAlign = 'right'
@@ -2228,35 +2243,35 @@ export default function SimpleGame() {
       ctx.shadowColor = timeWarning ? '#ff0000' : '#00ffff'
       const minutes = Math.floor(quiz.refs.timeRemainingRef.current / 60)
       const seconds = quiz.refs.timeRemainingRef.current % 60
-      ctx.fillText(`${minutes}:${seconds.toString().padStart(2, '0')}`, canvas.width - (isMobile ? 20 : 40), isMobile ? 150 : 180)
+      ctx.fillText(`${minutes}:${seconds.toString().padStart(2, '0')}`, canvas.width - (isMobile ? 20 : 40), isMobile ? 110 : 180)
       ctx.shadowBlur = 0
       
       // Combo indicator - Hidden during neutral quiz to avoid revealing answers
       
-      // Educational tip at bottom
+      // Educational tip at bottom (prominent positioning as in mockup)
       ctx.textAlign = 'center'
-      ctx.font = `bold ${isMobile ? 14 : 18}px monospace`
+      ctx.font = `${isMobile ? 13 : 18}px monospace`
       ctx.fillStyle = '#ffffff'
       ctx.shadowBlur = 3
       ctx.shadowColor = '#000000'
-      ctx.fillText(quizData.educationalNote, canvas.width / 2, canvas.height - (isMobile ? 45 : 60))
+      ctx.fillText(quizData.educationalNote, canvas.width / 2, canvas.height - (isMobile ? 60 : 60))
       
       // Controls reminder
-      ctx.font = `${isMobile ? 12 : 16}px monospace`
-      ctx.fillStyle = '#aaaaaa'
+      ctx.font = `${isMobile ? 11 : 16}px monospace`
+      ctx.fillStyle = '#6ee7ff'
       const controlsText = isMobile ? '📱 Swipe to Move' : '💻 WASD to Move'
-      ctx.fillText(controlsText, canvas.width / 2, canvas.height - (isMobile ? 25 : 35))
+      ctx.fillText(controlsText, canvas.width / 2, canvas.height - (isMobile ? 40 : 35))
       ctx.shadowBlur = 0
       ctx.textAlign = 'left'
       
       // Render quiz items as neutral cyan cards (quiz evaluation mode)
       powerups.forEach(item => {
         if (item.type === 'quiz-item') {
-          const size = isMobile ? 110 : 140
+          const size = isMobile ? 130 : 180
           const pulse = Math.sin(Date.now() / 200) * 0.15 + 0.9
           
           // Neutral cyan glow effect (same for all cards)
-          ctx.shadowBlur = (isMobile ? 30 : 45) * pulse
+          ctx.shadowBlur = (isMobile ? 35 : 50) * pulse
           ctx.shadowColor = '#00ccff'
           
           // Card background - Dark semi-transparent
@@ -2269,32 +2284,32 @@ export default function SimpleGame() {
           
           // Cyan border (neutral - no color coding)
           ctx.strokeStyle = '#00ccff'
-          ctx.lineWidth = isMobile ? 3 : 4
+          ctx.lineWidth = isMobile ? 4 : 5
           ctx.strokeRect(item.x - size / 2, item.y - size / 2, size, size)
           
           ctx.shadowBlur = 0
           
           // Password text at TOP (larger, more prominent)
-          ctx.font = `bold ${isMobile ? 14 : 18}px monospace`
+          ctx.font = `bold ${isMobile ? 18 : 24}px monospace`
           ctx.fillStyle = '#ffffff'
           ctx.textAlign = 'center'
           ctx.shadowBlur = 3
           ctx.shadowColor = '#000000'
           const rawName = item.sentBy.name
           const passwordText = rawName.replace(/[^\x20-\x7E]/g, '')
-          ctx.fillText(passwordText, item.x, item.y - size / 2 + (isMobile ? 28 : 36))
+          ctx.fillText(passwordText, item.x, item.y - size / 2 + (isMobile ? 35 : 45))
           
           // Description label in CENTER (key feature of neutral design)
           const description = (item.sentBy.speciality as string) || 'password type'
-          ctx.font = `${isMobile ? 11 : 14}px monospace`
+          ctx.font = `${isMobile ? 13 : 16}px monospace`
           ctx.fillStyle = '#6ee7ff'
-          ctx.fillText(description, item.x, item.y + (isMobile ? 5 : 8))
+          ctx.fillText(description, item.x, item.y + (isMobile ? 8 : 12))
           
           // Character count badge at BOTTOM
           const charCount = rawName.length
-          ctx.font = `bold ${isMobile ? 10 : 12}px monospace`
+          ctx.font = `bold ${isMobile ? 11 : 14}px monospace`
           ctx.fillStyle = '#aaaaaa'
-          ctx.fillText(`${charCount} characters`, item.x, item.y + size / 2 - (isMobile ? 12 : 16))
+          ctx.fillText(`${charCount} characters`, item.x, item.y + size / 2 - (isMobile ? 16 : 20))
           
           ctx.shadowBlur = 0
           ctx.textAlign = 'left'
@@ -2856,7 +2871,7 @@ powerups = powerups.filter(kit => {
         // Calculate size for both quiz items and regular kits (needed for collision detection)
         const pulse = Math.sin(timestamp * 0.005) * 0.3 + 0.7
         const isMobile = canvas.width < 768
-        const size = isQuizItem ? (isMobile ? 110 : 140) : (35 * pulse) // Quiz items are larger
+        const size = isQuizItem ? (isMobile ? 130 : 180) : (35 * pulse) // Quiz items are larger
         
         // Skip rendering quiz items here - they're rendered in renderQuizOverlay()
         if (isQuizItem) {
