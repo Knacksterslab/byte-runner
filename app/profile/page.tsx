@@ -81,7 +81,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="relative min-h-screen text-white flex items-center justify-center overflow-hidden space-background">
+      <div className="relative w-full text-white flex items-center justify-center space-background" style={{ minHeight: 'calc(100vh + 1px)', paddingBottom: '40px' }}>
         <div className="relative z-10 text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-cyan-400 border-t-transparent"></div>
           <p className="text-gray-400 mt-4 font-mono">Loading profile...</p>
@@ -104,7 +104,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="relative min-h-screen text-white overflow-hidden space-background">
+    <div className="relative w-full text-white space-background" style={{ minHeight: 'calc(100vh + 1px)', paddingBottom: '40px' }}>
       <div className="absolute inset-0 vignette pointer-events-none" />
       
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8 sm:py-12">

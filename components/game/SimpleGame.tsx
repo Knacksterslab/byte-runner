@@ -3658,6 +3658,8 @@ powerups = powerups.filter(kit => {
               : 'Guest • Sign in'
             }
             activeContests={activeContests}
+            username={currentUser?.username}
+            isAuthenticated={authStatus === 'authed'}
           />
           {renderAuthModal()}
         </div>

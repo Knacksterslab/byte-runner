@@ -21,6 +21,8 @@ export interface StartScreenNewProps {
   onSignIn?: () => void
   signInLabel?: string
   activeContests?: Contest[]
+  username?: string | null
+  isAuthenticated?: boolean
 }
 
 export function StartScreenNew({ 
@@ -28,7 +30,9 @@ export function StartScreenNew({
   onShowTutorial, 
   onSignIn, 
   signInLabel = 'Sign in',
-  activeContests = [] 
+  activeContests = [],
+  username = null,
+  isAuthenticated = false
 }: StartScreenNewProps) {
   const leaderboard = useGameStore((state) => state.leaderboard)
   const ensureLeaderboardSeeded = useGameStore((state) => state.ensureLeaderboardSeeded)
@@ -50,14 +54,27 @@ export function StartScreenNew({
       <div className="fixed inset-0 nebula-background" style={{ zIndex: 0 }} />
       <div className="fixed inset-0 vignette" style={{ zIndex: 1 }} />
 
-      {/* Sign in button */}
-      {onSignIn && (
-        <button
-          onClick={onSignIn}
-          className="fixed left-4 sm:left-6 top-4 sm:top-6 z-20 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 py-1.5 sm:py-1 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation"
-        >
-          {signInLabel}
-        </button>
+      {/* Profile icon or Sign in button */}
+      {isAuthenticated ? (
+        <Link href="/profile">
+          <div className="fixed left-4 sm:left-6 top-4 sm:top-6 z-20 flex items-center gap-2 sm:gap-3 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation cursor-pointer group">
+            <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-cyan-500/20 border border-cyan-400/50 group-hover:bg-cyan-500/30 transition">
+              <svg className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-300" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <span className="hidden sm:inline">{username || 'Player'}</span>
+          </div>
+        </Link>
+      ) : (
+        onSignIn && (
+          <button
+            onClick={onSignIn}
+            className="fixed left-4 sm:left-6 top-4 sm:top-6 z-20 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 py-1.5 sm:py-1 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation"
+          >
+            {signInLabel}
+          </button>
+        )
       )}
 
       {/* Tutorial button */}
@@ -99,7 +116,7 @@ export function StartScreenNew({
 
         {/* Hourly Challenge Banner */}
         {hourlyChallenge && (
-          <div className="w-full max-w-[700px] mb-4 sm:mb-6">
+          <div className="w-full max-w-full md:max-w-[calc(50%-1rem)] mb-4 sm:mb-6">
             <div className="panel stack-panel px-5 sm:px-8 py-4 text-left bg-gradient-to-br from-green-900/20 to-emerald-900/20">
               <span className="panel-outline" style={{ borderColor: 'rgba(34, 197, 94, 0.5)' }} />
               <div className="panel-title">
