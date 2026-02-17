@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { getCurrentUser, getLeaderboard, signOut, getAllBadges, getMyBadges, setFeaturedBadge, getMyBalance, getMyStats, type BackendUser, type LeaderboardItem, type Badge, type UserBadge, type BalanceInfo } from '@/lib/api/backend'
 import { User, Trophy, TrendingUp, Target, Shield, LogOut, Mail, Award, Star, DollarSign, TrendingDown, Clock } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { PageWrapper } from '@/components/PageWrapper'
+import Link from 'next/link'
 
 const WithdrawalModal = dynamic(() => import('@/components/WithdrawalModal'), { ssr: false })
 
@@ -81,7 +83,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="relative w-full text-white flex items-center justify-center space-background" style={{ minHeight: 'calc(100vh + 1px)', paddingBottom: '40px' }}>
+      <PageWrapper className="relative text-white flex items-center justify-center space-background">
         <div className="relative z-10 text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-cyan-400 border-t-transparent"></div>
           <p className="text-gray-400 mt-4 font-mono">Loading profile...</p>
@@ -95,7 +97,7 @@ export default function ProfilePage() {
             background-color: #05070d;
           }
         `}</style>
-      </div>
+      </PageWrapper>
     )
   }
 
@@ -104,10 +106,21 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="relative w-full text-white space-background" style={{ minHeight: 'calc(100vh + 1px)', paddingBottom: '40px' }}>
+    <PageWrapper className="relative text-white space-background">
       <div className="absolute inset-0 vignette pointer-events-none" />
       
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8 sm:py-12">
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8 sm:py-12 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+        {/* Logo */}
+        <div className="text-center mb-6">
+          <Link href="/">
+            <img
+              src="/logo.png"
+              alt="Byte Runner"
+              className="h-16 sm:h-20 w-auto mx-auto drop-shadow-[0_0_30px_rgba(0,255,255,0.85)] cursor-pointer hover:scale-105 transition-transform"
+            />
+          </Link>
+        </div>
+        
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full mb-4 shadow-lg shadow-cyan-500/50">
@@ -406,6 +419,6 @@ export default function ProfilePage() {
           background: radial-gradient(circle at 50% 40%, transparent 0%, rgba(2, 4, 10, 0.85) 70%);
         }
       `}</style>
-    </div>
+    </PageWrapper>
   )
 }

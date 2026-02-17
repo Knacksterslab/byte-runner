@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { getAllContests, getCurrentUser, type Contest } from '@/lib/api/backend'
 import { checkIsAdmin, createContest, updateContest, deleteContest, updateContestStatuses, type CreateContestData } from '@/lib/api/admin'
 import { Shield, Plus, Edit, Trash2, Save, X, RefreshCw } from 'lucide-react'
+import { PageWrapper } from '@/components/PageWrapper'
+import Link from 'next/link'
 
 const FALLBACK_TIMEZONES = [
   'UTC',
@@ -285,20 +287,31 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+      <PageWrapper className="bg-gray-950 text-white flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-cyan-400 border-t-transparent"></div>
           <p className="text-gray-400 mt-4 font-mono">Checking admin access...</p>
         </div>
-      </div>
+      </PageWrapper>
     )
   }
 
   if (!isAdmin) return null
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-8">
-      <div className="max-w-6xl mx-auto">
+    <PageWrapper className="bg-gray-950 text-white p-8">
+      <div className="max-w-6xl mx-auto pb-[calc(2rem+env(safe-area-inset-bottom))]">
+        {/* Logo */}
+        <div className="text-center mb-6">
+          <Link href="/">
+            <img
+              src="/logo.png"
+              alt="Byte Runner"
+              className="h-16 sm:h-20 w-auto mx-auto drop-shadow-[0_0_30px_rgba(0,255,255,0.85)] cursor-pointer hover:scale-105 transition-transform"
+            />
+          </Link>
+        </div>
+        
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <Shield className="w-8 h-8 text-cyan-400" />
@@ -676,6 +689,6 @@ export default function AdminPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageWrapper>
   )
 }

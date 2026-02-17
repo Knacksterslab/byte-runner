@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { getAllContests, type Contest } from '@/lib/api/backend'
 import { Trophy, Calendar, Clock, Award } from 'lucide-react'
 import Link from 'next/link'
+import { PageWrapper } from '@/components/PageWrapper'
 
 export default function ContestsPage() {
   const [contests, setContests] = useState<Contest[]>([])
@@ -64,26 +65,20 @@ export default function ContestsPage() {
     }).format(new Date(iso))
 
   return (
-    <div
-      className="contests-scroll-wrapper relative min-h-[100dvh] text-white overflow-y-auto overflow-x-hidden space-background"
-      style={{
-        WebkitOverflowScrolling: 'touch',
-        overscrollBehavior: 'contain',
-        touchAction: 'pan-y',
-        scrollbarWidth: 'none',
-      }}
-    >
+    <PageWrapper className="relative text-white space-background">
       <div className="absolute inset-0 vignette pointer-events-none" />
       
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 sm:py-12">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 sm:py-12 pb-[calc(2rem+env(safe-area-inset-bottom))]">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex flex-col items-center gap-4 mb-6">
-            <img
-              src="/logo.png"
-              alt="Byte Runner"
-              className="h-24 sm:h-32 w-auto drop-shadow-[0_0_38px_rgba(0,255,255,0.85)]"
-            />
+            <Link href="/">
+              <img
+                src="/logo.png"
+                alt="Byte Runner"
+                className="h-24 sm:h-32 w-auto drop-shadow-[0_0_38px_rgba(0,255,255,0.85)] cursor-pointer hover:scale-105 transition-transform"
+              />
+            </Link>
             <div className="flex items-center gap-3">
               <Trophy className="w-8 h-8 text-yellow-400" />
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-cyan-400 to-blue-400">
@@ -207,12 +202,6 @@ export default function ContestsPage() {
       </div>
 
       <style jsx>{`
-        .contests-scroll-wrapper::-webkit-scrollbar {
-          display: none;
-          width: 0;
-          height: 0;
-        }
-
         .space-background {
           background-image: url('/space-background.png');
           background-size: cover;
@@ -225,6 +214,6 @@ export default function ContestsPage() {
           background: radial-gradient(circle at 50% 40%, transparent 0%, rgba(2, 4, 10, 0.85) 70%);
         }
       `}</style>
-    </div>
+    </PageWrapper>
   )
 }

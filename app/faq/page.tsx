@@ -1,3 +1,6 @@
+import { PageWrapper } from '@/components/PageWrapper'
+import Link from 'next/link'
+
 export default function FAQPage() {
   const faqs = [
     {
@@ -63,8 +66,19 @@ export default function FAQPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-blue-950 to-black text-white">
-      <div className="max-w-4xl mx-auto px-4 py-12">
+    <PageWrapper className="bg-gradient-to-br from-black via-blue-950 to-black text-white">
+      <div className="max-w-4xl mx-auto px-4 py-12 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link href="/">
+            <img
+              src="/logo.png"
+              alt="Byte Runner"
+              className="h-20 sm:h-24 w-auto mx-auto drop-shadow-[0_0_30px_rgba(0,255,255,0.85)] cursor-pointer hover:scale-105 transition-transform"
+            />
+          </Link>
+        </div>
+        
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-cyan-400 mb-4">
@@ -119,6 +133,6 @@ export default function FAQPage() {
           </a>
         </div>
       </div>
-    </div>
+    </PageWrapper>
   )
 }

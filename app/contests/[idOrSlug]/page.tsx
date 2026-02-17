@@ -5,6 +5,7 @@ import { getContest, getContestLeaderboard, getMyContestEntries, getCurrentUser,
 import { Trophy, Calendar, Clock, Crown, Medal, User, Award } from 'lucide-react'
 import Link from 'next/link'
 import { PrizeClaimModal } from '@/components/PrizeClaimModal'
+import { PageWrapper } from '@/components/PageWrapper'
 
 export default function ContestDetailPage({ params }: { params: { idOrSlug: string } }) {
   const contestId = params.idOrSlug
@@ -170,7 +171,7 @@ export default function ContestDetailPage({ params }: { params: { idOrSlug: stri
 
   if (loading) {
     return (
-      <div className="relative min-h-screen text-white flex items-center justify-center overflow-y-auto overflow-x-hidden space-background" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <PageWrapper className="relative text-white flex items-center justify-center space-background">
         <div className="relative z-10 text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-cyan-400 border-t-transparent"></div>
           <p className="text-gray-400 mt-4 font-mono">Loading contest...</p>
@@ -184,13 +185,13 @@ export default function ContestDetailPage({ params }: { params: { idOrSlug: stri
             background-color: #05070d;
           }
         `}</style>
-      </div>
+      </PageWrapper>
     )
   }
 
   if (!contest) {
     return (
-      <div className="relative min-h-screen text-white flex items-center justify-center overflow-y-auto overflow-x-hidden space-background" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <PageWrapper className="relative text-white flex items-center justify-center space-background">
         <div className="relative z-10 text-center">
           <p className="text-gray-400 text-lg">Contest not found</p>
           <a href="/contests" className="text-cyan-400 hover:text-cyan-300 underline mt-4 inline-block">
@@ -206,15 +207,15 @@ export default function ContestDetailPage({ params }: { params: { idOrSlug: stri
             background-color: #05070d;
           }
         `}</style>
-      </div>
+      </PageWrapper>
     )
   }
 
   return (
-    <div className="relative min-h-screen text-white overflow-y-auto overflow-x-hidden space-background" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+    <PageWrapper className="relative text-white space-background">
       <div className="absolute inset-0 vignette pointer-events-none" />
       
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 pb-20">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 pb-[calc(5rem+env(safe-area-inset-bottom))]">
         {/* Breadcrumb Navigation */}
         <div className="mb-6 flex items-center gap-2 text-sm text-gray-400">
           <Link href="/" className="hover:text-cyan-400 transition-colors">Home</Link>
@@ -226,11 +227,13 @@ export default function ContestDetailPage({ params }: { params: { idOrSlug: stri
 
         {/* Header */}
         <div className="text-center mb-8">
-          <img
-            src="/logo.png"
-            alt="Byte Runner"
-            className="h-20 sm:h-24 w-auto drop-shadow-[0_0_38px_rgba(0,255,255,0.85)] mx-auto mb-4"
-          />
+          <Link href="/">
+            <img
+              src="/logo.png"
+              alt="Byte Runner"
+              className="h-20 sm:h-24 w-auto drop-shadow-[0_0_38px_rgba(0,255,255,0.85)] mx-auto mb-4 cursor-pointer hover:scale-105 transition-transform"
+            />
+          </Link>
           <h1 className="text-3xl sm:text-4xl font-bold text-cyan-400 mb-2">{contest.name}</h1>
           {contest.description && (
             <p className="text-gray-300 max-w-2xl mx-auto">{contest.description}</p>
@@ -487,6 +490,6 @@ export default function ContestDetailPage({ params }: { params: { idOrSlug: stri
           background: radial-gradient(circle at 50% 40%, transparent 0%, rgba(2, 4, 10, 0.85) 70%);
         }
       `}</style>
-    </div>
+    </PageWrapper>
   )
 }
