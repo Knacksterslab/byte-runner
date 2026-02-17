@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getCurrentUser, getLeaderboard, signOut, getAllBadges, getMyBadges, setFeaturedBadge, type BackendUser, type LeaderboardItem, type Badge, type UserBadge } from '@/lib/api/backend'
-import { User, Trophy, TrendingUp, Target, Shield, LogOut, Mail, Award, Star } from 'lucide-react'
+import { getCurrentUser, getLeaderboard, signOut, getAllBadges, getMyBadges, setFeaturedBadge, getMyBalance, getMyStats, type BackendUser, type LeaderboardItem, type Badge, type UserBadge, type BalanceInfo } from '@/lib/api/backend'
+import { User, Trophy, TrendingUp, Target, Shield, LogOut, Mail, Award, Star, DollarSign, TrendingDown, Clock } from 'lucide-react'
+import dynamic from 'next/dynamic'
+
+const WithdrawalModal = dynamic(() => import('@/components/WithdrawalModal'), { ssr: false })
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -21,6 +24,8 @@ export default function ProfilePage() {
   })
   const [allBadges, setAllBadges] = useState<Badge[]>([])
   const [myBadges, setMyBadges] = useState<UserBadge[]>([])
+  const [balance, setBalance] = useState<BalanceInfo | null>(null)
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -38,28 +43,24 @@ export default function ProfilePage() {
       }
       setCurrentUser(user)
 
-      // Get badges
-      const [allBadgesData, myBadgesData, leaderboard] = await Promise.all([
+      // Get badges, balance, and user stats
+      const [allBadgesData, myBadgesData, balanceData, myStats] = await Promise.all([
         getAllBadges(),
         getMyBadges(),
-        getLeaderboard(100)
+        getMyBalance().catch(() => null), // Don't fail if balance service unavailable
+        getMyStats().catch(() => null) // Don't fail if no runs yet
       ])
       setAllBadges(allBadgesData)
       setMyBadges(myBadgesData)
-
-      // Get user stats from leaderboard
-      const userEntries = leaderboard.filter(entry => entry.username === user.username)
+      if (balanceData) setBalance(balanceData)
       
-      if (userEntries.length > 0) {
-        const bestScore = Math.max(...userEntries.map(e => e.score))
-        const bestDistance = Math.max(...userEntries.map(e => e.distance))
-        const rank = leaderboard.findIndex(entry => entry.username === user.username && entry.score === bestScore)
-        
+      // Set user stats from direct query
+      if (myStats) {
         setUserStats({
-          bestScore,
-          bestDistance,
-          rank: rank >= 0 ? rank + 1 : null,
-          totalRuns: userEntries.length
+          bestScore: myStats.bestScore,
+          bestDistance: myStats.bestDistance,
+          rank: myStats.rank,
+          totalRuns: myStats.totalRuns
         })
       }
     } catch (error) {
@@ -179,6 +180,137 @@ export default function ProfilePage() {
               <p className="text-3xl font-bold text-yellow-400">{currentUser.continueTokens}</p>
             </div>
           </div>
+        )}
+
+        {/* Earnings Dashboard */}
+        {balance && (
+          <div className="bg-gray-900/30 border-2 border-green-600 rounded-lg p-6 mb-8 backdrop-blur-sm">
+            <h2 className="text-xl font-bold text-green-400 mb-6 flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              Earnings Dashboard
+            </h2>
+
+            {/* Balance Card */}
+            <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 border-2 border-green-600/50 rounded-lg p-6 mb-6 shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm text-green-300 font-mono mb-1">CURRENT BALANCE</p>
+                  <p className="text-4xl font-bold text-white">
+                    ${(balance.balanceCents / 100).toFixed(2)}
+                  </p>
+                </div>
+                <DollarSign className="w-12 h-12 text-green-400 opacity-50" />
+              </div>
+
+              {/* Progress to Withdrawal */}
+              <div className="mb-4">
+                <div className="flex justify-between text-xs text-gray-400 mb-2">
+                  <span>Progress to Withdrawal</span>
+                  <span>{Math.min(100, Math.floor((balance.balanceCents / 1000) * 100))}%</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div 
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (balance.balanceCents / 1000) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {balance.balanceCents >= 1000 
+                    ? '✓ Minimum reached! You can withdraw.' 
+                    : `Need $${((1000 - balance.balanceCents) / 100).toFixed(2)} more (Minimum: $10.00)`
+                  }
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowWithdrawalModal(true)}
+                disabled={balance.balanceCents < 1000}
+                className={`w-full py-3 rounded-lg font-bold transition-all ${
+                  balance.balanceCents >= 1000
+                    ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                    : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {balance.balanceCents >= 1000 ? 'Withdraw Funds' : 'Withdrawal Unavailable'}
+              </button>
+            </div>
+
+            {/* Earnings Breakdown */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                <p className="text-xs text-gray-400 mb-1">Total Earned</p>
+                <p className="text-2xl font-bold text-green-400">
+                  ${(balance.totalEarnedCents / 100).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                <p className="text-xs text-gray-400 mb-1">Pending Withdrawals</p>
+                <p className="text-2xl font-bold text-yellow-400">
+                  ${(balance.pendingWithdrawalsCents / 100).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                <p className="text-xs text-gray-400 mb-1">Available</p>
+                <p className="text-2xl font-bold text-white">
+                  ${(balance.balanceCents / 100).toFixed(2)}
+                </p>
+              </div>
+            </div>
+
+            {/* Recent Transactions */}
+            {balance.recentTransactions && balance.recentTransactions.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Recent Transactions
+                </h3>
+                <div className="space-y-2">
+                  {balance.recentTransactions.slice(0, 5).map((tx) => (
+                    <div 
+                      key={tx.id} 
+                      className="flex items-center justify-between bg-gray-800/30 border border-gray-700 rounded p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        {tx.amountCents > 0 ? (
+                          <TrendingUp className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <TrendingDown className="w-4 h-4 text-red-400" />
+                        )}
+                        <div>
+                          <p className="text-sm text-white font-mono">{tx.description}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(tx.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <p className={`font-bold ${tx.amountCents > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {tx.amountCents > 0 ? '+' : ''}${(tx.amountCents / 100).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Coming Soon */}
+            <div className="mt-6 p-4 bg-blue-900/20 border border-blue-600/30 rounded-lg">
+              <p className="text-sm text-blue-300">
+                <span className="font-bold">Coming Soon:</span> Partner deals - Sign up for premium services and earn more!
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Withdrawal Modal */}
+        {showWithdrawalModal && balance && (
+          <WithdrawalModal
+            currentBalance={balance.balanceCents}
+            onClose={() => setShowWithdrawalModal(false)}
+            onSuccess={() => {
+              setShowWithdrawalModal(false)
+              loadProfile() // Reload to get updated balance
+            }}
+          />
         )}
 
         {/* Achievements Section */}

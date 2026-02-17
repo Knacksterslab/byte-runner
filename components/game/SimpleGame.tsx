@@ -1927,38 +1927,46 @@ export default function SimpleGame() {
       playerX = 200 + Math.random() * (canvas.width - 400)
       playerY = 200 + Math.random() * (canvas.height - 400)
       
-      // NEW DIFFICULTY PROGRESSION:
-      // Levels 1-4: Speed stays constant, difficulty comes from directional complexity
-      // Level 1: Top only
-      // Level 2: Top + Bottom
-      // Level 3: Top + Bottom + Right (+ Password Quiz!)
-      // Level 4: All 4 directions
-      // Level 5+: Gradual speed increases resume
+      // NEW DIFFICULTY PROGRESSION: 4-Level Cycles
+      // Each cycle = 4 levels with direction progression (1 → 2 → 3 → 4 directions)
+      // Speed increases at start of each new cycle
+      // Cycle 1 (Levels 1-4): Base speed
+      // Cycle 2 (Levels 5-8): Speed +1 step (increase at level 5)
+      // Cycle 3 (Levels 9-12): Speed +2 steps (increase at level 9)
+      // Cycle 4 (Levels 13-16): Speed +3 steps (increase at level 13)
+      // Pattern continues...
       
+      // Determine which cycle we're in (1-based)
+      const cycle = Math.floor((currentLevel - 1) / 4) + 1
+      const positionInCycle = ((currentLevel - 1) % 4) + 1 // 1, 2, 3, or 4
+      
+      // Speed increases at the START of each new cycle (levels 5, 9, 13, 17...)
+      if (positionInCycle === 1 && currentLevel > 4) {
+        // This is the first level of a new cycle, increase speed
+        obstacleSpeed += 0.5 // Noticeable speed step
+        spawnFrequency = Math.max(500, spawnFrequency - 30) // Slightly faster spawns
+      }
+      
+      // Within each cycle, keep speed constant but adjust spawn frequency slightly
+      // This maintains the speed step while allowing minor difficulty tweaks
       if (currentLevel <= 4) {
-        // Levels 1-4: Keep base speed constant, only very minor spawn frequency changes
-        // Difficulty comes purely from adding new threat directions
-        spawnFrequency = Math.max(710, spawnFrequency - 10) // Gentle spawn increase only
-      } else if (isZoneTransition(currentLevel)) {
-        // Zone transitions (levels 7, 10, etc): Major difficulty spike
-        obstacleSpeed += 0.8
-        spawnFrequency = Math.max(260, spawnFrequency - 60)
+        // First cycle: Minor spawn adjustments only
+        spawnFrequency = Math.max(710, spawnFrequency - 10)
       } else {
-        // After level 4: Gradual speed and spawn increases
-        obstacleSpeed += 0.25
-        spawnFrequency = Math.max(320, spawnFrequency - 15)
+        // Later cycles: Very minor spawn adjustments to maintain challenge
+        spawnFrequency = Math.max(400, spawnFrequency - 5)
       }
       
       // Show level-up overlay
       showingLevelUp = true
       levelUpTimer = LEVEL_UP_DURATION
       
-      // Trigger ZONE TRANSITION at levels 4, 7, 10 (zone boundaries!)
-      if (isZoneTransition(currentLevel)) {
+      // Show special transition at start of new cycles (speed increase levels: 5, 9, 13, 17...)
+      if (positionInCycle === 1 && currentLevel > 4) {
         const zone = getCurrentZone(currentLevel)
-        sectorChangeName = zone.name
+        sectorChangeName = `${zone.name} - SPEED INCREASED!`
         showingSectorChange = true
-        sectorChangeTimer = SECTOR_CHANGE_DURATION * 1.5 // Longer for zone transitions
+        sectorChangeTimer = SECTOR_CHANGE_DURATION * 1.5 // Longer to emphasize speed change
       }
       
       // Trigger in-game quiz at certain levels
@@ -2023,26 +2031,30 @@ export default function SimpleGame() {
       const obstacle = getObstacleFromPool()
       if (!obstacle) return // Pool exhausted, skip this spawn
       
-      // Calculate speed based on level
-      // Levels 1-4: No speed scaling (difficulty from directions only)
-      const speedMultiplier = currentLevel <= 4 ? 1.0 : (1 + (currentLevel * 0.1))
+      // Calculate speed based on 4-level cycles
+      // Speed stays constant within each cycle, increases at cycle boundaries
+      const cycle = Math.floor((currentLevel - 1) / 4) + 1
+      const speedMultiplier = 1.0 // Base speed - obstacle speed increases are handled in advanceLevel()
       
       // Select zone-weighted threat type and matching ghost player
       const threat = getZoneWeightedThreat()
       const ghostPlayer = getRandomGhostPlayer(threat.category)
       
-      // Determine spawn direction based on level
-      let spawnDirection = 'top' // Default: Level 1 - top only
-      const availableDirections = ['top']
+      // Determine spawn direction based on 4-level cycle position
+      // Directions reset at start of each cycle, then progressively add more
+      const positionInCycle = ((currentLevel - 1) % 4) + 1 // 1, 2, 3, or 4
       
-      if (currentLevel >= 2) {
-        availableDirections.push('bottom') // Level 2: top + bottom
+      let spawnDirection = 'top' // Default
+      const availableDirections = ['top'] // Position 1 in cycle: top only
+      
+      if (positionInCycle >= 2) {
+        availableDirections.push('bottom') // Position 2: top + bottom
       }
-      if (currentLevel >= 3) {
-        availableDirections.push('right') // Level 3: top + bottom + right
+      if (positionInCycle >= 3) {
+        availableDirections.push('right') // Position 3: top + bottom + right
       }
-      if (currentLevel >= 4) {
-        availableDirections.push('left') // Level 4+: all sides
+      if (positionInCycle >= 4) {
+        availableDirections.push('left') // Position 4: all 4 directions
       }
       
       // Randomly select from available directions

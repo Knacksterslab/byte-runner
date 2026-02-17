@@ -386,6 +386,40 @@ export interface PrizeClaim {
   created_at: string
 }
 
+export interface BalanceTransaction {
+  id: string
+  amountCents: number
+  type: string
+  description: string
+  createdAt: string
+}
+
+export interface BalanceInfo {
+  balanceCents: number
+  pendingWithdrawalsCents: number
+  totalEarnedCents: number
+  recentTransactions: BalanceTransaction[]
+}
+
+export interface Withdrawal {
+  id: string
+  amountCents: number
+  paymentMethod: string
+  status: 'pending' | 'approved' | 'paid' | 'rejected'
+  submittedAt: string
+  reviewedAt: string | null
+  notes: string | null
+}
+
+export interface HourlyChallenge {
+  id: string
+  challengeHour: string
+  status: string
+  winnerUserId: string | null
+  winnerScore: number | null
+  winnerDistance: number | null
+}
+
 // Contest API functions
 export async function getAllContests(status?: string): Promise<Contest[]> {
   const url = status ? `/contests?status=${status}` : '/contests'
@@ -480,5 +514,59 @@ export async function setFeaturedBadge(badgeId: string): Promise<any> {
     body: JSON.stringify({ badgeId })
   })
   if (!res.ok) throw new Error('Failed to set featured badge.')
+  return res.json()
+}
+
+// Balance API functions
+export async function getMyBalance(): Promise<BalanceInfo> {
+  const res = await fetchWithSession('/balance/me', { method: 'GET' })
+  if (!res.ok) throw new Error('Failed to fetch balance.')
+  return res.json()
+}
+
+export async function getBalanceTransactions(limit: number = 50, offset: number = 0): Promise<{ transactions: BalanceTransaction[] }> {
+  const res = await fetchWithSession(`/balance/transactions?limit=${limit}&offset=${offset}`, { method: 'GET' })
+  if (!res.ok) throw new Error('Failed to fetch transactions.')
+  return res.json()
+}
+
+export async function submitWithdrawal(amountCents: number, paymentMethod: string, contactInfo: any): Promise<Withdrawal> {
+  const res = await fetchWithSession('/balance/withdraw', {
+    method: 'POST',
+    body: JSON.stringify({ amountCents, paymentMethod, contactInfo })
+  })
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null)
+    throw new Error(payload?.message || 'Failed to submit withdrawal.')
+  }
+  return res.json()
+}
+
+export async function getMyWithdrawals(): Promise<{ withdrawals: Withdrawal[] }> {
+  const res = await fetchWithSession('/balance/withdrawals', { method: 'GET' })
+  if (!res.ok) throw new Error('Failed to fetch withdrawals.')
+  return res.json()
+}
+
+// Hourly Challenges API functions
+export async function getCurrentHourlyChallenge(): Promise<{ challenge: HourlyChallenge | null }> {
+  const res = await fetchWithSession('/hourly-challenges/current', { method: 'GET' })
+  if (!res.ok) throw new Error('Failed to fetch current hourly challenge.')
+  return res.json()
+}
+
+export async function getHourlyChallengeLeaderboard(challengeHour?: string, limit: number = 10): Promise<any> {
+  const url = challengeHour 
+    ? `/hourly-challenges/leaderboard?challengeHour=${challengeHour}&limit=${limit}`
+    : `/hourly-challenges/leaderboard?limit=${limit}`
+  const res = await fetchWithSession(url, { method: 'GET' })
+  if (!res.ok) throw new Error('Failed to fetch hourly challenge leaderboard.')
+  return res.json()
+}
+
+// User Stats API functions
+export async function getMyStats(): Promise<{ bestScore: number; bestDistance: number; rank: number | null; totalRuns: number }> {
+  const res = await fetchWithSession('/runs/my-stats', { method: 'GET' })
+  if (!res.ok) throw new Error('Failed to fetch user stats.')
   return res.json()
 }

@@ -100,6 +100,7 @@ export default function AdminPage() {
   const supportedTimeZones = useMemo(() => getSupportedTimeZones(), [])
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'contests' | 'withdrawals' | 'hourly'>('contests')
   const [contests, setContests] = useState<Contest[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -299,11 +300,48 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-950 text-white p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3 mb-6">
           <Shield className="w-8 h-8 text-cyan-400" />
           <h1 className="text-4xl font-bold text-cyan-400">Admin Panel</h1>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-8 border-b border-gray-700">
+          <button
+            onClick={() => setActiveTab('contests')}
+            className={`px-6 py-3 font-bold transition-all border-b-2 ${
+              activeTab === 'contests'
+                ? 'text-cyan-400 border-cyan-400'
+                : 'text-gray-400 border-transparent hover:text-gray-300'
+            }`}
+          >
+            Contests
+          </button>
+          <button
+            onClick={() => setActiveTab('withdrawals')}
+            className={`px-6 py-3 font-bold transition-all border-b-2 ${
+              activeTab === 'withdrawals'
+                ? 'text-cyan-400 border-cyan-400'
+                : 'text-gray-400 border-transparent hover:text-gray-300'
+            }`}
+          >
+            Withdrawals
+          </button>
+          <button
+            onClick={() => setActiveTab('hourly')}
+            className={`px-6 py-3 font-bold transition-all border-b-2 ${
+              activeTab === 'hourly'
+                ? 'text-cyan-400 border-cyan-400'
+                : 'text-gray-400 border-transparent hover:text-gray-300'
+            }`}
+          >
+            Hourly Challenges
+          </button>
+        </div>
+
+        {/* Contests Tab */}
+        {activeTab === 'contests' && (
+          <>
         {/* Action Buttons */}
         {!showForm && (
           <div className="mb-6 flex gap-3">
@@ -599,6 +637,44 @@ export default function AdminPage() {
             <li>Visit contest page to see leaderboard: /contests/[id]</li>
           </ul>
         </div>
+        </>
+        )}
+
+        {/* Withdrawals Tab */}
+        {activeTab === 'withdrawals' && (
+          <div className="bg-gray-900 border-2 border-gray-700 rounded-lg p-6">
+            <h2 className="text-2xl font-bold text-green-400 mb-4">Withdrawal Requests</h2>
+            <p className="text-gray-400">Withdrawal management coming soon - check backend at /balance/withdrawals</p>
+            <div className="mt-4 text-sm text-gray-500">
+              <p>Features to implement:</p>
+              <ul className="list-disc list-inside space-y-1 mt-2">
+                <li>List all pending withdrawals</li>
+                <li>Approve/Reject withdrawal requests</li>
+                <li>Mark as paid when processed</li>
+                <li>Add admin notes</li>
+                <li>Filter by status (pending/approved/paid/rejected)</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Hourly Challenges Tab */}
+        {activeTab === 'hourly' && (
+          <div className="bg-gray-900 border-2 border-gray-700 rounded-lg p-6">
+            <h2 className="text-2xl font-bold text-cyan-400 mb-4">Hourly Challenges</h2>
+            <p className="text-gray-400">Hourly challenge monitoring coming soon - check backend at /hourly-challenges</p>
+            <div className="mt-4 text-sm text-gray-500">
+              <p>Features to implement:</p>
+              <ul className="list-disc list-inside space-y-1 mt-2">
+                <li>View current hourly challenge status</li>
+                <li>List recent challenge winners</li>
+                <li>View challenge history</li>
+                <li>Monitor participation rates</li>
+                <li>Manual challenge creation/resolution</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

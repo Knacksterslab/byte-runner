@@ -389,17 +389,18 @@ export function getRandomQuizChallenge(): QuizChallenge {
 
 // Get quiz by level (progressive introduction)
 export function getQuizForLevel(level: number): QuizChallenge | null {
-  if (level < 3) return null // No quiz in first 2 levels
+  // Quizzes appear every 3 levels starting at level 3
+  if (level % 3 !== 0) return null // Only on levels 3, 6, 9, 12, 15, 18...
   
-  // Introduce quizzes progressively
-  if (level === 3 || level === 4) return passwordStrengthQuiz
-  if (level === 5 || level === 6) return emailSecurityQuiz
-  if (level === 7 || level === 8) return wifiSecurityQuiz
-  if (level === 9 || level === 10) return linkSafetyQuiz
-  if (level === 11 || level === 12) return dataClassificationQuiz
-  if (level === 13 || level === 14) return secureDisposalQuiz
-  if (level === 15 || level === 16) return meetingSecurityQuiz
+  // Introduce different quiz types progressively
+  if (level === 3) return passwordStrengthQuiz
+  if (level === 6) return emailSecurityQuiz
+  if (level === 9) return wifiSecurityQuiz
+  if (level === 12) return linkSafetyQuiz
+  if (level === 15) return dataClassificationQuiz
+  if (level === 18) return secureDisposalQuiz
+  if (level === 21) return meetingSecurityQuiz
   
-  // After level 16, random quiz
+  // After level 21, random quiz every 3 levels
   return getRandomQuizChallenge()
 }

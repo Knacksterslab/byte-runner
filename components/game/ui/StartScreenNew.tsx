@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Keyboard, AlertTriangle, Shield, Skull, Trophy } from 'lucide-react'
+import { Keyboard, AlertTriangle, Shield, Skull, Trophy, Clock, DollarSign } from 'lucide-react'
 import { useGameStore } from '@/lib/store/gameStore'
+import { getCurrentHourlyChallenge, type HourlyChallenge } from '@/lib/api/backend'
 
 interface Contest {
   id: string
@@ -32,9 +33,15 @@ export function StartScreenNew({
   const leaderboard = useGameStore((state) => state.leaderboard)
   const ensureLeaderboardSeeded = useGameStore((state) => state.ensureLeaderboardSeeded)
   const entries = leaderboard.slice(0, 3)
+  const [hourlyChallenge, setHourlyChallenge] = useState<HourlyChallenge | null>(null)
 
   useEffect(() => {
     ensureLeaderboardSeeded()
+    
+    // Fetch current hourly challenge
+    getCurrentHourlyChallenge()
+      .then(res => setHourlyChallenge(res.challenge))
+      .catch(() => {}) // Silently fail if service unavailable
   }, [ensureLeaderboardSeeded])
 
   return (
@@ -89,6 +96,56 @@ export function StartScreenNew({
             <span className="btn-outer-glow" />
             <span className="btn-text">START GAME</span>
           </button>
+
+        {/* Hourly Challenge Banner */}
+        {hourlyChallenge && (
+          <div className="w-full max-w-[700px] mb-4 sm:mb-6">
+            <div className="panel stack-panel px-5 sm:px-8 py-4 text-left bg-gradient-to-br from-green-900/20 to-emerald-900/20">
+              <span className="panel-outline" style={{ borderColor: 'rgba(34, 197, 94, 0.5)' }} />
+              <div className="panel-title">
+                <span className="title-line" style={{ background: 'linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.6), transparent)' }} />
+                <span className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
+                  HOURLY CHALLENGE
+                </span>
+                <span className="title-line" style={{ background: 'linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.6), transparent)' }} />
+              </div>
+              <div className="bg-black/30 rounded-lg p-3 sm:p-4 border border-green-600/30">
+                <div className="flex items-center justify-between gap-3 mb-2 sm:mb-3">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-white text-base sm:text-lg font-bold">Win $1.00</p>
+                      <p className="text-green-300 text-[10px] sm:text-xs font-mono">Highest score this hour wins</p>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-orange-300 text-xs sm:text-sm font-mono font-bold">
+                      {(() => {
+                        const now = new Date()
+                        const challengeHour = new Date(hourlyChallenge.challengeHour)
+                        const nextHour = new Date(challengeHour)
+                        nextHour.setHours(nextHour.getHours() + 1)
+                        const minutesLeft = Math.max(0, Math.floor((nextHour.getTime() - now.getTime()) / (1000 * 60)))
+                        return `${minutesLeft}min left`
+                      })()}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-[10px] sm:text-xs text-gray-300 mb-2 sm:mb-3">
+                  Every hour, the player with the highest score automatically wins $1! Your best run counts automatically.
+                </div>
+                <button
+                  type="button"
+                  onClick={onStart}
+                  className="block w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-xs sm:text-sm font-bold py-2 sm:py-2.5 rounded-lg transition-all text-center shadow-[0_0_12px_rgba(34,197,94,0.3)]"
+                >
+                  Play Now - Compete for $1! →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Two Column Grid */}
         <div className="w-full grid md:grid-cols-2 gap-4 md:gap-8 mt-0">
