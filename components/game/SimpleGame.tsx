@@ -3858,13 +3858,24 @@ powerups = powerups.filter(kit => {
             </div>
 
             <div className="mt-5 text-white font-mono text-[1.2rem] sm:text-[1.4rem]">
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="text-white hover:text-cyan-200 transition-colors"
-              >
-                Sign in to save score
-              </button>
-              <span className="mx-3 text-gray-400">•</span>
+              {authStatus !== 'authed' ? (
+                <>
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="text-white hover:text-cyan-200 transition-colors"
+                  >
+                    Sign in to save score
+                  </button>
+                  <span className="mx-3 text-gray-400">•</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-cyan-400">
+                    ✓ Signed in as {currentUser?.username || 'Player'}
+                  </span>
+                  <span className="mx-3 text-gray-400">•</span>
+                </>
+              )}
               <button
                 onClick={async () => {
                   const tweetText = `I just scored ${score} points in Byte Runner! 🎮🔐\n\nCan you beat my score?\n\nPlay now: ${window.location.origin}`
