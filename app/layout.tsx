@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
+import { AnalyticsPageView } from "@/components/AnalyticsPageView";
 
 export const metadata: Metadata = {
   title: "Byte Runner - A Cybersecurity Survival Game for Everyone",
@@ -80,7 +81,7 @@ export default function RootLayout({
             </Script>
           </>
         )}
-        
+        <AnalyticsPageView />
         {children}
       </body>
     </html>

@@ -153,3 +153,52 @@ export const trackDeepDiveViewed = (kitType: string) => {
     })
   }
 }
+
+// Conversion / Engagement Events
+export const trackRunSaved = (payload: {
+  score: number
+  distance: number
+  enteredContests?: string[]
+}) => {
+  if (isGAEnabled()) {
+    const { score, distance, enteredContests } = payload
+    const contestCount = enteredContests?.length ?? 0
+    const enteredContestsList = enteredContests?.join(', ') ?? ''
+    window.gtag('event', 'run_saved', {
+      event_category: 'conversion',
+      score,
+      distance,
+      contest_count: contestCount,
+      entered_contests: enteredContestsList,
+      event_label: 'run_saved_to_leaderboard'
+    })
+  }
+}
+
+// Auth Events
+export const trackSignIn = () => {
+  if (isGAEnabled()) {
+    window.gtag('event', 'sign_in', {
+      event_category: 'auth',
+      event_label: 'user_signed_in'
+    })
+  }
+}
+
+export const trackSignUp = () => {
+  if (isGAEnabled()) {
+    window.gtag('event', 'sign_up', {
+      event_category: 'auth',
+      event_label: 'user_signed_up'
+    })
+  }
+}
+
+export const trackUsernameSet = () => {
+  if (isGAEnabled()) {
+    window.gtag('event', 'username_set', {
+      event_category: 'onboarding',
+      event_label: 'username_set'
+    })
+  }
+}

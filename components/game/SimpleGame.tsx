@@ -7,7 +7,7 @@ import { getRandomThreat, getThreatName, getQuickTip, threatTypes, type ThreatTy
 import { getRandomGhostPlayer, type GhostPlayer } from '@/lib/game/ghostPlayers'
 import { getProtectionKitName, getProtectionKitForThreat, getProtectionKitById, type ProtectionKit } from '@/lib/game/protectionKits'
 import { getCurrentZone, isZoneTransition, getZoneTip, getThreatSpawnWeight } from '@/lib/game/zones'
-import { trackGameStart, trackGameOver, trackLevelUp, trackKitCollected, trackQuizAttempt, trackQuizPass, trackQuizFail, trackTutorialViewed, trackSocialShare, trackEducationExpanded, trackDeepDiveViewed } from '@/lib/analytics'
+import { trackGameStart, trackGameOver, trackLevelUp, trackKitCollected, trackQuizAttempt, trackQuizPass, trackQuizFail, trackTutorialViewed, trackSocialShare, trackEducationExpanded, trackDeepDiveViewed, trackRunSaved, trackSignIn, trackSignUp, trackUsernameSet } from '@/lib/analytics'
 import { getQuizForLevel, type QuizChallenge, type QuizItem } from '@/lib/game/inGameQuizzes'
 import { calculateTotalKits } from '@/lib/game/utils'
 import { PLAYER_CONFIG, GAME_CONFIG, KIT_CONFIG, QUIZ_CONFIG, VISUAL_CONFIG, ALL_KIT_TYPES, getKitIcon } from '@/lib/game/gameConstants'
@@ -1922,6 +1922,7 @@ export default function SimpleGame() {
       
       currentLevel++
       setLevel(currentLevel)
+      trackLevelUp(currentLevel)
       
       // Spawn at random safe position (not too close to edges)
       playerX = 200 + Math.random() * (canvas.width - 400)
@@ -3422,6 +3423,8 @@ powerups = powerups.filter(kit => {
       setCurrentUser(user)
       setAuthStatus(user ? 'authed' : 'guest')
       setShowAuthModal(false)
+      if (authMode === 'signup') trackSignUp()
+      else trackSignIn()
 
       if (user && !user.username) {
         setUsernameInput('')
@@ -3446,6 +3449,7 @@ powerups = powerups.filter(kit => {
       setCurrentUser(updated)
       setShowUsernameModal(false)
       setSaveMessage(null)
+      trackUsernameSet()
       if (pendingSave) {
         setPendingSave(false)
         await handleSaveToLeaderboard()
@@ -3488,6 +3492,7 @@ powerups = powerups.filter(kit => {
       })
       await refreshLeaderboard()
       setSaveStatus('saved')
+      trackRunSaved({ score, distance, enteredContests: result.enteredContests })
       
       // Show contest entry notification
       if (result.enteredContests && result.enteredContests.length > 0) {

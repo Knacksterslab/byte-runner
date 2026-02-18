@@ -163,6 +163,11 @@ If analytics enabled:
 - [ ] Quiz pass/fail tracked
 - [ ] Tutorial viewed tracked
 - [ ] Deep dive viewed tracked
+- [ ] Page view tracked (navigate between /, /profile, /privacy and verify in GA4)
+- [ ] Run saved to leaderboard tracked
+- [ ] Sign in tracked
+- [ ] Sign up tracked
+- [ ] Username set tracked
 
 ## Known Issues
 
