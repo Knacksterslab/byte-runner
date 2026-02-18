@@ -152,13 +152,9 @@ export function StartScreenNew({
                 <div className="text-[10px] sm:text-xs text-gray-300 mb-2 sm:mb-3">
                   Every hour, the player with the highest score automatically wins $1! Your best run counts automatically.
                 </div>
-                <button
-                  type="button"
-                  onClick={onStart}
-                  className="block w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-xs sm:text-sm font-bold py-2 sm:py-2.5 rounded-lg transition-all text-center shadow-[0_0_12px_rgba(34,197,94,0.3)]"
-                >
-                  Play Now - Compete for $1! →
-                </button>
+                <p className="text-green-200/90 text-[10px] sm:text-xs font-mono text-center">
+                  Use &quot;Start game&quot; above — your best run this hour counts.
+                </p>
               </div>
             </div>
           </div>

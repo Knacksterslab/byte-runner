@@ -3506,7 +3506,6 @@ powerups = powerups.filter(kit => {
     if (!isGameOver) return
     if (showQuiz) return
     if (authStatus !== 'authed') return
-    if (!currentUser?.username) return
     if (saveStatus !== 'idle') return
     
     // Auto-save with slight delay to ensure state is stable
