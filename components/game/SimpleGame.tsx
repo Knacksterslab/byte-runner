@@ -3449,11 +3449,9 @@ powerups = powerups.filter(kit => {
       setCurrentUser(updated)
       setShowUsernameModal(false)
       setSaveMessage(null)
+      setPendingSave(false)
       trackUsernameSet()
-      if (pendingSave) {
-        setPendingSave(false)
-        await handleSaveToLeaderboard()
-      }
+      // Let the auto-save effect run after state updates so it sees the new username
     } catch (error) {
       setUsernameError(error instanceof Error ? error.message : 'Failed to set username.')
     } finally {
