@@ -23,6 +23,7 @@ export interface StartScreenNewProps {
   activeContests?: Contest[]
   username?: string | null
   isAuthenticated?: boolean
+  onRequestSetUsername?: () => void
 }
 
 export function StartScreenNew({ 
@@ -32,7 +33,8 @@ export function StartScreenNew({
   signInLabel = 'Sign in',
   activeContests = [],
   username = null,
-  isAuthenticated = false
+  isAuthenticated = false,
+  onRequestSetUsername
 }: StartScreenNewProps) {
   const leaderboard = useGameStore((state) => state.leaderboard)
   const ensureLeaderboardSeeded = useGameStore((state) => state.ensureLeaderboardSeeded)
@@ -113,6 +115,22 @@ export function StartScreenNew({
             <span className="btn-outer-glow" />
             <span className="btn-text">START GAME</span>
           </button>
+
+        {/* Set username reminder when signed in but no username */}
+        {isAuthenticated && !username && onRequestSetUsername && (
+          <div className="w-full max-w-md mb-4 sm:mb-6 px-4 py-3 rounded-lg bg-amber-900/20 border border-amber-500/40">
+            <p className="text-amber-200/90 text-xs sm:text-sm font-mono mb-2">
+              Set a username to save runs and enter contests.
+            </p>
+            <button
+              type="button"
+              onClick={onRequestSetUsername}
+              className="text-amber-300 hover:text-amber-200 font-mono text-xs sm:text-sm font-bold underline transition-colors"
+            >
+              Set username →
+            </button>
+          </div>
+        )}
 
         {/* Hourly Challenge Banner */}
         {hourlyChallenge && (

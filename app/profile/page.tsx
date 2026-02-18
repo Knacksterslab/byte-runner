@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getCurrentUser, getLeaderboard, signOut, getAllBadges, getMyBadges, setFeaturedBadge, getMyBalance, getMyStats, type BackendUser, type LeaderboardItem, type Badge, type UserBadge, type BalanceInfo } from '@/lib/api/backend'
+import { getCurrentUser, getLeaderboard, signOut, getAllBadges, getMyBadges, setFeaturedBadge, getMyBalance, getMyStats, setUsername as apiSetUsername, type BackendUser, type LeaderboardItem, type Badge, type UserBadge, type BalanceInfo } from '@/lib/api/backend'
 import { User, Trophy, TrendingUp, Target, Shield, LogOut, Mail, Award, Star, DollarSign, TrendingDown, Clock } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { PageWrapper } from '@/components/PageWrapper'
@@ -29,6 +29,9 @@ export default function ProfilePage() {
   const [balance, setBalance] = useState<BalanceInfo | null>(null)
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [usernameInput, setUsernameInput] = useState('')
+  const [usernameError, setUsernameError] = useState<string | null>(null)
+  const [usernameLoading, setUsernameLoading] = useState(false)
 
   useEffect(() => {
     loadProfile()
@@ -78,6 +81,21 @@ export default function ProfilePage() {
       router.push('/')
     } catch (error) {
       console.error('Sign out failed:', error)
+    }
+  }
+
+  const handleUsernameSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setUsernameLoading(true)
+    setUsernameError(null)
+    try {
+      const updated = await apiSetUsername(usernameInput.trim())
+      setCurrentUser(updated)
+      setUsernameInput('')
+    } catch (error) {
+      setUsernameError(error instanceof Error ? error.message : 'Failed to set username.')
+    } finally {
+      setUsernameLoading(false)
     }
   }
 
@@ -134,6 +152,38 @@ export default function ProfilePage() {
             Account created {new Date(currentUser.createdAt).toLocaleDateString()}
           </p>
         </div>
+
+        {/* Set username card when missing */}
+        {!currentUser.username && (
+          <div className="mb-8 p-6 rounded-xl border-2 border-amber-500/50 bg-amber-900/20">
+            <h2 className="text-lg font-bold text-amber-300 font-mono mb-2">Choose your username</h2>
+            <p className="text-amber-200/90 text-sm font-mono mb-4">
+              Required to save runs and enter contests. This name will appear on the leaderboard.
+            </p>
+            <form onSubmit={handleUsernameSubmit} className="space-y-3 max-w-sm">
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+                className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-sm font-mono"
+                placeholder="3–16 letters, numbers, underscores"
+                minLength={3}
+                maxLength={16}
+                required
+              />
+              {usernameError && (
+                <p className="text-red-300 text-xs font-mono">{usernameError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={usernameLoading}
+                className="w-full bg-gradient-to-r from-green-400 to-emerald-500 text-black font-black py-2 rounded-full text-xs font-mono tracking-widest disabled:opacity-60"
+              >
+                {usernameLoading ? 'SAVING...' : 'SET USERNAME'}
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">

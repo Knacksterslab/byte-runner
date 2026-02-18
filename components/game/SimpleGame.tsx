@@ -134,6 +134,10 @@ export default function SimpleGame() {
         if (user) {
           setCurrentUser(user)
           setAuthStatus('authed')
+          if (!user.username) {
+            setUsernameInput('')
+            setShowUsernameModal(true)
+          }
         } else {
           setCurrentUser(null)
           setAuthStatus('guest')
@@ -585,6 +589,13 @@ export default function SimpleGame() {
     let showingLevelUp = false
     let levelUpTimer = 0
     const LEVEL_UP_DURATION = 2000 // 2 seconds
+
+    // Perfect-play turbo boost: full inventory for N seconds -> score bonus + level up
+    const PERFECT_PLAY_DURATION_MS = 45000 // 45 seconds at full inventory
+    const TURBO_BOOST_SCORE = 1000
+    const TURBO_BOOST_CELEBRATION_DURATION = 3500 // 3.5 seconds big celebration
+    let perfectPlayDurationMs = 0
+    let turboBoostCelebrationTimer = 0
     
     // Background animation
     let bgOffset = 0
@@ -1485,6 +1496,69 @@ export default function SimpleGame() {
       
       // Decrement timer
       levelUpTimer -= 16
+    }
+
+    // Draw turbo boost celebration (perfect play: full inventory for N seconds)
+    function drawTurboBoostCelebration() {
+      if (quiz.refs.activeRef.current) return
+      if (turboBoostCelebrationTimer <= 0) return
+
+      const progress = 1 - turboBoostCelebrationTimer / TURBO_BOOST_CELEBRATION_DURATION
+      const pulse = Math.sin(Date.now() / 80) * 0.15 + 0.85
+
+      // Full-screen golden/cyan flash
+      ctx.fillStyle = `rgba(255, 215, 0, ${0.25 * (1 - progress)})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.fillStyle = `rgba(0, 255, 255, ${0.15 * (1 - progress)})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Large center overlay
+      const overlayWidth = Math.min(560, canvas.width - 40)
+      const overlayHeight = 260
+      const overlayX = canvas.width / 2 - overlayWidth / 2
+      const overlayY = canvas.height / 2 - overlayHeight / 2
+
+      ctx.fillStyle = 'rgba(0, 8, 20, 0.95)'
+      ctx.beginPath()
+      ctx.roundRect(overlayX, overlayY, overlayWidth, overlayHeight, 20)
+      ctx.fill()
+
+      ctx.strokeStyle = '#ffd700'
+      ctx.lineWidth = 5
+      ctx.shadowBlur = 30
+      ctx.shadowColor = '#ffd700'
+      ctx.stroke()
+      ctx.shadowBlur = 0
+
+      ctx.strokeStyle = '#00ffff'
+      ctx.lineWidth = 2
+      ctx.shadowBlur = 15
+      ctx.shadowColor = '#00ffff'
+      ctx.stroke()
+      ctx.shadowBlur = 0
+
+      ctx.textAlign = 'center'
+      const cx = canvas.width / 2
+      const cy = canvas.height / 2
+
+      ctx.font = `bold ${Math.floor(52 * pulse)}px monospace`
+      ctx.fillStyle = '#ffd700'
+      ctx.fillText('⚡ TURBO BOOST! ⚡', cx, cy - 70)
+      ctx.font = 'bold 28px monospace'
+      ctx.fillStyle = '#00ffff'
+      ctx.fillText('PERFECT PLAY', cx, cy - 30)
+      ctx.font = 'bold 36px monospace'
+      ctx.fillStyle = '#00ff88'
+      ctx.fillText(`+${TURBO_BOOST_SCORE} pts`, cx, cy + 20)
+      ctx.font = 'bold 24px monospace'
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText('Level up!', cx, cy + 60)
+      ctx.font = '18px monospace'
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'
+      ctx.fillText('Full inventory sustained — keep going!', cx, cy + 95)
+      ctx.textAlign = 'left'
+
+      turboBoostCelebrationTimer -= 16
     }
     
     // Draw sector/zone change overlay (ENTERING NEW ZONE!)
@@ -2521,6 +2595,7 @@ export default function SimpleGame() {
       // Draw overlays
       drawTutorialOverlay()
       drawLevelUpOverlay()
+      drawTurboBoostCelebration()
       drawSectorChangeOverlay()
       drawRestorationOverlay()
       drawQuizCompletionMessage()
@@ -2545,7 +2620,7 @@ export default function SimpleGame() {
       const isReactQuizOpen = showQuizOverlayRef.current
       // Hide legacy canvas HUD for the full quiz/recovery lifecycle.
       const isInGameQuizOverlayActive = quiz.refs.activeRef.current
-      const shouldHideHud = isReactQuizOpen || isInGameQuizOverlayActive || showingTutorial
+      const shouldHideHud = isReactQuizOpen || isInGameQuizOverlayActive || showingTutorial || turboBoostCelebrationTimer > 0
 
       if (!shouldHideHud) {
         const hudX = 18
@@ -2791,7 +2866,7 @@ const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
           ctx.textAlign = 'left'
 }
 // Check collision with obstacles (skip if player is invincible)
-        const isPlayerInvincible = quiz.refs.activeRef.current || isHealing || isRestoring || levelUpTimer > 0
+        const isPlayerInvincible = quiz.refs.activeRef.current || isHealing || isRestoring || levelUpTimer > 0 || turboBoostCelebrationTimer > 0
         if (!isPlayerInvincible && checkCollision(
           { x: playerX - playerSize / 2, y: playerY - playerSize / 2, width: playerSize, height: playerSize },
           { x: obstacle.x - obstacle.width / 2, y: obstacle.y - obstacle.height / 2, width: obstacle.width, height: obstacle.height }
@@ -2803,6 +2878,7 @@ const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
           if (requiredKit && kitInventory[requiredKit] !== undefined && kitInventory[requiredKit] > 0) {
             // Use the kit - player survives but needs to recollect!
             kitInventory[requiredKit]--
+            perfectPlayDurationMs = 0 // Reset perfect-play timer when using a kit
             totalKitsCollected = Math.max(0, totalKitsCollected - 1) // Deduct from progress - must recollect to advance
             lastHitThreatId = obstacle.threatId
             setLastAttacker(obstacle.sentBy, obstacle.threatId)
@@ -2815,6 +2891,7 @@ const opacity = 1 - (timeSinceSpawn / 2000) // Fade out
             if (kitInventory['backup-system'] !== undefined && kitInventory['backup-system'] > 0) {
               // USE BACKUP KIT - RESTORE FROM BACKUP! 💾
               kitInventory['backup-system']--
+              perfectPlayDurationMs = 0 // Reset perfect-play timer when using backup
               totalKitsCollected = Math.max(0, totalKitsCollected - 1)
               
               // Trigger restoration animation
@@ -3012,6 +3089,20 @@ powerups = powerups.filter(kit => {
       // Draw player LAST so it's always visible on top of everything
       // Dynamic glow based on kits collected or quiz state
       const totalKitsInInventory = calculateTotalKits(kitInventory)
+      // Perfect-play turbo boost: full inventory for N seconds -> score bonus + level up + big celebration
+      const MAX_FULL_INVENTORY = ALL_KIT_TYPES.length * MAX_KIT_CAPACITY
+      if (totalKitsInInventory >= MAX_FULL_INVENTORY) {
+        perfectPlayDurationMs += frameMs
+        if (perfectPlayDurationMs >= PERFECT_PLAY_DURATION_MS && turboBoostCelebrationTimer <= 0) {
+          localScore += TURBO_BOOST_SCORE
+          advanceLevel()
+          perfectPlayDurationMs = 0
+          turboBoostCelebrationTimer = TURBO_BOOST_CELEBRATION_DURATION
+          spawnConfetti(canvas.width / 2, canvas.height / 2, 50)
+        }
+      } else {
+        perfectPlayDurationMs = 0
+      }
       const glowIntensity = 20 + (totalKitsInInventory * 10) + (totalKitsCollected * 2)
       const glowSize = 30 + (totalKitsInInventory * 5)
       
@@ -3402,6 +3493,53 @@ powerups = powerups.filter(kit => {
     )
   }
 
+  const renderUsernameModal = () => {
+    if (!showUsernameModal) return null
+    return (
+      <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-4">
+        <div className="w-full max-w-sm bg-[#0b1020]/90 border border-cyan-500/40 rounded-2xl p-4 sm:p-5 shadow-[0_0_26px_rgba(0,200,255,0.2)]">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-cyan-200 font-mono text-sm sm:text-base font-bold tracking-wide">
+              Choose a username
+            </h3>
+            <button
+              onClick={() => setShowUsernameModal(false)}
+              className="h-8 w-8 flex items-center justify-center rounded-md border border-cyan-400/40 text-cyan-200 hover:text-white hover:border-cyan-300 transition-colors"
+              aria-label="Close username"
+            >
+              ✕
+            </button>
+          </div>
+          <form onSubmit={handleUsernameSubmit} className="space-y-3">
+            <input
+              type="text"
+              value={usernameInput}
+              onChange={(event) => setUsernameInput(event.target.value)}
+              className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-sm font-mono"
+              placeholder="3-16 letters, numbers, underscores"
+              minLength={3}
+              maxLength={16}
+              required
+            />
+            {usernameError && (
+              <p className="text-red-300 text-xs font-mono">{usernameError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={usernameLoading}
+              className="w-full bg-gradient-to-r from-green-400 to-emerald-500 text-black font-black py-2 rounded-full text-xs font-mono tracking-widest shadow-[0_0_20px_rgba(80,255,160,0.45)] disabled:opacity-60"
+            >
+              {usernameLoading ? 'SAVING...' : 'SET USERNAME'}
+            </button>
+          </form>
+          <p className="mt-2 text-[11px] text-gray-300 font-mono">
+            This name will appear on the leaderboard.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setAuthLoading(true)
@@ -3431,7 +3569,7 @@ powerups = powerups.filter(kit => {
         setShowUsernameModal(true)
       } else if (user && pendingSave) {
         setPendingSave(false)
-        await handleSaveToLeaderboard()
+        await handleSaveToLeaderboard(user)
       }
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'Authentication failed.')
@@ -3459,13 +3597,14 @@ powerups = powerups.filter(kit => {
     }
   }
 
-  const handleSaveToLeaderboard = async () => {
+  const handleSaveToLeaderboard = async (overrideUser?: BackendUser | null) => {
+    const userForSave = overrideUser ?? currentUser
     if (authStatus !== 'authed') {
       setPendingSave(true)
       setShowAuthModal(true)
       return
     }
-    if (!currentUser?.username) {
+    if (!userForSave?.username) {
       setPendingSave(true)
       setShowUsernameModal(true)
       return
@@ -3483,7 +3622,7 @@ powerups = powerups.filter(kit => {
         clientVersion: 'web'
       })
       addLeaderboardEntry({
-        name: currentUser.username,
+        name: userForSave.username,
         score,
         distance,
         isPlayer: true
@@ -3534,6 +3673,11 @@ powerups = powerups.filter(kit => {
   }
 
   const handleStart = () => {
+    if (authStatus === 'authed' && !currentUser?.username) {
+      setUsernameInput('')
+      setShowUsernameModal(true)
+      return
+    }
     trackGameStart()
     resetGame()
     setGameStarted(true)
@@ -3662,8 +3806,13 @@ powerups = powerups.filter(kit => {
             activeContests={activeContests}
             username={currentUser?.username}
             isAuthenticated={authStatus === 'authed'}
+            onRequestSetUsername={() => {
+              setUsernameInput('')
+              setShowUsernameModal(true)
+            }}
           />
           {renderAuthModal()}
+          {renderUsernameModal()}
         </div>
       </>
     )
@@ -3863,7 +4012,10 @@ powerups = powerups.filter(kit => {
               {authStatus !== 'authed' ? (
                 <>
                   <button
-                    onClick={() => setShowAuthModal(true)}
+                    onClick={() => {
+                      setPendingSave(true)
+                      setShowAuthModal(true)
+                    }}
                     className="text-white hover:text-cyan-200 transition-colors"
                   >
                     Sign in to save score
@@ -3914,50 +4066,7 @@ powerups = powerups.filter(kit => {
 
       {/* Auth Modal moved to home screen */}
 
-      {/* Username Modal */}
-      {showUsernameModal && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-sm bg-[#0b1020]/90 border border-cyan-500/40 rounded-2xl p-4 sm:p-5 shadow-[0_0_26px_rgba(0,200,255,0.2)]">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-cyan-200 font-mono text-sm sm:text-base font-bold tracking-wide">
-                Choose a username
-              </h3>
-              <button
-                onClick={() => setShowUsernameModal(false)}
-                className="h-8 w-8 flex items-center justify-center rounded-md border border-cyan-400/40 text-cyan-200 hover:text-white hover:border-cyan-300 transition-colors"
-                aria-label="Close username"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleUsernameSubmit} className="space-y-3">
-              <input
-                type="text"
-                value={usernameInput}
-                onChange={(event) => setUsernameInput(event.target.value)}
-                className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-sm font-mono"
-                placeholder="3-16 letters, numbers, underscores"
-                minLength={3}
-                maxLength={16}
-                required
-              />
-              {usernameError && (
-                <p className="text-red-300 text-xs font-mono">{usernameError}</p>
-              )}
-              <button
-                type="submit"
-                disabled={usernameLoading}
-                className="w-full bg-gradient-to-r from-green-400 to-emerald-500 text-black font-black py-2 rounded-full text-xs font-mono tracking-widest shadow-[0_0_20px_rgba(80,255,160,0.45)] disabled:opacity-60"
-              >
-                {usernameLoading ? 'SAVING...' : 'SET USERNAME'}
-              </button>
-            </form>
-            <p className="mt-2 text-[11px] text-gray-300 font-mono">
-              This name will appear on the leaderboard.
-            </p>
-          </div>
-        </div>
-      )}
+      {renderUsernameModal()}
       
       {/* Knowledge Card Modal - Deep Learning */}
       {ui.state.showLearnMore && lastThreatType && (() => {
