@@ -297,13 +297,22 @@ export default function SimpleGame() {
     // Disable image smoothing for crisp pixel art
     ctx.imageSmoothingEnabled = false
     
-    // Make fullscreen
+    // Size canvas to container so HUD respects safe-area (pt-[env(safe-area-inset-top)])
     const resizeCanvas = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+      const container = canvas.parentElement
+      if (container) {
+        canvas.width = container.clientWidth
+        canvas.height = container.clientHeight
+      } else {
+        canvas.width = window.innerWidth
+        canvas.height = window.innerHeight
+      }
     }
     resizeCanvas()
     window.addEventListener('resize', resizeCanvas)
+    const container = canvas.parentElement
+    const resizeObserver = container ? new ResizeObserver(resizeCanvas) : null
+    if (resizeObserver && container) resizeObserver.observe(container)
     
     // Load sprite images (player is now animated stick figure, no sprite needed)
     const images = {
@@ -3393,6 +3402,7 @@ powerups = powerups.filter(kit => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('resize', resizeCanvas)
+      if (resizeObserver && canvas.parentElement) resizeObserver.disconnect()
       // Clean up touch listeners
       canvas.removeEventListener('touchstart', handleTouchStart)
       canvas.removeEventListener('touchmove', handleTouchMove)
@@ -3819,7 +3829,7 @@ powerups = powerups.filter(kit => {
   }
   
   return (
-    <div className="relative w-full h-[100dvh] overflow-hidden">
+    <div className="relative w-full h-[100dvh] overflow-hidden pt-[env(safe-area-inset-top)]">
       {renderAuthModal()}
       {/* Top runs panel removed from active gameplay per design */}
       

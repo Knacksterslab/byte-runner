@@ -167,7 +167,7 @@ export function StartScreenNew({
                     </p>
                   </div>
                 </div>
-                <div className="text-xs sm:text-sm text-gray-300">
+                <div className="text-sm text-gray-300">
                   Every hour, the player with the highest score automatically wins $1! Your best run counts automatically.
                 </div>
               </div>
@@ -757,7 +757,7 @@ export function StartScreenNew({
           }
 
           .panel {
-            max-width: 100%;
+            max-width: min(100%, 520px);
             padding: 18px 20px;
           }
 
@@ -777,7 +777,7 @@ export function StartScreenNew({
           }
 
           .panel {
-            max-width: 100%;
+            max-width: min(100%, 520px);
             padding: 16px 18px;
           }
 
