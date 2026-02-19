@@ -297,19 +297,29 @@ export default function SimpleGame() {
     // Disable image smoothing for crisp pixel art
     ctx.imageSmoothingEnabled = false
     
+    // Track resolved top inset so HUD stays visible on iPhone/notched screens.
+    let safeTopInset = 0
+
     // Size canvas to container so HUD respects safe-area (pt-[env(safe-area-inset-top)])
     const resizeCanvas = () => {
       const container = canvas.parentElement
       if (container) {
         canvas.width = container.clientWidth
         canvas.height = container.clientHeight
+        const resolvedTop = parseFloat(window.getComputedStyle(container).paddingTop || '0')
+        safeTopInset = Number.isFinite(resolvedTop) ? Math.max(0, resolvedTop) : 0
       } else {
-        canvas.width = window.innerWidth
-        canvas.height = window.innerHeight
+        const viewportWidth = window.visualViewport?.width ?? window.innerWidth
+        const viewportHeight = window.visualViewport?.height ?? window.innerHeight
+        canvas.width = viewportWidth
+        canvas.height = viewportHeight
+        safeTopInset = 0
       }
     }
     resizeCanvas()
     window.addEventListener('resize', resizeCanvas)
+    window.visualViewport?.addEventListener('resize', resizeCanvas)
+    window.visualViewport?.addEventListener('scroll', resizeCanvas)
     const container = canvas.parentElement
     const resizeObserver = container ? new ResizeObserver(resizeCanvas) : null
     if (resizeObserver && container) resizeObserver.observe(container)
@@ -2633,7 +2643,7 @@ export default function SimpleGame() {
 
       if (!shouldHideHud) {
         const hudX = 18
-        const hudY = 18
+        const hudY = 18 + (canvas.width < 768 ? safeTopInset : 0)
         const hudWidth = canvas.width < 768 ? 238 : 270
         const hudHeight = canvas.width < 768 ? 40 : 44
 
@@ -3402,6 +3412,8 @@ powerups = powerups.filter(kit => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('resize', resizeCanvas)
+      window.visualViewport?.removeEventListener('resize', resizeCanvas)
+      window.visualViewport?.removeEventListener('scroll', resizeCanvas)
       if (resizeObserver && canvas.parentElement) resizeObserver.disconnect()
       // Clean up touch listeners
       canvas.removeEventListener('touchstart', handleTouchStart)
@@ -3460,7 +3472,7 @@ powerups = powerups.filter(kit => {
               type="email"
               value={authEmail}
               onChange={(event) => setAuthEmail(event.target.value)}
-              className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-sm font-mono"
+              className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-base font-mono"
               placeholder="email@example.com"
               required
             />
@@ -3468,7 +3480,7 @@ powerups = powerups.filter(kit => {
               type="password"
               value={authPassword}
               onChange={(event) => setAuthPassword(event.target.value)}
-              className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-sm font-mono"
+              className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-base font-mono"
               placeholder="password"
               required
               minLength={8}
@@ -3525,7 +3537,7 @@ powerups = powerups.filter(kit => {
               type="text"
               value={usernameInput}
               onChange={(event) => setUsernameInput(event.target.value)}
-              className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-sm font-mono"
+              className="w-full bg-black/40 border border-cyan-600/40 rounded-md px-3 py-2 text-cyan-100 text-base font-mono"
               placeholder="3-16 letters, numbers, underscores"
               minLength={3}
               maxLength={16}

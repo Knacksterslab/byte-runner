@@ -59,7 +59,10 @@ export function StartScreenNew({
       {/* Profile icon or Sign in button */}
       {isAuthenticated ? (
         <Link href="/profile">
-          <div className="fixed left-4 sm:left-6 top-4 sm:top-6 z-20 flex items-center gap-2 sm:gap-3 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation cursor-pointer group">
+          <div
+            className="fixed left-4 sm:left-6 z-20 flex items-center gap-2 sm:gap-3 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation cursor-pointer group"
+            style={{ top: 'max(12px, calc(env(safe-area-inset-top) + 8px))' }}
+          >
             <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-cyan-500/20 border border-cyan-400/50 group-hover:bg-cyan-500/30 transition">
               <svg className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-300" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
@@ -72,7 +75,8 @@ export function StartScreenNew({
         onSignIn && (
           <button
             onClick={onSignIn}
-            className="fixed left-4 sm:left-6 top-4 sm:top-6 z-20 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 py-1.5 sm:py-1 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation"
+            className="fixed left-4 sm:left-6 z-20 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 py-1.5 sm:py-1 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation"
+            style={{ top: 'max(12px, calc(env(safe-area-inset-top) + 8px))' }}
           >
             {signInLabel}
           </button>
@@ -82,7 +86,8 @@ export function StartScreenNew({
       {/* Tutorial button */}
       <button
         onClick={onShowTutorial}
-        className="fixed right-4 sm:right-6 top-4 sm:top-6 z-20 flex h-[48px] w-[48px] sm:h-[54px] sm:w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24] text-xl sm:text-2xl font-bold text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105 touch-manipulation"
+        className="fixed right-4 sm:right-6 z-20 flex h-[48px] w-[48px] sm:h-[54px] sm:w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24] text-xl sm:text-2xl font-bold text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105 touch-manipulation"
+        style={{ top: 'max(12px, calc(env(safe-area-inset-top) + 8px))' }}
       >
         <span className="question-frame" />
         <span className="relative z-10 text-cyan-100 drop-shadow-[0_0_8px_rgba(0,255,255,0.9)]">?</span>
@@ -613,6 +618,8 @@ export function StartScreenNew({
         .screen-safe {
           padding-top: max(12px, env(safe-area-inset-top));
           padding-bottom: calc(20px + env(safe-area-inset-bottom));
+          padding-left: max(16px, calc(env(safe-area-inset-left) + 10px));
+          padding-right: max(16px, calc(env(safe-area-inset-right) + 10px));
         }
 
         .leaderboard-link {
@@ -757,8 +764,11 @@ export function StartScreenNew({
           }
 
           .panel {
+            width: min(calc(100vw - 2rem), 520px);
             max-width: min(100%, 520px);
             padding: 18px 20px;
+            margin-left: auto;
+            margin-right: auto;
           }
 
           .start-btn-new {
@@ -777,8 +787,11 @@ export function StartScreenNew({
           }
 
           .panel {
+            width: min(calc(100vw - 1.5rem), 520px);
             max-width: min(100%, 520px);
             padding: 16px 18px;
+            margin-left: auto;
+            margin-right: auto;
           }
 
           .panel-outline {
