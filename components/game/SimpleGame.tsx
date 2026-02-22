@@ -397,16 +397,61 @@ export default function SimpleGame() {
     let playerSpeed = 5
     let localScore = savedGameState ? savedGameState.score : 0 // Restore score if continuing from quiz
     
+    type DifficultyProfile = {
+      obstacleSpeed: number
+      spawnInterval: number
+      threatFactor: number
+    }
+
+    function getDifficultyForLevel(level: number): DifficultyProfile {
+      const clampedLevel = Math.max(1, Math.min(50, level))
+
+      let obstacle = 4.0
+      let spawn = 750
+      let threat = 0.38
+
+      for (let lvl = 2; lvl <= clampedLevel; lvl++) {
+        if (lvl <= 4) {
+          spawn -= 10
+          threat += 0.01
+          continue
+        }
+
+        const isCycleStart = (lvl - 1) % 4 === 0 // 5, 9, 13, ...
+        if (isCycleStart) {
+          if (lvl <= 21) {
+            obstacle += 0.4
+          } else if (lvl <= 33) {
+            obstacle += 0.35
+          } else {
+            obstacle += 0.3
+          }
+
+          spawn -= 15
+          threat += 0.03
+        } else {
+          spawn -= 10
+          threat += 0.01
+        }
+      }
+
+      return {
+        obstacleSpeed: Math.min(7.8, Number(obstacle.toFixed(2))),
+        spawnInterval: Math.max(360, spawn),
+        threatFactor: Math.min(1.1, Number(threat.toFixed(2))),
+      }
+    }
+
     // Level state
     let currentLevel = savedGameState ? savedGameState.level : 1 // Restore level if continuing from quiz
-    let obstacleSpeed = 4
+    const initialDifficulty = getDifficultyForLevel(currentLevel)
+    let obstacleSpeed = initialDifficulty.obstacleSpeed
     let powerupsNeeded = 0
     let powerupsCollected = 0
     let isAdvancingLevel = false // Prevent multiple level advances
-    let spawnFrequency = 750 // ms between obstacle spawns (reduced threat density for easier early game)
+    let spawnFrequency = initialDifficulty.spawnInterval
     let speedFactor = 0.55
-    let threatSpeedFactor = 0.38
-    let spawnFactor = 1.1
+    let threatSpeedFactor = initialDifficulty.threatFactor
     let kitSpawnTimer = 0
     const KIT_SPAWN_INTERVAL = 4000 // ms between kits (more frequent)
     let effectiveObstacleSpeed = obstacleSpeed
@@ -628,6 +673,12 @@ export default function SimpleGame() {
     let sectorChangeTimer = 0
     let sectorChangeName = ''
     const SECTOR_CHANGE_DURATION = 2000 // 2 seconds
+
+    // Teach-before-test state (starts from level 6)
+    let showingPreQuizTeaching = false
+    let preQuizTeachingTimer = 0
+    let pendingQuizChallenge: QuizChallenge | null = null
+    const PRE_QUIZ_TEACH_DURATION = 4500
     
     // Create background particles
     // Reduced particle count for Chrome performance
@@ -1875,6 +1926,59 @@ export default function SimpleGame() {
       if (totalKitsCollected < 60) return 'Expert'
       return 'Commando'
     }
+
+    function shouldShowPreQuizTeaching(level: number): boolean {
+      return level >= 6
+    }
+
+    function getPreQuizLesson(quizType: QuizChallenge['type']) {
+      const lessons: Record<QuizChallenge['type'], { title: string; points: string[] }> = {
+        email: {
+          title: 'EMAIL SECURITY BRIEF',
+          points: ['Check sender domain carefully', 'Typos = red flag', 'Urgent tone can be fake']
+        },
+        password: {
+          title: 'PASSWORD SECURITY BRIEF',
+          points: ['Use long unique passwords', 'Avoid common patterns', 'Password manager is best']
+        },
+        wifi: {
+          title: 'WIFI SECURITY BRIEF',
+          points: ['Prefer WPA2/WPA3 networks', 'Avoid open public WiFi', 'Use VPN on untrusted networks']
+        },
+        link: {
+          title: 'LINK SAFETY BRIEF',
+          points: ['Look for HTTPS', 'Check spelling of domain', 'Avoid suspicious short links']
+        },
+        update: {
+          title: 'UPDATE PRIORITY BRIEF',
+          points: ['Install security patches first', 'Critical fixes beat features', 'Don\'t delay high-risk CVEs']
+        },
+        classification: {
+          title: 'DATA CLASSIFICATION BRIEF',
+          points: ['Label sensitive data correctly', 'Treat PII as confidential', 'Share with least privilege']
+        },
+        disposal: {
+          title: 'SECURE DISPOSAL BRIEF',
+          points: ['Shred sensitive documents', 'Use secure disposal bins', 'Trash is searchable by attackers']
+        },
+        meeting: {
+          title: 'MEETING SECURITY BRIEF',
+          points: ['Allow only invited attendees', 'Use waiting rooms/passwords', 'Never post links publicly']
+        }
+      }
+
+      return lessons[quizType]
+    }
+
+    function startPreQuizTeaching(quizChallenge: QuizChallenge) {
+      pendingQuizChallenge = quizChallenge
+      showingPreQuizTeaching = true
+      preQuizTeachingTimer = PRE_QUIZ_TEACH_DURATION
+
+      // Clear active threats while we teach.
+      obstacles.forEach((obstacle) => returnObstacleToPool(obstacle))
+      obstacles.length = 0
+    }
     
     // In-game quiz functions
     function startInGameQuiz(quizChallenge: QuizChallenge) {
@@ -1939,6 +2043,67 @@ export default function SimpleGame() {
         showQuizCompletionMessage = false
       }, 2000)
       timeoutRefs.current.push(tid)
+    }
+
+    function drawPreQuizTeachingOverlay() {
+      if (!showingPreQuizTeaching) return
+
+      if (preQuizTeachingTimer <= 0) {
+        showingPreQuizTeaching = false
+        const quizToStart = pendingQuizChallenge
+        pendingQuizChallenge = null
+        if (quizToStart && !quiz.refs.activeRef.current) {
+          startInGameQuiz(quizToStart)
+        }
+        return
+      }
+
+      const targetQuiz = pendingQuizChallenge
+      if (!targetQuiz) {
+        showingPreQuizTeaching = false
+        return
+      }
+
+      const lesson = getPreQuizLesson(targetQuiz.type)
+      const timeLeft = Math.max(0, Math.ceil(preQuizTeachingTimer / 1000))
+      const isMobile = canvas.width < 768
+      const boxWidth = isMobile ? 340 : 720
+      const boxHeight = isMobile ? 260 : 320
+      const boxX = canvas.width / 2 - boxWidth / 2
+      const boxY = canvas.height / 2 - boxHeight / 2
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.82)'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      ctx.fillStyle = 'rgba(5, 12, 22, 0.95)'
+      ctx.fillRect(boxX, boxY, boxWidth, boxHeight)
+      ctx.strokeStyle = '#00ccff'
+      ctx.lineWidth = 3
+      ctx.strokeRect(boxX, boxY, boxWidth, boxHeight)
+
+      ctx.textAlign = 'center'
+      ctx.font = `bold ${isMobile ? 24 : 36}px monospace`
+      ctx.fillStyle = '#6ee7ff'
+      ctx.fillText('LEARN FIRST', canvas.width / 2, boxY + (isMobile ? 50 : 64))
+
+      ctx.font = `bold ${isMobile ? 16 : 24}px monospace`
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(lesson.title, canvas.width / 2, boxY + (isMobile ? 84 : 110))
+
+      ctx.textAlign = 'left'
+      ctx.font = `${isMobile ? 13 : 18}px monospace`
+      ctx.fillStyle = '#d8f8ff'
+      lesson.points.forEach((point, index) => {
+        ctx.fillText(`• ${point}`, boxX + (isMobile ? 22 : 40), boxY + (isMobile ? 122 : 162) + index * (isMobile ? 28 : 38))
+      })
+
+      ctx.textAlign = 'center'
+      ctx.font = `bold ${isMobile ? 14 : 18}px monospace`
+      ctx.fillStyle = '#00ff88'
+      ctx.fillText(`Quiz starts in ${timeLeft}s`, canvas.width / 2, boxY + boxHeight - (isMobile ? 22 : 28))
+      ctx.textAlign = 'left'
+
+      preQuizTeachingTimer -= 16
     }
     
     function spawnQuizItems(quizChallenge: QuizChallenge) {
@@ -2031,35 +2196,14 @@ export default function SimpleGame() {
       playerX = 200 + Math.random() * (canvas.width - 400)
       playerY = 200 + Math.random() * (canvas.height - 400)
       
-      // NEW DIFFICULTY PROGRESSION: 4-Level Cycles
-      // Each cycle = 4 levels with direction progression (1 → 2 → 3 → 4 directions)
-      // Speed increases at start of each new cycle
-      // Cycle 1 (Levels 1-4): Base speed
-      // Cycle 2 (Levels 5-8): Speed +1 step (increase at level 5)
-      // Cycle 3 (Levels 9-12): Speed +2 steps (increase at level 9)
-      // Cycle 4 (Levels 13-16): Speed +3 steps (increase at level 13)
-      // Pattern continues...
-      
-      // Determine which cycle we're in (1-based)
-      const cycle = Math.floor((currentLevel - 1) / 4) + 1
+      // Apply level-based difficulty curve (balanced through level 50).
+      const difficulty = getDifficultyForLevel(currentLevel)
+      obstacleSpeed = difficulty.obstacleSpeed
+      spawnFrequency = difficulty.spawnInterval
+      threatSpeedFactor = difficulty.threatFactor
+
+      // Determine cycle position for directional progression.
       const positionInCycle = ((currentLevel - 1) % 4) + 1 // 1, 2, 3, or 4
-      
-      // Speed increases at the START of each new cycle (levels 5, 9, 13, 17...)
-      if (positionInCycle === 1 && currentLevel > 4) {
-        // This is the first level of a new cycle, increase speed
-        obstacleSpeed += 0.5 // Noticeable speed step
-        spawnFrequency = Math.max(500, spawnFrequency - 30) // Slightly faster spawns
-      }
-      
-      // Within each cycle, keep speed constant but adjust spawn frequency slightly
-      // This maintains the speed step while allowing minor difficulty tweaks
-      if (currentLevel <= 4) {
-        // First cycle: Minor spawn adjustments only
-        spawnFrequency = Math.max(710, spawnFrequency - 10)
-      } else {
-        // Later cycles: Very minor spawn adjustments to maintain challenge
-        spawnFrequency = Math.max(400, spawnFrequency - 5)
-      }
       
       // Show level-up overlay
       showingLevelUp = true
@@ -2077,7 +2221,11 @@ export default function SimpleGame() {
       const quizChallenge = getQuizForLevel(currentLevel)
       if (quizChallenge && !quiz.refs.activeRef.current) {
         const tid1 = setTimeout(() => {
-          startInGameQuiz(quizChallenge)
+          if (shouldShowPreQuizTeaching(currentLevel)) {
+            startPreQuizTeaching(quizChallenge)
+          } else {
+            startInGameQuiz(quizChallenge)
+          }
         }, 2000)
         timeoutRefs.current.push(tid1)
       }
@@ -2527,20 +2675,11 @@ export default function SimpleGame() {
 // Apply slow-motion effect during quiz (only after countdown finishes)
       const slowMotionMultiplier = (quiz.refs.activeRef.current && quiz.refs.countdownRef.current === 0) ? 0.15 : 1.0
       
-      // Levels 1-4: Keep all speed factors constant (difficulty from directions only)
-      if (currentLevel <= 4) {
-        speedFactor = 0.55 // Base player speed factor
-        threatSpeedFactor = 0.38 // Base threat speed factor
-        spawnFactor = 1.1 // Base spawn factor
-      } else {
-        // After level 4: Resume progressive scaling
-        speedFactor = Math.min(1.6, Math.max(0.55, 0.55 + (currentLevel - 1) * 0.08))
-        threatSpeedFactor = Math.min(1.4, Math.max(0.38, 0.38 + (currentLevel - 1) * 0.07))
-        spawnFactor = Math.min(1.6, Math.max(1.1, 1.1 + (currentLevel - 1) * 0.05))
-      }
+      // Keep player movement scaling separate from threat tuning.
+      speedFactor = Math.min(1.6, Math.max(0.55, 0.55 + (currentLevel - 1) * 0.06))
       effectiveObstacleSpeed = obstacleSpeed * threatSpeedFactor
       effectivePlayerSpeed = playerSpeed * speedFactor
-      effectiveSpawnFrequency = spawnFrequency / spawnFactor
+      effectiveSpawnFrequency = spawnFrequency
       if (isHealing) {
         drawTutorialOverlay()
         if (!isGameOver) {
@@ -2567,8 +2706,8 @@ export default function SimpleGame() {
         checkQuizCompletion()
       }
       
-      // Handle player movement (WASD) - frozen during healing OR restoration
-      if (!isHealing && !isRestoring) {
+      // Handle player movement (WASD) - frozen during healing, restoration, or pre-quiz teaching
+      if (!isHealing && !isRestoring && !showingPreQuizTeaching) {
         if (keys['w'] || keys['W'] || keys['ArrowUp']) {
           playerY -= effectivePlayerSpeed * frameScale
         }
@@ -2628,6 +2767,7 @@ export default function SimpleGame() {
       drawSectorChangeOverlay()
       drawRestorationOverlay()
       drawQuizCompletionMessage()
+      drawPreQuizTeachingOverlay()
       
       // Update sector change timer
       if (showingSectorChange && sectorChangeTimer > 0) {
@@ -2649,7 +2789,7 @@ export default function SimpleGame() {
       const isReactQuizOpen = showQuizOverlayRef.current
       // Hide legacy canvas HUD for the full quiz/recovery lifecycle.
       const isInGameQuizOverlayActive = quiz.refs.activeRef.current
-      const shouldHideHud = isReactQuizOpen || isInGameQuizOverlayActive || showingTutorial || turboBoostCelebrationTimer > 0
+      const shouldHideHud = isReactQuizOpen || isInGameQuizOverlayActive || showingTutorial || showingPreQuizTeaching || turboBoostCelebrationTimer > 0
 
       if (!shouldHideHud) {
         const hudX = 18
@@ -2783,8 +2923,8 @@ export default function SimpleGame() {
       
       // REMOVED: Bottom-right quiz panel - info now in top banner (cleaner design)
       
-      // Spawn obstacles and kits (pause during healing and active quiz)
-      if (!isHealing) {
+      // Spawn obstacles and kits (pause during healing and pre-quiz teaching)
+      if (!isHealing && !showingPreQuizTeaching) {
         const isQuizActive = quiz.refs.activeRef.current
         if (!isQuizActive && timestamp - lastSpawn > effectiveSpawnFrequency) {
           spawnObstacle()
