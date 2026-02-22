@@ -1882,7 +1882,8 @@ export default function SimpleGame() {
       // Use local 'currentLevel' for immediate level-up quizzes (no async state delay)
       quiz.actions.startQuiz(currentLevel)
       
-      // IMMEDIATELY clear all obstacles for safety
+      // Return active obstacles to pool before clearing list (prevents pool exhaustion)
+      obstacles.forEach((obstacle) => returnObstacleToPool(obstacle))
       obstacles.length = 0
       
       // Spawn quiz items after countdown (3 seconds)
@@ -1898,7 +1899,8 @@ export default function SimpleGame() {
       
       quiz.actions.markCompleted()
       
-      // Clear all threats to give player a clean restart
+      // Return active obstacles to pool before clearing list (prevents pool exhaustion)
+      obstacles.forEach((obstacle) => returnObstacleToPool(obstacle))
       obstacles.length = 0
       
       if (success) {
@@ -1963,7 +1965,15 @@ export default function SimpleGame() {
         { x: canvas.width / 2, y: isMobile ? 300 + verticalSpacing : 280 + verticalSpacing }
       ]
       
-      quizChallenge.items.forEach((item, index) => {
+      // Keep quiz layout fixed to 3 cards (same behavior as level 3)
+      const itemsToRender = quizChallenge.items.slice(0, 3)
+      if (quizChallenge.items.length > 3) {
+        console.warn(
+          `[Quiz] ${quizChallenge.id} has ${quizChallenge.items.length} items; only first 3 are rendered.`
+        )
+      }
+
+      itemsToRender.forEach((item, index) => {
         const pos = positions[index]
         
         powerups.push({
@@ -2773,9 +2783,10 @@ export default function SimpleGame() {
       
       // REMOVED: Bottom-right quiz panel - info now in top banner (cleaner design)
       
-      // Spawn obstacles and kits (pause during healing)
+      // Spawn obstacles and kits (pause during healing and active quiz)
       if (!isHealing) {
-        if (timestamp - lastSpawn > effectiveSpawnFrequency) {
+        const isQuizActive = quiz.refs.activeRef.current
+        if (!isQuizActive && timestamp - lastSpawn > effectiveSpawnFrequency) {
           spawnObstacle()
           lastSpawn = timestamp
         }
