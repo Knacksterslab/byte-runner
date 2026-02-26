@@ -7,18 +7,10 @@ export default function CyberspaceBackground() {
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) {
-      console.log('❌ Canvas ref not found')
-      return
-    }
+    if (!canvas) return
 
     const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      console.log('❌ Canvas context not found')
-      return
-    }
-
-    console.log('✅ Cyberspace background started!', { width: canvas.width, height: canvas.height })
+    if (!ctx) return
 
     // Set canvas size to actual screen size
     const resize = () => {

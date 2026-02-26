@@ -58,3 +58,14 @@ export function filterByCategory<T extends { category: string }>(
 export function calculateTotalKits(kitInventory: Record<string, number>): number {
   return Object.values(kitInventory).reduce((sum, count) => sum + (count || 0), 0)
 }
+
+/**
+ * Axis-aligned bounding box collision test.
+ * All coordinates are top-left origin.
+ */
+export function isColliding(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
+}

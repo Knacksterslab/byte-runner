@@ -1,0 +1,386 @@
+.nebulaBackground {
+  background-image: url('/space-background-final.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  opacity: 1;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.vignette {
+  background: radial-gradient(circle at 50% 40%, transparent 0%, rgba(2, 4, 10, 0.3) 70%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.headline {
+  text-shadow: 0 0 22px rgba(255, 70, 70, 0.9), 0 0 45px rgba(255, 20, 20, 0.6);
+}
+
+.subheadline {
+  text-shadow: 0 0 18px rgba(255, 150, 0, 0.75);
+}
+
+.questionFrame {
+  position: absolute;
+  inset: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(120, 240, 255, 0.7);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.6), inset 0 0 12px rgba(0, 255, 255, 0.3);
+  background: radial-gradient(circle at 30% 30%, rgba(0, 255, 255, 0.18), transparent 55%);
+}
+
+.panel {
+  position: relative;
+  border-radius: 14px;
+  border: 2px solid rgba(0, 210, 255, 0.85);
+  background: rgba(4, 10, 16, 0.98);
+  box-shadow: 0 0 36px rgba(0, 220, 255, 0.55), inset 0 0 15px rgba(0, 220, 255, 0.12);
+  backdrop-filter: blur(3px);
+}
+
+.panelOutline {
+  position: absolute;
+  inset: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 255, 0.38);
+  box-shadow: inset 0 0 14px rgba(0, 255, 255, 0.18);
+  pointer-events: none;
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.55em;
+  color: #7be9ff;
+  text-shadow: 0 0 14px rgba(0, 200, 255, 0.9);
+}
+
+.titleLine {
+  height: 1px;
+  width: 68px;
+  background: rgba(0, 210, 255, 0.8);
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.9);
+}
+
+.medalBadge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 1.125rem;
+  border: 3px solid;
+}
+
+.medalBadge::before {
+  content: '';
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.medalBadge::after {
+  content: '★';
+  position: absolute;
+  top: -8px;
+  font-size: 14px;
+  z-index: 10;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.medalBadge[data-rank="1"] {
+  background: radial-gradient(circle at 30% 30%, #ffd700 0%, #fbbf24 40%, #d97706 100%);
+  border-color: #92400e;
+  box-shadow: 0 0 25px rgba(251, 191, 36, 0.8),
+              0 0 40px rgba(251, 191, 36, 0.4),
+              inset 0 2px 10px rgba(255, 255, 255, 0.4),
+              inset 0 -2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.medalBadge[data-rank="1"]::before {
+  background:
+    radial-gradient(2px 2px at 14px 10px, #fbbf24 50%, transparent 51%),
+    radial-gradient(2px 2px at 42px 10px, #fbbf24 50%, transparent 51%),
+    radial-gradient(2px 2px at 10px 24px, #fbbf24 50%, transparent 51%),
+    radial-gradient(2px 2px at 46px 24px, #fbbf24 50%, transparent 51%),
+    radial-gradient(2px 2px at 14px 46px, #fbbf24 50%, transparent 51%),
+    radial-gradient(2px 2px at 42px 46px, #fbbf24 50%, transparent 51%);
+  opacity: 0.9;
+}
+
+.medalBadge[data-rank="1"]::after {
+  content: '👑';
+  top: -10px;
+  font-size: 16px;
+  filter: drop-shadow(0 2px 6px rgba(251, 191, 36, 0.8));
+}
+
+.medalBadge[data-rank="1"] .medalNumber {
+  color: #451a03;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6), 0 0 8px rgba(255, 215, 0, 0.8);
+}
+
+.medalBadge[data-rank="2"] {
+  background: radial-gradient(circle at 30% 30%, #f1f5f9 0%, #cbd5e1 40%, #64748b 100%);
+  border-color: #475569;
+  box-shadow: 0 0 20px rgba(203, 213, 225, 0.6),
+              0 0 35px rgba(203, 213, 225, 0.3),
+              inset 0 2px 10px rgba(255, 255, 255, 0.4),
+              inset 0 -2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.medalBadge[data-rank="2"]::before {
+  background:
+    radial-gradient(2px 2px at 16px 12px, #cbd5e1 50%, transparent 51%),
+    radial-gradient(2px 2px at 40px 12px, #cbd5e1 50%, transparent 51%),
+    radial-gradient(2px 2px at 12px 24px, #cbd5e1 50%, transparent 51%),
+    radial-gradient(2px 2px at 44px 24px, #cbd5e1 50%, transparent 51%),
+    radial-gradient(2px 2px at 16px 44px, #cbd5e1 50%, transparent 51%),
+    radial-gradient(2px 2px at 40px 44px, #cbd5e1 50%, transparent 51%);
+  opacity: 0.8;
+}
+
+.medalBadge[data-rank="2"]::after {
+  color: #cbd5e1;
+  filter: drop-shadow(0 2px 4px rgba(203, 213, 225, 0.6));
+}
+
+.medalBadge[data-rank="2"] .medalNumber {
+  color: #1e293b;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6), 0 0 6px rgba(203, 213, 225, 0.6);
+}
+
+.medalBadge[data-rank="3"] {
+  background: radial-gradient(circle at 30% 30%, #fdba74 0%, #fb923c 40%, #c2410c 100%);
+  border-color: #7c2d12;
+  box-shadow: 0 0 20px rgba(251, 146, 60, 0.6),
+              0 0 35px rgba(251, 146, 60, 0.3),
+              inset 0 2px 10px rgba(255, 255, 255, 0.3),
+              inset 0 -2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.medalBadge[data-rank="3"]::before {
+  background:
+    radial-gradient(2px 2px at 16px 12px, #fb923c 50%, transparent 51%),
+    radial-gradient(2px 2px at 40px 12px, #fb923c 50%, transparent 51%),
+    radial-gradient(2px 2px at 12px 24px, #fb923c 50%, transparent 51%),
+    radial-gradient(2px 2px at 44px 24px, #fb923c 50%, transparent 51%),
+    radial-gradient(2px 2px at 16px 44px, #fb923c 50%, transparent 51%),
+    radial-gradient(2px 2px at 40px 44px, #fb923c 50%, transparent 51%);
+  opacity: 0.75;
+}
+
+.medalBadge[data-rank="3"]::after {
+  color: #fb923c;
+  filter: drop-shadow(0 2px 4px rgba(251, 146, 60, 0.6));
+}
+
+.medalBadge[data-rank="3"] .medalNumber {
+  color: #451a03;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5), 0 0 6px rgba(251, 146, 60, 0.6);
+}
+
+.startBtnNew {
+  position: relative;
+  width: 360px;
+  max-width: 90vw;
+  height: 60px;
+  border-radius: 16px;
+  border: 2px solid #94fbd2;
+  background: linear-gradient(to bottom, #0a2a3e 0%, #061c2e 100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  transition: transform 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.startBtnNew:hover {
+  transform: scale(1.03);
+}
+
+@media (hover: none) {
+  .startBtnNew:active {
+    transform: scale(0.97);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.7);
+  }
+}
+
+.btnOuterGlow {
+  pointer-events: none;
+  position: absolute;
+  inset: -8px;
+  border-radius: 20px;
+  box-shadow: 0 0 28px rgba(148, 251, 210, 0.35), 0 0 60px rgba(66, 186, 131, 0.2);
+}
+
+.btnText {
+  position: relative;
+  z-index: 10;
+  font-family: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #d5f6fa;
+  filter: drop-shadow(0 0 10px rgba(148, 251, 210, 0.25));
+}
+
+.screenSafe {
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  padding-left: max(16px, calc(env(safe-area-inset-left) + 10px));
+  padding-right: max(16px, calc(env(safe-area-inset-right) + 10px));
+}
+
+.leaderboardLink {
+  font-weight: 600;
+}
+
+.contestCard {
+  position: relative;
+  background: rgba(10, 15, 25, 0.6);
+  border: 2px solid rgba(251, 191, 36, 0.4);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.25), inset 0 0 10px rgba(251, 191, 36, 0.08);
+  backdrop-filter: blur(2px);
+  transition: all 0.3s ease;
+  min-height: 48px;
+}
+
+.contestCard:hover {
+  border-color: rgba(251, 191, 36, 0.6);
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.4), inset 0 0 15px rgba(251, 191, 36, 0.12);
+}
+
+@media (hover: none) {
+  .contestCard:active {
+    border-color: rgba(251, 191, 36, 0.6);
+    transform: scale(0.98);
+  }
+}
+
+.contestTimer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(234, 88, 12, 0.2);
+  border: 1px solid rgba(234, 88, 12, 0.5);
+  border-radius: 8px;
+  color: #fb923c;
+  text-align: center;
+  min-width: 60px;
+}
+
+.contestCta {
+  display: flex;
+  width: 100%;
+  text-align: center;
+  padding: 10px 16px;
+  min-height: 44px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.4) 0%, rgba(234, 88, 12, 0.5) 100%);
+  border: 2px solid rgba(251, 191, 36, 0.7);
+  border-radius: 10px;
+  color: white;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+  transition: all 0.2s ease;
+  text-decoration: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.contestCta:hover {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.6) 0%, rgba(234, 88, 12, 0.7) 100%);
+  transform: scale(1.02);
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
+}
+
+@media (hover: none) {
+  .contestCta:active {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.7) 0%, rgba(234, 88, 12, 0.8) 100%);
+    transform: scale(0.98);
+  }
+}
+
+.contestCtaDisabled {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 10px 16px;
+  background: rgba(100, 100, 100, 0.2);
+  border: 2px solid rgba(150, 150, 150, 0.3);
+  border-radius: 10px;
+  color: #94a3b8;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  cursor: not-allowed;
+}
+
+.logo {}
+
+@media (max-width: 768px) {
+  .logo { height: 88px; }
+  .panel { max-width: 600px; padding: 20px 24px; }
+  .panelTitle { font-size: 0.9rem; letter-spacing: 0.45em; }
+  .titleLine { width: 52px; }
+  .startBtnNew { height: 52px; width: 320px; }
+  .btnText { font-size: 16px; }
+  .contestCard { padding: 16px; }
+  .contestTimer { font-size: 11px; padding: 4px 10px; }
+}
+
+@media (max-width: 640px) {
+  .logo { height: 76px; }
+  .headline { text-shadow: 0 0 16px rgba(255, 100, 50, 0.35); }
+  .subheadline { text-shadow: 0 0 10px rgba(255, 150, 80, 0.3); }
+  .panel {
+    width: min(calc(100vw - 2rem), 520px);
+    max-width: min(100%, 520px);
+    padding: 18px 20px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .startBtnNew { height: 50px; width: 280px; }
+  .btnText { font-size: 15px; }
+}
+
+@media (max-width: 480px) {
+  .logo { height: 64px; }
+  .panel {
+    width: min(calc(100vw - 1.5rem), 520px);
+    max-width: min(100%, 520px);
+    padding: 16px 18px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .panelOutline { inset: 5px; }
+  .panelTitle { font-size: 0.82rem; letter-spacing: 0.38em; gap: 10px; }
+  .titleLine { width: 38px; }
+  .startBtnNew { height: 48px; width: 260px; }
+  .btnText { font-size: 14px; }
+  .contestCard { padding: 14px; }
+  .contestTimer { font-size: 10px; padding: 3px 8px; }
+  .contestCta { padding: 8px 16px; font-size: 12px; }
+}

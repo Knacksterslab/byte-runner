@@ -1,6 +1,12 @@
-// Ghost player system - AI-generated "players" that send threats
 import type { ThreatCategory } from './threatData'
-import { getRandomByFilter, getRandomItem } from './utils'
+import { getRandomItem } from './utils'
+import {
+  ghostPlayerNames,
+  nameSuffixes,
+  playerEmojis,
+  specialities,
+  allThreatCategories
+} from './data/ghostPlayerData'
 
 export interface GhostPlayer {
   id: string
@@ -11,223 +17,28 @@ export interface GhostPlayer {
   emoji?: string
 }
 
-// Pool of base names
-const ghostPlayerNames = [
-  'Shadow_Hunter',
-  'CyberNinja',
-  'DataThief',
-  'PhishingKing',
-  'ZeroDay',
-  'PacketLord',
-  'ByteBandit',
-  'CryptoHawk',
-  'NetPhantom',
-  'DarkCoder',
-  'VaultBreaker',
-  'HexMaster',
-  'BinaryGhost',
-  'RootKitty',
-  'VirusQueen',
-  'FirewallBuster',
-  'SQLNinja',
-  'XSSWarrior',
-  'MalwareKing',
-  'PhantomPwn',
-  'CyberViper',
-  'CodeRedux',
-  'NullPointer',
-  'ExploitExpert',
-  'ScriptKiddie',
-  'BlackHatBob',
-  'GreyAreaGamer',
-  'WhiteRabbit',
-  'RedTeamRex',
-  'BlueScreenBob',
-  'PasswordPirate',
-  'CredentialCollector',
-  'SessionStealer',
-  'CookieMonster',
-  'TokenThief',
-  'KeyLogger',
-  'ScreenGrabber',
-  'WiFiWarrior',
-  'RouterRaider',
-  'NetworkNinja',
-  'PacketSniff3r',
-  'DNSPoisoner',
-  'ProxyPirate',
-  'VPNVandal',
-  'TunnelTroll',
-  'BotnetBoss',
-  'DDoSKing',
-  'RansomRogue',
-  'EncryptionEater',
-  'BackdoorBandit',
-  'BitFlipp3r',
-  'CodeCrusher',
-  'DataDemon',
-  'ExploitElite',
-  'GhostInShell',
-  'HackTheGibson',
-  'ICEBreaker',
-  'JailbreakJoe',
-  'KernelKiller',
-  'L33tHax0r',
-  'MemoryLeaker',
-  'NoobHunter',
-  'OpcodeOwl',
-  'PwnMaster',
-  'QueryKiller',
-  'ReverseEngineer',
-  'ShellShock',
-  'TrojanHorse',
-  'UnicodeNinja',
-  'VulnScanner',
-  'WormWrangler',
-  'XploitXpert',
-  // MFA/Authentication themed
-  'TokenStealer',
-  'SessionSnatcher',
-  'CookieThief',
-  'OTPBypass',
-  'TwoFactorFail',
-  'AuthBreaker',
-  // Ransomware/Data Loss themed
-  'RansomKing',
-  'CryptoLocker',
-  'FileEncryptor',
-  'DataDestroyer',
-  'BackupBuster',
-  'DiskWiper',
-  // Social Engineering themed
-  'SocialHacker',
-  'Pretextor',
-  'BaitMaster',
-  'TrustBreaker',
-  'PhonePhreak',
-  'VishingVixen'
-]
-
-// Suffixes to add variety
-const nameSuffixes = [
-  '',      // 40% chance of no suffix
-  '',
-  '',
-  '',
-  '47',
-  '99',
-  '2077',
-  'Pro',
-  'Elite',
-  'X',
-  'Prime',
-  '_404',
-  '_666',
-  'Master',
-  'Lord',
-  'King',
-  'Queen',
-  'Boss',
-  '_v2',
-  '_HD',
-  'Reborn'
-]
-
-// Random emojis for visual variety
-const playerEmojis = [
-  '💀', '👾', '🎭', '🦹', '🥷', '🧛', '👻', '🤖',
-  '🐉', '🦊', '🐺', '🦅', '🐍', '🕷️', '🦂', '🔥'
-]
-
-// Speciality titles based on category - ALL CATEGORIES
-const specialities: { [key in ThreatCategory]: string[] } = {
-  password: ['The Password Cracker', 'The Credential Stuffer', 'The Brute Forcer', 'The Dictionary Attacker'],
-  phishing: ['The Phisher', 'The Social Engineer', 'The Impersonator', 'The Link Spammer'],
-  updates: ['The Exploit Hunter', 'The Zero-Day Dealer', 'The Vulnerability Scanner', 'The Patch Avoider'],
-  privacy: ['The Data Harvester', 'The Profile Scraper', 'The Doxer', 'The Info Leaker'],
-  wifi: ['The WiFi Hijacker', 'The Network Sniffer', 'The Evil Twin', 'The Packet Interceptor'],
-  authentication: ['The Session Hijacker', 'The Token Thief', 'The Account Taker', 'The Credential Stuffer'],
-  'data-loss': ['The Ransomware Operator', 'The File Encryptor', 'The Crypto Locker', 'The Data Destroyer'],
-  'social-engineering': ['The Manipulator', 'The Impersonator', 'The Pretexting Pro', 'The Baiting Master'],
-  'physical-security': ['The Tailgater', 'The Badge Dodger', 'The Door Lurker', 'The Shoulder Surfer'],
-  'secure-disposal': ['The Dumpster Diver', 'The Paper Snatcher', 'The Shred Dodger', 'The Bin Raider'],
-  policy: ['The Rule Breaker', 'The Shadow IT User', 'The Shortcut Taker', 'The Policy Dodger'],
-  'incident-reporting': ['The Delayer', 'The Misrouter', 'The Silent Witness', 'The Details Skipper'],
-  compliance: ['The Compliance Dodger', 'The Audit Avoider', 'The Data Misuser', 'The Regulator Bait'],
-  'remote-work': ['The Home Hacker', 'The Router Raider', 'The Guest Leaker', 'The Remote Snooper'],
-  'meeting-security': ['The Meeting Crasher', 'The Link Leaker', 'The Zoom Bomber', 'The Invite Hijacker'],
-  'travel-security': ['The Hotel Hopper', 'The WiFi Trapper', 'The Kiosk Snooper', 'The Travel Sniffer'],
-  'data-protection': ['The Data Leaker', 'The Encryption Dodger', 'The Share Sprayer', 'The Storage Snooper'],
-  'supply-chain': ['The Dependency Trap', 'The Update Poisoner', 'The Vendor Intruder', 'The Package Faker'],
-  'insider-threats': ['The Privilege Abuser', 'The Accidental Leaker', 'The Data Runner', 'The Insider Risk'],
-  'email-security': ['The Attachment Tricker', 'The Spoof Artist', 'The BEC Impersonator', 'The Mail Forger'],
-  'data-classification': ['The Label Skipper', 'The Misclassifier', 'The Channel Leaker', 'The Data Mislabeler'],
-  'social-media': ['The Oversharer', 'The Tagger', 'The Recon Poster', 'The Profile Leaker'],
-  'removable-media': ['The USB Dropper', 'The Device Plugger', 'The Data Copier', 'The Port Prowler']
-}
-
-// Generate a random ghost player
 export function getRandomGhostPlayer(preferredCategory?: ThreatCategory): GhostPlayer {
-  // Pick random base name
   const baseName = getRandomItem(ghostPlayerNames)
-  
-  // Add random suffix for variety
   const suffix = getRandomItem(nameSuffixes)
   const name = baseName + suffix
-  
-  // Generate level with weighted distribution (more variety)
+
   let level: number
   const roll = Math.random()
   if (roll < 0.3) {
-    // 30% chance: Low level (1-30)
     level = Math.floor(Math.random() * 30) + 1
   } else if (roll < 0.6) {
-    // 30% chance: Mid level (31-70)
     level = Math.floor(Math.random() * 40) + 31
   } else if (roll < 0.9) {
-    // 30% chance: High level (71-99)
     level = Math.floor(Math.random() * 29) + 71
   } else {
-    // 10% chance: Max level (100-150) - Elite players
     level = Math.floor(Math.random() * 51) + 100
   }
-  
-  // If category specified, use it; otherwise random from all categories
-  const allCategories: ThreatCategory[] = [
-    'password',
-    'phishing',
-    'updates',
-    'privacy',
-    'wifi',
-    'authentication',
-    'data-loss',
-    'social-engineering',
-    'physical-security',
-    'secure-disposal',
-    'policy',
-    'incident-reporting',
-    'compliance',
-    'remote-work',
-    'meeting-security',
-    'travel-security',
-    'data-protection',
-    'supply-chain',
-    'insider-threats',
-    'email-security',
-    'data-classification',
-    'social-media',
-    'removable-media'
-  ]
-  const category: ThreatCategory = preferredCategory || getRandomItem(allCategories)
-  
+
+  const category: ThreatCategory = preferredCategory || getRandomItem(allThreatCategories)
   const categorySpecialities = specialities[category]
   const speciality = getRandomItem(categorySpecialities)
-  
-  // Random emoji (20% chance of having one)
-  const emoji = Math.random() < 0.2 
-    ? getRandomItem(playerEmojis)
-    : undefined
-  
+  const emoji = Math.random() < 0.2 ? getRandomItem(playerEmojis) : undefined
+
   return {
     id: `ghost_${Date.now()}_${Math.random()}`,
     name,
@@ -238,16 +49,14 @@ export function getRandomGhostPlayer(preferredCategory?: ThreatCategory): GhostP
   }
 }
 
-// Get a ghost player specialized in a specific category
 export function getGhostPlayerByCategory(category: ThreatCategory): GhostPlayer {
   return getRandomGhostPlayer(category)
 }
 
-// Get multiple unique ghost players
 export function getUniqueGhostPlayers(count: number): GhostPlayer[] {
   const players: GhostPlayer[] = []
   const usedNames = new Set<string>()
-  
+
   while (players.length < count && usedNames.size < ghostPlayerNames.length) {
     const player = getRandomGhostPlayer()
     if (!usedNames.has(player.name)) {
@@ -255,6 +64,6 @@ export function getUniqueGhostPlayers(count: number): GhostPlayer[] {
       usedNames.add(player.name)
     }
   }
-  
+
   return players
 }

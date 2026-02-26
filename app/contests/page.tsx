@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getAllContests, type Contest } from '@/lib/api/backend'
+import { formatInTimeZone, getContestTimeString } from '@/lib/utils/contest'
 import { Trophy, Calendar, Clock, Award } from 'lucide-react'
 import Link from 'next/link'
 import { PageWrapper } from '@/components/PageWrapper'
@@ -21,8 +22,8 @@ export default function ContestsPage() {
       const status = filter === 'all' ? undefined : filter
       const data = await getAllContests(status)
       setContests(data)
-    } catch (error) {
-      console.error('Failed to load contests:', error)
+    } catch {
+      // Silently fail; UI shows empty list
     } finally {
       setLoading(false)
     }
@@ -42,27 +43,6 @@ export default function ContestsPage() {
       </span>
     )
   }
-
-  const getTimeRemaining = (endDate: string) => {
-    const now = new Date()
-    const end = new Date(endDate)
-    const diff = end.getTime() - now.getTime()
-    
-    if (diff < 0) return 'Ended'
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    
-    if (days > 0) return `${days}d ${hours}h remaining`
-    return `${hours}h remaining`
-  }
-
-  const formatInTimeZone = (iso: string, timeZone: string) =>
-    new Intl.DateTimeFormat(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-      timeZone,
-    }).format(new Date(iso))
 
   return (
     <PageWrapper className="relative text-white space-background">
@@ -158,7 +138,7 @@ export default function ContestsPage() {
                   {contest.status === 'active' && (
                     <div className="flex items-center gap-2 text-sm text-green-400 font-bold">
                       <Clock className="w-4 h-4" />
-                      <span>{getTimeRemaining(contest.end_date)}</span>
+                      <span>{getContestTimeString(contest.end_date)}</span>
                     </div>
                   )}
                 </div>
