@@ -5,7 +5,7 @@ interface GuestSavePromptProps {
 
 export function GuestSavePrompt({ onSignInAndSave, onLater }: GuestSavePromptProps) {
   return (
-    <div className="absolute top-[calc(12px+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-30 w-[min(92vw,560px)]">
+    <div className="fixed top-[calc(12px+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 w-[min(92vw,560px)]">
       <div className="rounded-2xl border border-cyan-300/70 bg-[#061225]/92 px-3 py-3 shadow-[0_0_24px_rgba(34,211,238,0.35)]">
         <p className="text-cyan-100 font-mono font-bold text-sm sm:text-base">
           Secure this run before losing progress.

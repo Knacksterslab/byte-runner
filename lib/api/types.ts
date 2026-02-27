@@ -100,12 +100,18 @@ export interface BalanceInfo {
 
 export interface Withdrawal {
   id: string
+  userId?: string
   amountCents: number
   paymentMethod: string
-  status: 'pending' | 'approved' | 'paid' | 'rejected'
+  contactInfo?: Record<string, any>
+  status: 'pending' | 'approved' | 'paid' | 'rejected' | 'failed'
   submittedAt: string
   reviewedAt: string | null
+  reviewedBy: string | null
   notes: string | null
+  paymentDetails: string | null
+  transactionId: string | null
+  createdAt?: string
 }
 
 export interface HourlyChallenge {

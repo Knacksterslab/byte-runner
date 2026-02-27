@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { X, DollarSign } from 'lucide-react'
 import { submitWithdrawal } from '@/lib/api/backend'
 import { PaymentMethodSelect, type PaymentMethod } from '@/components/payment/PaymentMethodSelect'
-import { UsdtWalletStep, type UsdtNetwork } from '@/components/payment/UsdtWalletStep'
+import { UsdtWalletStep } from '@/components/payment/UsdtWalletStep'
 
 interface WithdrawalModalProps {
   currentBalance: number
@@ -14,11 +14,10 @@ interface WithdrawalModalProps {
 
 export default function WithdrawalModal({ currentBalance, onClose, onSuccess }: WithdrawalModalProps) {
   const [step, setStep] = useState<'method' | 'usdt'>('method')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('app_store')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('amazon_gift_card')
   const [email, setEmail] = useState('')
   const [withdrawalAmount, setWithdrawalAmount] = useState('')
   const [usdtWallet, setUsdtWallet] = useState('')
-  const [usdtNetwork, setUsdtNetwork] = useState<UsdtNetwork>('trc20')
   const [confirmedEmail, setConfirmedEmail] = useState(false)
   const [confirmedWallet, setConfirmedWallet] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -29,11 +28,10 @@ export default function WithdrawalModal({ currentBalance, onClose, onSuccess }: 
 
   const resetAndClose = () => {
     setStep('method')
-    setPaymentMethod('app_store')
+    setPaymentMethod('amazon_gift_card')
     setEmail('')
     setWithdrawalAmount('')
     setUsdtWallet('')
-    setUsdtNetwork('trc20')
     setConfirmedEmail(false)
     setConfirmedWallet(false)
     setError('')
@@ -64,8 +62,8 @@ export default function WithdrawalModal({ currentBalance, onClose, onSuccess }: 
       const contactInfo: any = { email: email.trim() }
       if (paymentMethod === 'usdt') {
         if (!usdtWallet.trim()) { setError('Please enter your USDT wallet address'); setSubmitting(false); return }
-        contactInfo.usdtWallet = usdtWallet.trim()
-        contactInfo.usdtNetwork = usdtNetwork
+        contactInfo.tron_address = usdtWallet.trim()
+        contactInfo.network = 'trc20'
       }
       await submitWithdrawal(withdrawalAmountCents, paymentMethod, contactInfo)
       onSuccess()
@@ -167,8 +165,8 @@ export default function WithdrawalModal({ currentBalance, onClose, onSuccess }: 
             <UsdtWalletStep
               wallet={usdtWallet}
               onWalletChange={setUsdtWallet}
-              network={usdtNetwork}
-              onNetworkChange={setUsdtNetwork}
+              network="trc20"
+              onNetworkChange={() => {}}
               confirmed={confirmedWallet}
               onConfirmedChange={setConfirmedWallet}
               submitting={submitting}

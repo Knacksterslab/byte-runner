@@ -89,7 +89,10 @@ export function updateObstacles(
         if (s.kitInventory['backup-system'] !== undefined && s.kitInventory['backup-system'] > 0) {
           s.kitInventory['backup-system']--; s.perfectPlayDurationMs = 0
           s.totalKitsCollected = Math.max(0, s.totalKitsCollected - 1)
-          s.isRestoring = true; s.restorationTimer = s.RESTORATION_DURATION
+          s.isRestoring = false; s.restorationTimer = 0
+          s.lastHitThreatId = obstacle.threatId
+          cb.setLastAttacker(obstacle.sentBy, obstacle.threatId)
+          cb.showTutorial('backup-system', obstacle.threatId)
           s.obstacles.forEach(obs => cb.returnObstacleToPool(obs)); s.obstacles.length = 0
           s.localScore -= 100
           cb.returnObstacleToPool(obstacle)

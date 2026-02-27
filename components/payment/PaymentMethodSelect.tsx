@@ -1,6 +1,6 @@
 import { Gift, Wallet } from 'lucide-react'
 
-export type PaymentMethod = 'app_store' | 'google_play' | 'usdt'
+export type PaymentMethod = 'app_store' | 'google_play' | 'amazon_gift_card' | 'usdt'
 
 interface PaymentMethodSelectProps {
   value: PaymentMethod
@@ -9,9 +9,10 @@ interface PaymentMethodSelectProps {
 }
 
 const METHODS: { value: PaymentMethod; label: string; sub: string; icon: 'gift' | 'wallet' }[] = [
+  { value: 'amazon_gift_card', label: 'Amazon Gift Card', sub: 'Email delivery', icon: 'gift' },
   { value: 'app_store', label: 'App Store Gift Card', sub: 'Email delivery', icon: 'gift' },
   { value: 'google_play', label: 'Google Play Gift Card', sub: 'Email delivery', icon: 'gift' },
-  { value: 'usdt', label: 'USDT (Crypto)', sub: 'Wallet transfer', icon: 'wallet' },
+  { value: 'usdt', label: 'USDT (Crypto / TRC20)', sub: 'Tron wallet transfer', icon: 'wallet' },
 ]
 
 export function PaymentMethodSelect({ value, onChange, accentColor = 'green' }: PaymentMethodSelectProps) {

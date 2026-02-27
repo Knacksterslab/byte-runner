@@ -184,8 +184,22 @@ export function createGameEngine(
         s.preQuizTeachingTimer -= 16
       } else { s.showingPreQuizTeaching = false }
     }
-    const hideHud = opts.showQuizOverlayRef.current || quiz.refs.activeRef.current || s.showingTutorial || s.showingPreQuizTeaching || s.turboBoostCelebrationTimer > 0
-    drawHUD(s, quiz.refs.activeRef.current, opts.showQuizOverlayRef.current, s.showingTutorial || s.showingPreQuizTeaching, s.turboBoostCelebrationTimer)
+    const hideHud =
+      opts.showQuizOverlayRef.current ||
+      quiz.refs.activeRef.current ||
+      s.showingTutorial ||
+      s.showingPreQuizTeaching ||
+      s.turboBoostCelebrationTimer > 0 ||
+      isUiPaused
+    if (!hideHud) {
+      drawHUD(
+        s,
+        quiz.refs.activeRef.current,
+        opts.showQuizOverlayRef.current,
+        s.showingTutorial || s.showingPreQuizTeaching,
+        s.turboBoostCelebrationTimer
+      )
+    }
     drawThreatPanel(s, hideHud)
     const isInvincible = quiz.refs.activeRef.current || s.isHealing || s.isRestoring || s.showingPreQuizTeaching || s.levelUpTimer > 0 || s.turboBoostCelebrationTimer > 0 || isUiPaused
     if (!s.isHealing && !s.showingPreQuizTeaching && !isUiPaused) {

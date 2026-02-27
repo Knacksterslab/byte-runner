@@ -1,4 +1,38 @@
 import { fetchWithSession } from './client'
+import type { Withdrawal } from './types'
+
+// ── Withdrawal admin ─────────────────────────────────────────────────────────
+
+export interface AdminUpdateWithdrawalData {
+  status: 'approved' | 'paid' | 'rejected'
+  notes?: string
+  paymentDetails?: string
+}
+
+export async function adminGetAllWithdrawals(status?: string): Promise<{ withdrawals: Withdrawal[] }> {
+  const url = status ? `/balance/admin/withdrawals?status=${status}` : '/balance/admin/withdrawals'
+  const res = await fetchWithSession(url, { method: 'GET' })
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null)
+    throw new Error(payload?.message || 'Failed to fetch withdrawals.')
+  }
+  return res.json()
+}
+
+export async function adminUpdateWithdrawal(
+  withdrawalId: string,
+  data: AdminUpdateWithdrawalData,
+): Promise<Withdrawal> {
+  const res = await fetchWithSession(`/balance/admin/withdrawals/${withdrawalId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null)
+    throw new Error(payload?.message || 'Failed to update withdrawal.')
+  }
+  return res.json()
+}
 
 export interface CreateContestData {
   name: string
