@@ -39,10 +39,10 @@ export default function Footer() {
           <div className="text-sm text-center md:text-right">
             <p>Questions or feedback?</p>
             <a 
-              href="mailto:connect@knacksters.co" 
+              href="mailto:connect@byterunner.co" 
               className="text-cyan-400 hover:text-cyan-300 transition-colors"
             >
-              connect@knacksters.co
+              connect@byterunner.co
             </a>
           </div>
         </div>

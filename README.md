@@ -211,7 +211,7 @@ MIT License - Free for educational use
 
 ## Contact
 
-Questions or feedback? Email: connect@knacksters.co
+Questions or feedback? Email: connect@byterunner.co
 
 ---
 

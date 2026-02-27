@@ -21,11 +21,11 @@ export default function FAQPage() {
     },
     {
       question: "How do I report bugs or give feedback?",
-      answer: "We'd love to hear from you! You can email us at connect@knacksters.co. Please include details about what happened, what browser/device you're using, and any error messages you saw. Your feedback helps us improve the game for everyone!"
+      answer: "We'd love to hear from you! You can email us at connect@byterunner.co. Please include details about what happened, what browser/device you're using, and any error messages you saw. Your feedback helps us improve the game for everyone!"
     },
     {
       question: "Can I use this for my company's security training?",
-      answer: "Yes! Byte Runner covers 8 core cybersecurity topics (passwords, phishing, updates, privacy, WiFi security, MFA, backups, and social engineering) with 15 different threat types. While it's not a replacement for comprehensive security training, it's a great supplement for security awareness programs. We're currently developing enterprise features like admin dashboards, progress tracking, and compliance reporting. Contact us at connect@knacksters.co for more information."
+      answer: "Yes! Byte Runner covers 8 core cybersecurity topics (passwords, phishing, updates, privacy, WiFi security, MFA, backups, and social engineering) with 15 different threat types. While it's not a replacement for comprehensive security training, it's a great supplement for security awareness programs. We're currently developing enterprise features like admin dashboards, progress tracking, and compliance reporting. Contact us at connect@byterunner.co for more information."
     },
     {
       question: "What cybersecurity topics does it cover?",
@@ -116,7 +116,7 @@ export default function FAQPage() {
             We're here to help! Reach out to us anytime.
           </p>
           <a 
-            href="mailto:connect@knacksters.co"
+            href="mailto:connect@byterunner.co"
             className="inline-block bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105"
           >
             📧 Contact Us

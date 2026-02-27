@@ -183,6 +183,7 @@ export function WithdrawalsTab() {
                     </div>
                     <div className="text-gray-500 text-xs mt-1">
                       {ci.email && <span className="mr-3">{ci.email}</span>}
+                      {ci.store_region && <span className="mr-3 text-yellow-400/70 font-semibold">{ci.store_region} store</span>}
                       {new Date(w.submittedAt).toLocaleString()}
                     </div>
                   </div>
@@ -200,6 +201,12 @@ export function WithdrawalsTab() {
                         <div>
                           <div className="text-gray-500 text-xs mb-1">Delivery Email</div>
                           <div className="text-white font-mono">{ci.email}</div>
+                        </div>
+                      )}
+                      {ci.store_region && (
+                        <div>
+                          <div className="text-gray-500 text-xs mb-1">Store Region</div>
+                          <div className="text-yellow-300 font-semibold">{ci.store_region}</div>
                         </div>
                       )}
                       {ci.tron_address && (

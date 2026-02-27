@@ -301,7 +301,7 @@ Common problems and solutions:
 
 For deployment issues:
 - Vercel Support: https://vercel.com/support
-- Email: connect@knacksters.co
+- Email: connect@byterunner.co
 
 ## Production URL
 

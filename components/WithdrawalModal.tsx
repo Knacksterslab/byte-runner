@@ -12,9 +12,29 @@ interface WithdrawalModalProps {
   onSuccess: () => void
 }
 
+const GIFT_CARD_METHODS: PaymentMethod[] = ['amazon_gift_card', 'app_store', 'google_play']
+
+const STORE_REGIONS: { value: string; label: string }[] = [
+  { value: 'US', label: '🇺🇸 United States' },
+  { value: 'GB', label: '🇬🇧 United Kingdom' },
+  { value: 'CA', label: '🇨🇦 Canada' },
+  { value: 'AU', label: '🇦🇺 Australia' },
+  { value: 'DE', label: '🇩🇪 Germany' },
+  { value: 'FR', label: '🇫🇷 France' },
+  { value: 'NG', label: '🇳🇬 Nigeria' },
+  { value: 'IN', label: '🇮🇳 India' },
+  { value: 'BR', label: '🇧🇷 Brazil' },
+  { value: 'MX', label: '🇲🇽 Mexico' },
+  { value: 'JP', label: '🇯🇵 Japan' },
+  { value: 'SG', label: '🇸🇬 Singapore' },
+  { value: 'AE', label: '🇦🇪 UAE' },
+  { value: 'ZA', label: '🇿🇦 South Africa' },
+]
+
 export default function WithdrawalModal({ currentBalance, onClose, onSuccess }: WithdrawalModalProps) {
   const [step, setStep] = useState<'method' | 'usdt'>('method')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('amazon_gift_card')
+  const [storeRegion, setStoreRegion] = useState('US')
   const [email, setEmail] = useState('')
   const [withdrawalAmount, setWithdrawalAmount] = useState('')
   const [usdtWallet, setUsdtWallet] = useState('')
@@ -23,12 +43,14 @@ export default function WithdrawalModal({ currentBalance, onClose, onSuccess }: 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  const isGiftCard = GIFT_CARD_METHODS.includes(paymentMethod)
   const balanceDollars = currentBalance / 100
   const withdrawalAmountCents = Math.round(parseFloat(withdrawalAmount || '0') * 100)
 
   const resetAndClose = () => {
     setStep('method')
     setPaymentMethod('amazon_gift_card')
+    setStoreRegion('US')
     setEmail('')
     setWithdrawalAmount('')
     setUsdtWallet('')
@@ -64,6 +86,8 @@ export default function WithdrawalModal({ currentBalance, onClose, onSuccess }: 
         if (!usdtWallet.trim()) { setError('Please enter your USDT wallet address'); setSubmitting(false); return }
         contactInfo.tron_address = usdtWallet.trim()
         contactInfo.network = 'trc20'
+      } else {
+        contactInfo.store_region = storeRegion
       }
       await submitWithdrawal(withdrawalAmountCents, paymentMethod, contactInfo)
       onSuccess()
@@ -123,8 +147,33 @@ export default function WithdrawalModal({ currentBalance, onClose, onSuccess }: 
 
             <div>
               <label className="block text-sm text-gray-300 mb-3 font-semibold">Choose how to receive your payment:</label>
-              <PaymentMethodSelect value={paymentMethod} onChange={setPaymentMethod} accentColor="green" />
+              <PaymentMethodSelect
+                value={paymentMethod}
+                onChange={(m) => { setPaymentMethod(m); setStoreRegion('US') }}
+                accentColor="green"
+              />
             </div>
+
+            {/* Country/region selector — only for gift card methods */}
+            {isGiftCard && (
+              <div>
+                <label className="block text-sm text-gray-300 mb-2 font-semibold">
+                  Store Region / Country:
+                </label>
+                <select
+                  value={storeRegion}
+                  onChange={(e) => setStoreRegion(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-green-500 focus:outline-none appearance-none cursor-pointer"
+                >
+                  {STORE_REGIONS.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-yellow-400/80 mt-1.5">
+                  ⚠️ Gift cards are region-locked. Make sure this matches your account country.
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm text-gray-300 mb-2">

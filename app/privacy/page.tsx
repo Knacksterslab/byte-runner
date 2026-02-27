@@ -138,8 +138,8 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-bold text-cyan-400 mb-4">10. Contact Us</h2>
             <p className="leading-relaxed">
               If you have questions about this Privacy Policy, please contact us at:{' '}
-              <a href="mailto:connect@knacksters.co" className="text-cyan-400 hover:text-cyan-300 underline">
-                connect@knacksters.co
+              <a href="mailto:connect@byterunner.co" className="text-cyan-400 hover:text-cyan-300 underline">
+                connect@byterunner.co
               </a>
             </p>
           </section>
