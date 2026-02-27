@@ -2,7 +2,7 @@ import { API_DOMAIN, FDI_VERSION, clearAntiCsrf, extractAndStoreAntiCsrf, fetchW
 import type { AuthResult, BackendUser } from './types'
 
 export async function getCurrentUser(): Promise<BackendUser | null> {
-  const res = await fetchWithSession('/users/me', { method: 'GET' }, false)
+  const res = await fetchWithSession('/users/me', { method: 'GET' })
   if (res.status === 401) return null
   if (!res.ok) {
     const payload = await res.json().catch(() => null)
