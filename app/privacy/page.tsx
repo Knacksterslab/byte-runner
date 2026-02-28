@@ -1,5 +1,17 @@
+import type { Metadata } from 'next'
 import { PageWrapper } from '@/components/PageWrapper'
 import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy | Byte Runner',
+  description: 'How Byte Runner handles your data. We collect almost nothing — your high score is saved locally, and we use anonymous analytics to improve the game.',
+  alternates: { canonical: '/privacy' },
+  openGraph: {
+    title: 'Privacy Policy | Byte Runner',
+    description: 'How Byte Runner handles your data. We collect almost nothing — your high score is saved locally, and we use anonymous analytics to improve the game.',
+    url: '/privacy',
+  },
+}
 
 export default function PrivacyPage() {
   return (

@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { trackFeedbackClick } from '@/lib/analytics'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
@@ -41,6 +44,7 @@ export default function Footer() {
             <a 
               href="mailto:connect@byterunner.co" 
               className="text-cyan-400 hover:text-cyan-300 transition-colors"
+              onClick={trackFeedbackClick}
             >
               connect@byterunner.co
             </a>

@@ -1,5 +1,17 @@
+import type { Metadata } from 'next'
 import { PageWrapper } from '@/components/PageWrapper'
 import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'FAQ | Byte Runner',
+  description: 'Frequently asked questions about Byte Runner — a free cybersecurity survival game covering phishing, ransomware, MFA, and more. Learn how to play, what you\'ll learn, and how the quiz system works.',
+  alternates: { canonical: '/faq' },
+  openGraph: {
+    title: 'FAQ | Byte Runner',
+    description: 'Frequently asked questions about Byte Runner — a free cybersecurity survival game covering phishing, ransomware, MFA, and more.',
+    url: '/faq',
+  },
+}
 
 export default function FAQPage() {
   const faqs = [

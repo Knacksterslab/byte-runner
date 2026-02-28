@@ -3,30 +3,36 @@ import Script from "next/script";
 import "./globals.css";
 import { AnalyticsPageView } from "@/components/AnalyticsPageView";
 
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://byte-runner.vercel.app'
+
 export const metadata: Metadata = {
   title: "Byte Runner - A Cybersecurity Survival Game for Everyone",
   description: "Endless runner game that teaches real security tools. Die to ransomware, learn about backups. Free to play.",
+  metadataBase: new URL(BASE_URL),
   viewport: {
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
-    viewportFit: 'cover', // For notched devices (iPhone X+)
+    viewportFit: 'cover',
   },
-  themeColor: '#000011', // Cyber dark theme
+  themeColor: '#000011',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Byte Runner',
   },
   manifest: '/manifest.json',
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
     title: 'Byte Runner - A Cybersecurity Survival Game for Everyone',
     description: 'Endless runner game that teaches real security tools. Die to ransomware, learn about backups. Free to play.',
-    url: 'https://byte-runner.vercel.app',
+    url: BASE_URL,
     siteName: 'Byte Runner',
     images: [{
-      url: 'https://byte-runner.vercel.app/og-image.png',
+      url: '/og-image.png',
       width: 1200,
       height: 630,
       alt: 'Byte Runner - A Cybersecurity Survival Game for Everyone'
@@ -38,9 +44,39 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Byte Runner - A Cybersecurity Survival Game for Everyone',
     description: 'Endless runner game that teaches real security tools. Die to ransomware, learn about backups.',
-    images: ['https://byte-runner.vercel.app/og-image.png'],
+    images: ['/og-image.png'],
   },
 };
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'VideoGame',
+  name: 'Byte Runner',
+  description: 'An endless runner game that teaches real cybersecurity tools. Dodge threats like ransomware and phishing, collect protection kits, and learn what professionals use to stay safe online.',
+  url: BASE_URL,
+  image: `${BASE_URL}/og-image.png`,
+  genre: ['Educational', 'Action', 'Endless Runner'],
+  gamePlatform: 'Web Browser',
+  applicationCategory: 'Game',
+  operatingSystem: 'Any',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+    availability: 'https://schema.org/InStock',
+  },
+  author: {
+    '@type': 'Organization',
+    name: 'Byte Runner',
+    url: BASE_URL,
+    email: 'connect@byterunner.co',
+  },
+  educationalUse: 'Cybersecurity awareness and training',
+  audience: {
+    '@type': 'Audience',
+    audienceType: 'General Public',
+  },
+}
 
 export default function RootLayout({
   children,
@@ -60,6 +96,11 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="shortcut icon" href="/favicon.ico" />
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body className="bg-black">
         {/* Google Analytics 4 */}

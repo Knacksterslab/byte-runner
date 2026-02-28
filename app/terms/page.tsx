@@ -1,5 +1,17 @@
+import type { Metadata } from 'next'
 import { PageWrapper } from '@/components/PageWrapper'
 import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'Terms of Service | Byte Runner',
+  description: 'Terms of Service for Byte Runner — the free educational cybersecurity game. Provided as-is for entertainment and awareness purposes.',
+  alternates: { canonical: '/terms' },
+  openGraph: {
+    title: 'Terms of Service | Byte Runner',
+    description: 'Terms of Service for Byte Runner — the free educational cybersecurity game. Provided as-is for entertainment and awareness purposes.',
+    url: '/terms',
+  },
+}
 
 export default function TermsPage() {
   return (
