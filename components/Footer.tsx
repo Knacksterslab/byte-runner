@@ -48,6 +48,16 @@ export default function Footer() {
             >
               connect@byterunner.co
             </a>
+            <div className="mt-1">
+              <a
+                href="https://x.com/playByteRunner"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                𝕏 @playByteRunner
+              </a>
+            </div>
           </div>
         </div>
 

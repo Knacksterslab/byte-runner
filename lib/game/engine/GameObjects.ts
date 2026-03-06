@@ -6,6 +6,8 @@ import { hexToRgb } from './GameState'
 import { getKitIcon } from '../gameConstants'
 import { calculateKitsNeededForNextLevel } from '../difficulty'
 import { calculateTotalKits, isColliding } from '../utils'
+import { cgGameplayStop } from '@/lib/crazygames'
+import { audioManager } from '@/lib/audio'
 
 interface ObjectCallbacks {
   trackKitCollected: (kitType: string, total: number) => void
@@ -83,6 +85,7 @@ export function updateObstacles(
           s.totalKitsCollected = Math.max(0, s.totalKitsCollected - 1)
           s.lastHitThreatId = obstacle.threatId
           cb.setLastAttacker(obstacle.sentBy, obstacle.threatId)
+          audioManager.play('threat-hit')
           cb.showTutorial(reqKit, obstacle.threatId); s.localScore -= 25
           cb.returnObstacleToPool(obstacle); s.obstacles.splice(i, 1); continue
         }
@@ -103,6 +106,9 @@ export function updateObstacles(
         s.lastHitThreatId = obstacle.threatId
         cb.setLastAttacker(obstacle.sentBy, obstacle.threatId)
         cb.trackGameOver(s.currentLevel, s.localScore, obstacle.threatId)
+        cgGameplayStop()
+        audioManager.stopMusic()
+        audioManager.play('game-over')
         cb.setGameOver(true); cb.setRunning(false)
         if (cb.isFirstDeath) cb.setIsFirstDeath(false)
         return
@@ -145,10 +151,12 @@ export function updateKits(s: GameState, cb: ObjectCallbacks): void {
       if (isQuizItem && cb.isQuizActive()) {
         const isCorrect = cb.quizCorrectAnswers().includes(kit.threatId)
         if (isCorrect) {
+          audioManager.play('quiz-correct')
           cb.quizCollectItem(kit.threatId, true)
           s.localScore += 100
           ctx.fillStyle = 'rgba(0, 200, 255, 0.2)'; ctx.fillRect(0, 0, canvas.width, canvas.height)
         } else {
+          audioManager.play('quiz-wrong')
           cb.endQuizWrongAnswer(kit.threatId)
         }
         s.powerups.splice(i, 1); continue
@@ -156,6 +164,7 @@ export function updateKits(s: GameState, cb: ObjectCallbacks): void {
       const kitType = kit.type.replace('kit-', '')
       if (kitType && s.kitInventory[kitType] !== undefined && s.kitInventory[kitType] < s.MAX_KIT_CAPACITY) {
         s.kitInventory[kitType]++; s.totalKitsCollected++; s.localScore += 50
+        audioManager.play('kit-collect')
         cb.trackKitCollected(kitType, s.totalKitsCollected)
         s.celebrationTimer = s.CELEBRATION_DURATION
         const kitsForNext = calculateKitsNeededForNextLevel(s.currentLevel)

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { isCrazyGames } from '@/lib/crazygames'
 
 const GUEST_SAVE_PROMPT_MIN_SCORE = 1200
 const GUEST_SAVE_PROMPT_MIN_LEVEL = 3
@@ -39,7 +40,7 @@ export function useGuestSavePrompt(opts: UseGuestSavePromptOptions) {
   }, [opts.gameStarted])
 
   useEffect(() => {
-    if (!opts.gameStarted || opts.authStatus === 'authed') {
+    if (!opts.gameStarted || opts.authStatus === 'authed' || isCrazyGames()) {
       setShowGuestSavePrompt(false)
       return
     }

@@ -2,6 +2,8 @@ import { getDifficultyForLevel } from '../difficulty'
 import { getCurrentZone } from '../zones'
 import { getQuizForLevel, type QuizChallenge } from '../inGameQuizzes'
 import { trackLevelUp } from '@/lib/analytics'
+import { cgHappyTime } from '@/lib/crazygames'
+import { audioManager } from '@/lib/audio'
 import { spawnConfetti } from './GameBackground'
 import { returnObstacleToPool } from './GameSpawn'
 import type { GameState } from './GameState'
@@ -127,7 +129,9 @@ export function advanceLevel(
   s.isAdvancingLevel = true
   s.currentLevel++
   cb.setLevel(s.currentLevel)
+  audioManager.play('level-up')
   trackLevelUp(s.currentLevel)
+  if (s.currentLevel % 5 === 0) cgHappyTime()
   s.playerX = 200 + Math.random() * (s.canvas.width - 400)
   s.playerY = 200 + Math.random() * (s.canvas.height - 400)
   const diff = getDifficultyForLevel(s.currentLevel)

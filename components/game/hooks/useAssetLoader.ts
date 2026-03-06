@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { initCrazyGames, cgLoadingStart, cgLoadingStop } from '@/lib/crazygames'
 
 export interface AssetLoaderState {
   isMounted: boolean
@@ -14,6 +15,7 @@ export function useAssetLoader(): AssetLoaderState {
 
   useEffect(() => {
     setIsMounted(true)
+    initCrazyGames()
   }, [])
 
   useEffect(() => {
@@ -29,6 +31,8 @@ export function useAssetLoader(): AssetLoaderState {
       background: new Image(),
     }
 
+    cgLoadingStart()
+
     let loadedCount = 0
     const totalImages = Object.keys(images).length
 
@@ -36,7 +40,10 @@ export function useAssetLoader(): AssetLoaderState {
       loadedCount++
       setLoadProgress((loadedCount / totalImages) * 100)
       if (loadedCount === totalImages) {
-        timeoutRef.current = setTimeout(() => setIsLoading(false), 2000)
+        timeoutRef.current = setTimeout(() => {
+          cgLoadingStop()
+          setIsLoading(false)
+        }, 2000)
       }
     }
 

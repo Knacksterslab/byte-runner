@@ -101,6 +101,9 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+
+        {/* CrazyGames SDK — disabled/no-op on all non-CrazyGames domains */}
+        <script src="https://sdk.crazygames.com/crazygames-sdk-v2.js" async />
       </head>
       <body className="bg-black">
         {/* Google Analytics 4 */}

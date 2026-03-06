@@ -1,10 +1,12 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import { useGameStore } from '@/lib/store/gameStore'
 import { getProtectionKitById, getProtectionKitForThreat } from '@/lib/game/protectionKits'
 import { getActiveContests, type Contest } from '@/lib/api/backend'
 import { useAssetLoader } from './hooks/useAssetLoader'
+import { isCrazyGames } from '@/lib/crazygames'
+import { audioManager } from '@/lib/audio'
 import { useAuth } from './hooks/useAuth'
 import { useLeaderboard } from './hooks/useLeaderboard'
 import { useQuizState } from './hooks/useQuizState'
@@ -49,6 +51,11 @@ export default function SimpleGame() {
     resetGame, addLeaderboardEntry, setLeaderboard,
   } = useGameStore()
   const { isMounted, isLoading, loadProgress } = useAssetLoader()
+  const muted = useSyncExternalStore(
+    (cb) => audioManager.subscribe(cb),
+    () => audioManager.isMuted(),
+    () => false
+  )
 
   const {
     authStatus, currentUser,
@@ -149,8 +156,8 @@ export default function SimpleGame() {
         onCloseTutorial={tutorial.actions.close}
         onStart={handleStart}
         onShowTutorial={tutorial.actions.open}
-        onSignIn={authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true)}
-        signInLabel={authStatus === 'authed' ? `Signed in as ${currentUser?.username || 'Player'} • Sign out` : 'Guest • Sign in'}
+        onSignIn={isCrazyGames() ? undefined : (authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true))}
+        signInLabel={isCrazyGames() ? undefined : (authStatus === 'authed' ? `Signed in as ${currentUser?.username || 'Player'} • Sign out` : 'Guest • Sign in')}
         activeContests={activeContests}
         username={currentUser?.username ?? undefined}
         isAuthenticated={authStatus === 'authed'}
@@ -189,6 +196,14 @@ export default function SimpleGame() {
         />
       )}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0" tabIndex={0} />
+      <button
+        onClick={() => audioManager.toggleMute()}
+        aria-label={muted ? 'Unmute' : 'Mute'}
+        className="fixed z-30 flex h-[48px] w-[48px] sm:h-[54px] sm:w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24]/80 text-xl sm:text-2xl text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105 touch-manipulation"
+        style={{ right: 'max(16px, calc(env(safe-area-inset-right) + 16px))', top: 'max(12px, calc(env(safe-area-inset-top) + 8px))' }}
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
       {showGuestSavePrompt && authStatus !== 'authed' && !isGameOver && !showQuiz && (
         <GuestSavePrompt
           onSignInAndSave={() => {
@@ -212,7 +227,11 @@ export default function SimpleGame() {
                 type="button"
                 onClick={() => {
                   setActiveBadgeToast(null)
-                  router.push('/profile')
+                  if (isCrazyGames()) {
+                    window.open('/profile', '_blank', 'noopener,noreferrer')
+                  } else {
+                    router.push('/profile')
+                  }
                 }}
                 className="rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-mono font-bold tracking-wide text-white hover:bg-emerald-400 transition-colors"
               >

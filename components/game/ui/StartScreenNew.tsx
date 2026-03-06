@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { audioManager } from '@/lib/audio'
 import Link from 'next/link'
 import { useGameStore } from '@/lib/store/gameStore'
 import {
@@ -37,12 +38,21 @@ export function StartScreenNew({
   isAuthenticated = false,
   onRequestSetUsername,
 }: StartScreenNewProps) {
+  const muted = useSyncExternalStore(
+    (cb) => audioManager.subscribe(cb),
+    () => audioManager.isMuted(),
+    () => false
+  )
   const leaderboard = useGameStore((state) => state.leaderboard)
   const ensureLeaderboardSeeded = useGameStore((state) => state.ensureLeaderboardSeeded)
   const entries = leaderboard.slice(0, 3)
   const [hourlyChallenge, setHourlyChallenge] = useState<HourlyChallenge | null>(null)
   const [hourlyEligibility, setHourlyEligibility] = useState<HourlyChallengeEligibility | null>(null)
   const [eligibilityLoading, setEligibilityLoading] = useState(false)
+
+  useEffect(() => {
+    audioManager.playMusic(0.3)
+  }, [])
 
   useEffect(() => {
     let isActive = true
@@ -113,14 +123,25 @@ export function StartScreenNew({
         )
       )}
 
-      <button
-        onClick={onShowTutorial}
-        className="fixed right-4 sm:right-6 z-20 flex h-[48px] w-[48px] sm:h-[54px] sm:w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24] text-xl sm:text-2xl font-bold text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105 touch-manipulation"
-        style={{ top: 'max(12px, calc(env(safe-area-inset-top) + 8px))' }}
+      <div
+        className="fixed z-20 flex items-center gap-4"
+        style={{ right: 'max(16px, calc(env(safe-area-inset-right) + 16px))', top: 'max(12px, calc(env(safe-area-inset-top) + 8px))' }}
       >
-        <span className={styles.questionFrame} />
-        <span className="relative z-10 text-cyan-100 drop-shadow-[0_0_8px_rgba(0,255,255,0.9)]">?</span>
-      </button>
+        <button
+          onClick={() => audioManager.toggleMute()}
+          aria-label={muted ? 'Unmute' : 'Mute'}
+          className="flex h-[48px] w-[48px] sm:h-[54px] sm:w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24] text-xl sm:text-2xl text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105 touch-manipulation"
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
+        <button
+          onClick={onShowTutorial}
+          className="relative flex h-[48px] w-[48px] sm:h-[54px] sm:w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24] text-xl sm:text-2xl font-bold text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105 touch-manipulation"
+        >
+          <span className={styles.questionFrame} />
+          <span className="relative z-10 text-cyan-100 drop-shadow-[0_0_8px_rgba(0,255,255,0.9)]">?</span>
+        </button>
+      </div>
 
       <div className={`${styles.screenSafe} relative z-10 mx-auto flex w-full max-w-[980px] flex-col items-center px-4 sm:px-6 pb-6 pt-3 text-center`}>
         <img src="/logo.png" alt="Byte Runner" className={`${styles.logo} h-20 w-auto drop-shadow-[0_0_38px_rgba(0,255,255,0.85)] sm:h-24`} />
@@ -164,12 +185,21 @@ export function StartScreenNew({
 
         <ActiveContestsPanel activeContests={activeContests} />
 
-        <div className="mt-4 mb-2 flex gap-2 text-xs text-cyan-100/70 sm:fixed sm:bottom-5 sm:right-6 sm:z-20">
+        <div className="mt-6 mb-2 flex gap-2 text-xs text-cyan-100/70">
           <a href="/privacy" className="hover:text-cyan-200 transition-colors">Privacy</a>
           <span className="text-cyan-100/40">•</span>
           <a href="/terms" className="hover:text-cyan-200 transition-colors">Terms</a>
           <span className="text-cyan-100/40">•</span>
           <a href="/faq" className="hover:text-cyan-200 transition-colors">FAQ</a>
+          <span className="text-cyan-100/40">•</span>
+          <a
+            href="https://x.com/playByteRunner"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-cyan-200 transition-colors"
+          >
+            𝕏 @playByteRunner
+          </a>
         </div>
       </div>
     </div>

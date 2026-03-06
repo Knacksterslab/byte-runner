@@ -9,8 +9,8 @@ interface StartScreenViewProps {
   onCloseTutorial: () => void
   onStart: () => void
   onShowTutorial: () => void
-  onSignIn: () => void
-  signInLabel: string
+  onSignIn?: () => void
+  signInLabel?: string
   activeContests: Contest[]
   username?: string
   isAuthenticated: boolean

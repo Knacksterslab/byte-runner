@@ -3,6 +3,8 @@
 import { getThreatName } from '@/lib/game/threatData'
 import { getProtectionKitForThreat } from '@/lib/game/protectionKits'
 import { trackQuizAttempt, trackSocialShare, trackDeepDiveViewed } from '@/lib/analytics'
+import { isCrazyGames } from '@/lib/crazygames'
+import { audioManager } from '@/lib/audio'
 import { recordShare } from '@/lib/api/backend'
 import type { GhostPlayer } from '@/lib/game/ghostPlayers'
 import type { BackendUser } from '@/lib/api/backend'
@@ -41,6 +43,7 @@ export function GameOverScreen({
   }
 
   const handleShare = async () => {
+    audioManager.play('share')
     const tweetText = `I just scored ${score} points in Byte Runner! 🎮🔐\n\nCan you beat my score?\n\nPlay now: ${window.location.origin}`
     const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
     window.open(tweetUrl, '_blank', 'width=550,height=420')
@@ -124,22 +127,30 @@ export function GameOverScreen({
         </div>
 
         <div className="mt-5 text-white font-mono text-[1.2rem] sm:text-[1.4rem]">
-          {authStatus !== 'authed' ? (
+          {!isCrazyGames() && (
             <>
-              <button onClick={onSignInToSave} className="text-white hover:text-cyan-200 transition-colors">
-                Sign in to save score
-              </button>
-              <span className="mx-3 text-gray-400">•</span>
-            </>
-          ) : (
-            <>
-              <span className="text-cyan-400">✓ Signed in as {currentUser?.username || 'Player'}</span>
+              {authStatus !== 'authed' ? (
+                <button onClick={onSignInToSave} className="text-white hover:text-cyan-200 transition-colors">
+                  Sign in to save score
+                </button>
+              ) : (
+                <span className="text-cyan-400">✓ Signed in as {currentUser?.username || 'Player'}</span>
+              )}
               <span className="mx-3 text-gray-400">•</span>
             </>
           )}
           <button onClick={handleShare} className="font-semibold hover:text-cyan-200 transition-colors">
             Share run
           </button>
+          <span className="mx-3 text-gray-400">•</span>
+          <a
+            href="https://x.com/playByteRunner"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-cyan-200 transition-colors"
+          >
+            Follow us
+          </a>
         </div>
 
         {lastThreatType && (

@@ -3,6 +3,7 @@ import { getLeaderboard, submitRun, type BackendUser } from '@/lib/api/backend'
 import { checkBadges, getAllBadges, getMyBadges } from '@/lib/api/badges'
 import { type LeaderboardEntry } from '@/lib/store/gameStore'
 import { trackRunSaved } from '@/lib/analytics'
+import { audioManager } from '@/lib/audio'
 import type { LeaderboardHookOptions, LeaderboardState, SaveStatus } from '../types/leaderboard.types'
 
 export type { LeaderboardHookOptions, LeaderboardState, SaveStatus }
@@ -197,8 +198,10 @@ export function useLeaderboard(options: LeaderboardHookOptions): LeaderboardStat
           enteredContests: result.enteredContests,
         })
         if (result.enteredContests && result.enteredContests.length > 0) {
+          audioManager.play('prize-win')
           setSaveMessage(`Saved to leaderboard! 🏆 Entered in: ${result.enteredContests.join(', ')}`)
         } else {
+          audioManager.play('run-saved')
           setSaveMessage('Saved to leaderboard.')
         }
       }
@@ -219,6 +222,7 @@ export function useLeaderboard(options: LeaderboardHookOptions): LeaderboardStat
         }
 
         if (newlyAwardedIds.length > 0) {
+          audioManager.play('badge-unlock')
           const nextToasts = newlyAwardedIds.map((badgeId) => {
             const badgeName = badgeNameByIdRef.current[badgeId] ?? badgeId
             return `Badge Unlocked: ${badgeName}`

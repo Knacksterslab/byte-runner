@@ -1,6 +1,8 @@
 import { useRef } from 'react'
 import { getProtectionKitForThreat } from '@/lib/game/protectionKits'
 import { trackGameStart, trackQuizPass, trackQuizFail } from '@/lib/analytics'
+import { cgGameplayStart, cgGameplayStop } from '@/lib/crazygames'
+import { audioManager } from '@/lib/audio'
 import { ALL_KIT_TYPES } from '@/lib/game/gameConstants'
 
 interface GameHandlerOptions {
@@ -41,6 +43,9 @@ export function useGameHandlers(opts: GameHandlerOptions): GameHandlers {
       return
     }
     trackGameStart()
+    cgGameplayStart()
+    audioManager.play('game-start')
+    audioManager.playMusic()
     o.resetGame()
     o.setGameStarted(true)
     o.setLevel(1)
@@ -49,6 +54,8 @@ export function useGameHandlers(opts: GameHandlerOptions): GameHandlers {
 
   const handleRestart = () => {
     const o = optsRef.current
+    cgGameplayStart()
+    audioManager.playMusic()
     o.resetGame()
     o.setSavedGameState(null)
     o.setShowQuiz(false)
@@ -68,8 +75,11 @@ export function useGameHandlers(opts: GameHandlerOptions): GameHandlers {
       o.setLevel(o.savedGameState.level)
       o.setScore(o.savedGameState.score)
     }
+    audioManager.play('quiz-pass')
     o.setGameOver(false)
     o.setGameStarted(true)
+    cgGameplayStart()
+    audioManager.playMusic()
     const tid = setTimeout(() => o.setSavedGameState(null), 500)
     o.timeoutRefs.current.push(tid)
   }
@@ -88,6 +98,9 @@ export function useGameHandlers(opts: GameHandlerOptions): GameHandlers {
       }, {} as Record<string, number>)
       o.setSavedGameState({ level: 1, kits: partialKits, score: 0 })
     }
+    audioManager.play('quiz-fail')
+    cgGameplayStart()
+    audioManager.playMusic()
     o.resetGame()
     o.setGameStarted(true)
     o.setLevel(1)
