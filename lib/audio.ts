@@ -18,7 +18,7 @@ const MUTE_KEY = 'br_audio_muted'
 
 const EFFECT_SOURCES: Record<string, string> = {
   'game-start':   '/assets/audio/game-start.mp3',
-  'kit-collect':  '/assets/audio/kit-collect.mp3',
+  'kit-collect':  '/assets/audio/kit-collect-v2.mp3',
   'threat-hit':   '/assets/audio/threat-hit.mp3',
   'level-up':     '/assets/audio/level-up.mp3',
   'game-over':    '/assets/audio/game-over.mp3',
