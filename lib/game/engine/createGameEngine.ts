@@ -41,6 +41,11 @@ export function createGameEngine(
     }
   }
   resizeCanvas()
+  // Now that canvas has real dimensions, place the player in the true centre.
+  s.playerX = canvas.width / 2
+  s.playerY = canvas.height / 2
+  s.previousPlayerX = canvas.width / 2
+  s.previousPlayerY = canvas.height / 2
   window.addEventListener('resize', resizeCanvas)
   window.visualViewport?.addEventListener('resize', resizeCanvas)
   window.visualViewport?.addEventListener('scroll', resizeCanvas)

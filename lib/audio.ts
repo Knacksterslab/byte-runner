@@ -108,14 +108,22 @@ class AudioManager {
     const buffer = this.buffers.get(id)
     if (!buffer || !this.ctx || !this.masterGain) return
     try {
-      if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {})
-      const source = this.ctx.createBufferSource()
-      source.buffer = buffer
-      const gain = this.ctx.createGain()
-      gain.gain.value = Math.max(0, Math.min(1, volume))
-      source.connect(gain)
-      gain.connect(this.masterGain)
-      source.start(0)
+      const doPlay = () => {
+        try {
+          const source = this.ctx!.createBufferSource()
+          source.buffer = buffer
+          const gain = this.ctx!.createGain()
+          gain.gain.value = Math.max(0, Math.min(1, volume))
+          source.connect(gain)
+          gain.connect(this.masterGain!)
+          source.start(0)
+        } catch { /* silent fail */ }
+      }
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().then(doPlay).catch(() => {})
+      } else {
+        doPlay()
+      }
     } catch { /* silent fail */ }
   }
 

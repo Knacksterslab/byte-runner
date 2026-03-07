@@ -51,8 +51,8 @@ export function initGameState(canvas: HTMLCanvasElement, opts: UseGameLoopOption
     EMOJI_FONT_STACK: '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",monospace',
     performanceMode,
 
-    playerX: 100, playerY: canvas.height / 2, playerSize: 45, playerSpeed: 5,
-    playerTilt: 0, previousPlayerX: 100, previousPlayerY: canvas.height / 2, animationTime: 0,
+    playerX: 100, playerY: 100, playerSize: 45, playerSpeed: 5,
+    playerTilt: 0, previousPlayerX: 100, previousPlayerY: 100, animationTime: 0,
 
     localScore: savedGameState?.score ?? 0,
     currentLevel,
