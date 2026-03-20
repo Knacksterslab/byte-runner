@@ -71,6 +71,60 @@ export async function signIn(email: string, password: string): Promise<AuthResul
   return jsonResponse
 }
 
+export interface PasswordResetEmailResult {
+  status: 'OK' | 'FIELD_ERROR' | 'RESET_PASSWORD_INVALID_TOKEN_ERROR' | string
+  message?: string
+  formFields?: Array<{ id: string; error?: string }>
+}
+
+export async function sendPasswordResetEmail(email: string): Promise<PasswordResetEmailResult> {
+  const res = await fetch(`${API_DOMAIN}/auth/user/password/reset/token`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      rid: 'emailpassword',
+      'fdi-version': FDI_VERSION,
+      'st-auth-mode': 'cookie',
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      formFields: [{ id: 'email', value: email }],
+    }),
+  })
+
+  const jsonResponse = await res.json().catch(() => ({ status: 'UNKNOWN_ERROR', message: 'Unexpected response' }))
+  extractAndStoreAntiCsrf(res, jsonResponse)
+  return jsonResponse
+}
+
+export interface PasswordResetResult {
+  status: 'OK' | 'RESET_PASSWORD_INVALID_TOKEN_ERROR' | 'FIELD_ERROR' | string
+  message?: string
+  formFields?: Array<{ id: string; error?: string }>
+}
+
+export async function submitPasswordReset(token: string, password: string): Promise<PasswordResetResult> {
+  const res = await fetch(`${API_DOMAIN}/auth/user/password/reset`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      rid: 'emailpassword',
+      'fdi-version': FDI_VERSION,
+      'st-auth-mode': 'cookie',
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      method: 'token',
+      token,
+      formFields: [{ id: 'password', value: password }],
+    }),
+  })
+
+  const jsonResponse = await res.json().catch(() => ({ status: 'UNKNOWN_ERROR', message: 'Unexpected response' }))
+  extractAndStoreAntiCsrf(res, jsonResponse)
+  return jsonResponse
+}
+
 export async function signOut() {
   const res = await fetchWithSession('/auth/signout', {
     method: 'POST',

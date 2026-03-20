@@ -30,6 +30,9 @@ export function ProfileActions({ continueTokens, onSignOut }: ProfileActionsProp
         <a href="/" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105 text-center">
           Play Game
         </a>
+        <a href="/auth/reset-password" className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105 text-center">
+          Reset Password
+        </a>
       </div>
 
       <div className="text-center">

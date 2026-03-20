@@ -58,12 +58,12 @@ export default function AttackRecoveryOverlay({
                 <h4>{sponsor.title}</h4>
                 <p>{sponsor.description}</p>
               </div>
-              {sponsor.ctaUrl ? (
-                <a href={sponsor.ctaUrl} target="_blank" rel="noopener noreferrer" className={styles.sponsorCta}>
+              {(sponsor.clickUrl || sponsor.ctaUrl) ? (
+                <a href={sponsor.clickUrl || sponsor.ctaUrl} target="_blank" rel="noopener noreferrer" className={styles.sponsorCta}>
                   {sponsor.ctaLabel ?? 'LEARN MORE'}
                 </a>
               ) : (
-                <button className={styles.sponsorCta}>{sponsor.ctaLabel ?? 'LEARN MORE'}</button>
+                <span className={styles.sponsorCta} aria-disabled="true">{sponsor.ctaLabel ?? 'LEARN MORE'}</span>
               )}
             </div>
           </section>

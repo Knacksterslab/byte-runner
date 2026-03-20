@@ -4,6 +4,7 @@ import {
   signIn,
   signUp,
   signOut,
+  sendPasswordResetEmail,
   setUsername as apiSetUsername,
   type BackendUser,
 } from '@/lib/api/backend'
@@ -15,10 +16,11 @@ export interface AuthState {
   authStatus: AuthStatus
   currentUser: BackendUser | null
   showAuthModal: boolean
-  authMode: 'signin' | 'signup'
+  authMode: 'signin' | 'signup' | 'forgot'
   authEmail: string
   authPassword: string
   authError: string | null
+  authInfo: string | null
   authLoading: boolean
   showUsernameModal: boolean
   usernameInput: string
@@ -26,7 +28,7 @@ export interface AuthState {
   usernameLoading: boolean
   setShowAuthModal: (show: boolean) => void
   setShowUsernameModal: (show: boolean) => void
-  setAuthMode: (mode: 'signin' | 'signup') => void
+  setAuthMode: (mode: 'signin' | 'signup' | 'forgot') => void
   setAuthEmail: (email: string) => void
   setAuthPassword: (password: string) => void
   setUsernameInput: (input: string) => void
@@ -48,10 +50,11 @@ export function useAuth(callbacks: UseAuthCallbacks): AuthState {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('checking')
   const [currentUser, setCurrentUser] = useState<BackendUser | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup')
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot'>('signup')
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [authError, setAuthError] = useState<string | null>(null)
+  const [authInfo, setAuthInfo] = useState<string | null>(null)
   const [authLoading, setAuthLoading] = useState(false)
   const [showUsernameModal, setShowUsernameModal] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
@@ -93,15 +96,35 @@ export function useAuth(callbacks: UseAuthCallbacks): AuthState {
     }
   }, [])
 
+  useEffect(() => {
+    setAuthError(null)
+    setAuthInfo(null)
+  }, [authMode])
+
   const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setAuthLoading(true)
     setAuthError(null)
+    setAuthInfo(null)
     try {
-      const result =
-        authMode === 'signup'
-          ? await signUp(authEmail.trim(), authPassword)
-          : await signIn(authEmail.trim(), authPassword)
+      if (authMode === 'forgot') {
+        const result = await sendPasswordResetEmail(authEmail.trim())
+        if (result.status !== 'OK') {
+          const fieldError = result.formFields?.find(f => f.error)?.error
+          setAuthError(result.message || fieldError || 'Could not send reset link.')
+          setAuthLoading(false)
+          return
+        }
+        setAuthInfo('If an account exists for this email, a reset link has been sent.')
+        setAuthMode('signin')
+        setAuthPassword('')
+        setAuthLoading(false)
+        return
+      }
+
+      const result = authMode === 'signup'
+        ? await signUp(authEmail.trim(), authPassword)
+        : await signIn(authEmail.trim(), authPassword)
 
       if (result.status !== 'OK') {
         const fieldError = result.formFields?.find(f => f.error)?.error
@@ -168,6 +191,7 @@ export function useAuth(callbacks: UseAuthCallbacks): AuthState {
     authEmail,
     authPassword,
     authError,
+    authInfo,
     authLoading,
     showUsernameModal,
     usernameInput,

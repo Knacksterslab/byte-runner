@@ -59,7 +59,7 @@ export default function SimpleGame() {
 
   const {
     authStatus, currentUser,
-    showAuthModal, authMode, authEmail, authPassword, authError, authLoading,
+    showAuthModal, authMode, authEmail, authPassword, authError, authInfo, authLoading,
     showUsernameModal, usernameInput, usernameError, usernameLoading,
     setShowAuthModal, setShowUsernameModal, setAuthMode, setAuthEmail, setAuthPassword, setUsernameInput,
     handleAuthSubmit, handleUsernameSubmit, handleSignOut,
@@ -167,11 +167,14 @@ export default function SimpleGame() {
         authEmail={authEmail}
         authPassword={authPassword}
         authError={authError}
+        authInfo={authInfo}
         authLoading={authLoading}
         onEmailChange={setAuthEmail}
         onPasswordChange={setAuthPassword}
         onSubmitAuth={handleAuthSubmit}
         onToggleAuthMode={() => setAuthMode(authMode === 'signup' ? 'signin' : 'signup')}
+        onForgotPassword={() => setAuthMode('forgot')}
+        onBackToSignIn={() => setAuthMode('signin')}
         onCloseAuthModal={() => setShowAuthModal(false)}
         showUsernameModal={showUsernameModal}
         usernameInput={usernameInput}
@@ -189,9 +192,11 @@ export default function SimpleGame() {
       {showAuthModal && (
         <AuthModal
           mode={authMode} email={authEmail} password={authPassword}
-          error={authError} loading={authLoading}
+          error={authError} info={authInfo} loading={authLoading}
           onEmailChange={setAuthEmail} onPasswordChange={setAuthPassword}
           onSubmit={handleAuthSubmit} onToggleMode={() => setAuthMode(authMode === 'signup' ? 'signin' : 'signup')}
+          onForgotPassword={() => setAuthMode('forgot')}
+          onBackToSignIn={() => setAuthMode('signin')}
           onClose={() => setShowAuthModal(false)}
         />
       )}

@@ -16,15 +16,18 @@ interface StartScreenViewProps {
   isAuthenticated: boolean
   onRequestSetUsername: () => void
   showAuthModal: boolean
-  authMode: 'signin' | 'signup'
+  authMode: 'signin' | 'signup' | 'forgot'
   authEmail: string
   authPassword: string
   authError: string | null
+  authInfo: string | null
   authLoading: boolean
   onEmailChange: (v: string) => void
   onPasswordChange: (v: string) => void
   onSubmitAuth: (event: React.FormEvent<HTMLFormElement>) => void
   onToggleAuthMode: () => void
+  onForgotPassword: () => void
+  onBackToSignIn: () => void
   onCloseAuthModal: () => void
   showUsernameModal: boolean
   usernameInput: string
@@ -62,11 +65,14 @@ export function StartScreenView(props: StartScreenViewProps) {
             email={props.authEmail}
             password={props.authPassword}
             error={props.authError}
+            info={props.authInfo}
             loading={props.authLoading}
             onEmailChange={props.onEmailChange}
             onPasswordChange={props.onPasswordChange}
             onSubmit={props.onSubmitAuth}
             onToggleMode={props.onToggleAuthMode}
+            onForgotPassword={props.onForgotPassword}
+            onBackToSignIn={props.onBackToSignIn}
             onClose={props.onCloseAuthModal}
           />
         )}

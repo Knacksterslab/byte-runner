@@ -37,12 +37,16 @@ export default function CredentialStuffingAttackDesign() {
   }
   const previewSponsor: RecoverySponsor = {
     id: 'preview-password-fortress',
+    campaignId: 'preview-campaign',
+    creativeId: 'preview-creative',
     tag: 'SPONSORED',
     logo: 'PF',
     title: 'Password Fortress',
     description: 'Secure every account with one-click vault + breach alerts',
     ctaLabel: 'TRY FREE',
     ctaUrl: 'https://example.com',
+    clickUrl: 'https://example.com',
+    trackingToken: 'preview-token',
   }
 
   return (

@@ -15,7 +15,15 @@ export type {
   HourlyChallengeEligibility,
 } from './types'
 
-export { getCurrentUser, signUp, signIn, signOut, setUsername } from './auth'
+export {
+  getCurrentUser,
+  signUp,
+  signIn,
+  signOut,
+  setUsername,
+  sendPasswordResetEmail,
+  submitPasswordReset,
+} from './auth'
 export { getLeaderboard } from './leaderboard'
 export { submitRun, getMyStats } from './runs'
 export { recordShare, getShareCount } from './shares'

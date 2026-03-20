@@ -9,6 +9,7 @@ import { ContestForm } from '@/components/admin/ContestForm'
 import { ContestList } from '@/components/admin/ContestList'
 import { WithdrawalsTab } from '@/components/admin/WithdrawalsTab'
 import { HourlyChallengeTab } from '@/components/admin/HourlyChallengeTab'
+import { SponsorsTab } from '@/components/admin/SponsorsTab'
 import { Shield, Plus, RefreshCw } from 'lucide-react'
 import { PageWrapper } from '@/components/PageWrapper'
 import Link from 'next/link'
@@ -35,7 +36,7 @@ export default function AdminPage() {
   const supportedTimeZones = useMemo(() => getSupportedTimeZones(), [])
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'contests' | 'withdrawals' | 'hourly'>('contests')
+  const [activeTab, setActiveTab] = useState<'contests' | 'withdrawals' | 'hourly' | 'sponsors'>('contests')
   const [contests, setContests] = useState<Contest[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -165,7 +166,7 @@ export default function AdminPage() {
         </div>
 
         <div className="flex gap-2 mb-8 border-b border-gray-700">
-          {(['contests', 'withdrawals', 'hourly'] as const).map((tab) => (
+          {(['contests', 'withdrawals', 'hourly', 'sponsors'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -223,6 +224,7 @@ export default function AdminPage() {
 
         {activeTab === 'withdrawals' && <WithdrawalsTab />}
         {activeTab === 'hourly' && <HourlyChallengeTab />}
+        {activeTab === 'sponsors' && <SponsorsTab />}
       </div>
     </PageWrapper>
   )
