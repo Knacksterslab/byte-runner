@@ -1,4 +1,5 @@
 import { initGameState } from './initGameState'
+import { trackFramePerformance } from './adaptiveQuality'
 import { drawBackground, updateConfetti, drawConfetti, spawnConfetti } from './GameBackground'
 import { drawTutorialOverlay } from './GameTutorial'
 import { renderQuizOverlay } from './GameQuizOverlay'
@@ -30,38 +31,64 @@ export function createGameEngine(
   let resizeObserver: ResizeObserver | null = null
   function resizeCanvas() {
     const container = canvas.parentElement
+    let cssW: number, cssH: number
     if (container) {
-      canvas.width = container.clientWidth; canvas.height = container.clientHeight
+      cssW = container.clientWidth; cssH = container.clientHeight
       const top = parseFloat(window.getComputedStyle(container).paddingTop || '0')
       s.safeTopInset = Number.isFinite(top) ? Math.max(0, top) : 0
     } else {
-      canvas.width = window.visualViewport?.width ?? window.innerWidth
-      canvas.height = window.visualViewport?.height ?? window.innerHeight
+      cssW = window.visualViewport?.width ?? window.innerWidth
+      cssH = window.visualViewport?.height ?? window.innerHeight
       s.safeTopInset = 0
     }
+    // Retina/mobile sharpness: backing store = logical size × devicePixelRatio
+    // (capped at 2 for fill-rate), while all game math stays in logical pixels.
+    s.logicalWidth = cssW; s.logicalHeight = cssH
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    canvas.width = Math.max(1, Math.floor(cssW * dpr))
+    canvas.height = Math.max(1, Math.floor(cssH * dpr))
+    // Assigning canvas.width resets context state — re-apply base transform.
+    s.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    s.ctx.imageSmoothingEnabled = false
   }
   resizeCanvas()
   // Now that canvas has real dimensions, place the player in the true centre.
-  s.playerX = canvas.width / 2
-  s.playerY = canvas.height / 2
-  s.previousPlayerX = canvas.width / 2
-  s.previousPlayerY = canvas.height / 2
+  s.playerX = s.logicalWidth / 2
+  s.playerY = s.logicalHeight / 2
+  s.previousPlayerX = s.logicalWidth / 2
+  s.previousPlayerY = s.logicalHeight / 2
   window.addEventListener('resize', resizeCanvas)
   window.visualViewport?.addEventListener('resize', resizeCanvas)
   window.visualViewport?.addEventListener('scroll', resizeCanvas)
   const container = canvas.parentElement
   if (container) { resizeObserver = new ResizeObserver(resizeCanvas); resizeObserver.observe(container) }
 
-  const handleKeyDown = (e: KeyboardEvent) => { s.keys[e.key] = true }
+  // ── Pause (button / P / Esc / auto on tab blur). Never during a quiz. ──
+  function setPaused(next: boolean): void {
+    if (next && (quiz.refs.activeRef.current || opts.isGameOver || s.isHealing)) return
+    if (s.paused === next) return
+    s.paused = next
+    opts.pausedRef.current = next
+    opts.onPauseChange(next)
+    if (!next) s.lastGameFrameTs = 0 // avoid a giant frame delta on resume
+  }
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') { setPaused(!s.paused); return }
+    s.keys[e.key] = true
+  }
   const handleKeyUp = (e: KeyboardEvent) => { s.keys[e.key] = false }
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
+  const handleVisibility = () => { if (document.hidden) setPaused(true) }
+  document.addEventListener('visibilitychange', handleVisibility)
+  window.addEventListener('blur', handleVisibility)
 
   const handleTouchStart = (e: TouchEvent) => {
     e.preventDefault(); const t = e.touches[0]
     s.touchStartX = t.clientX; s.touchStartY = t.clientY
-    if (canvas.width < 768) {
-      const hudX = canvas.width - (ui.state.mobileHudExpanded ? 130 : 110); const hudY = 80
+    if (s.logicalWidth < 768) {
+      const hudX = s.logicalWidth - (ui.state.mobileHudExpanded ? 130 : 110); const hudY = 80
       const hudW = ui.state.mobileHudExpanded ? 130 : 100; const hudH = ui.state.mobileHudExpanded ? 210 : 80
       if (t.clientX >= hudX && t.clientX <= hudX + hudW && t.clientY >= hudY && t.clientY <= hudY + hudH) {
         ui.actions.setMobileHudExpanded(!ui.state.mobileHudExpanded); return
@@ -120,8 +147,38 @@ export function createGameEngine(
     const isGuestSavePromptActive = opts.guestSavePromptActiveRef.current
     const isAuthFlowActive = opts.authFlowActiveRef.current
     const isUiPaused = isGuestSavePromptActive || isAuthFlowActive
+    // Sync pause from the shared ref (React button / resume overlay).
+    if (opts.pausedRef.current !== s.paused) {
+      if (opts.pausedRef.current) {
+        if (quiz.refs.activeRef.current || opts.isGameOver || s.isHealing) {
+          opts.pausedRef.current = false // refuse: quiz/game-over/healing
+          opts.onPauseChange(false)
+        } else {
+          s.paused = true
+          opts.onPauseChange(true)
+        }
+      } else {
+        s.paused = false
+        s.lastGameFrameTs = 0
+        opts.onPauseChange(false)
+      }
+    }
+    if (s.paused) {
+      // Idles the loop: no updates, no timers advance; canvas keeps last frame.
+      s.lastGameFrameTs = timestamp
+      if (!opts.isGameOver) s.animationId = requestAnimationFrame(gameLoop)
+      return
+    }
+    // PERF: cap rendering at ~60fps — on 120Hz+ displays the RAF callback
+    // fires twice per target frame, doubling all render work and heat.
+    if (s.lastRenderTs && timestamp - s.lastRenderTs < 15) {
+      if (!opts.isGameOver) s.animationId = requestAnimationFrame(gameLoop)
+      return
+    }
+    s.lastRenderTs = timestamp
     const frameMs = s.lastGameFrameTs ? timestamp - s.lastGameFrameTs : 16.67
     s.lastGameFrameTs = timestamp; s.frameScale = Math.min(frameMs / 16.67, 10); s.gameFrameCount++
+    if (!isUiPaused && !s.isHealing) trackFramePerformance(s, frameMs)
     s.speedFactor = Math.min(1.6, Math.max(0.55, 0.55 + (s.currentLevel - 1) * 0.06))
     s.effectiveObstacleSpeed = s.obstacleSpeed * s.threatSpeedFactor
     s.effectivePlayerSpeed = s.playerSpeed * s.speedFactor; s.effectiveSpawnFrequency = s.spawnFrequency
@@ -146,8 +203,8 @@ export function createGameEngine(
       if (s.keys['a'] || s.keys['A'] || s.keys['ArrowLeft']) s.playerX -= s.effectivePlayerSpeed * s.frameScale
       if (s.keys['d'] || s.keys['D'] || s.keys['ArrowRight']) s.playerX += s.effectivePlayerSpeed * s.frameScale
     }
-    s.playerX = Math.max(s.playerSize, Math.min(canvas.width - s.playerSize, s.playerX))
-    s.playerY = Math.max(s.playerSize, Math.min(canvas.height - s.playerSize, s.playerY))
+    s.playerX = Math.max(s.playerSize, Math.min(s.logicalWidth - s.playerSize, s.playerX))
+    s.playerY = Math.max(s.playerSize, Math.min(s.logicalHeight - s.playerSize, s.playerY))
     const deltaX = s.playerX - s.previousPlayerX; const deltaY = s.playerY - s.previousPlayerY
     const isMoving = Math.abs(deltaX) > 0.1 || Math.abs(deltaY) > 0.1
     const targetTilt = deltaX > 0 ? 10 : deltaX < 0 ? -10 : 0
@@ -159,22 +216,22 @@ export function createGameEngine(
     if (s.levelUpTimer > 0) s.levelUpTimer -= Math.min(16, frameMs)
     if (s.levelUpTimer <= 0) s.showingLevelUp = false
     if (s.showingLevelUp && s.levelUpTimer > 0 && !quiz.refs.activeRef.current) {
-      drawLevelUpOverlay(s.ctx, canvas, { levelUpTimer: s.levelUpTimer, LEVEL_UP_DURATION: s.LEVEL_UP_DURATION, currentLevel: s.currentLevel, totalKitsCollected: s.totalKitsCollected })
+      drawLevelUpOverlay(s.ctx, { width: s.logicalWidth, height: s.logicalHeight }, { levelUpTimer: s.levelUpTimer, LEVEL_UP_DURATION: s.LEVEL_UP_DURATION, currentLevel: s.currentLevel, totalKitsCollected: s.totalKitsCollected })
     }
     if (s.turboBoostCelebrationTimer > 0 && !quiz.refs.activeRef.current) {
-      drawTurboBoostCelebration(s.ctx, canvas, { turboBoostCelebrationTimer: s.turboBoostCelebrationTimer, TURBO_BOOST_CELEBRATION_DURATION: s.TURBO_BOOST_CELEBRATION_DURATION, TURBO_BOOST_SCORE: s.TURBO_BOOST_SCORE })
+      drawTurboBoostCelebration(s.ctx, { width: s.logicalWidth, height: s.logicalHeight }, { turboBoostCelebrationTimer: s.turboBoostCelebrationTimer, TURBO_BOOST_CELEBRATION_DURATION: s.TURBO_BOOST_CELEBRATION_DURATION, TURBO_BOOST_SCORE: s.TURBO_BOOST_SCORE })
       s.turboBoostCelebrationTimer -= 16
     }
     if (s.showingSectorChange && s.sectorChangeTimer > 0) {
-      drawSectorChangeOverlay(s.ctx, canvas, { sectorChangeTimer: s.sectorChangeTimer, SECTOR_CHANGE_DURATION: s.SECTOR_CHANGE_DURATION, sectorChangeName: s.sectorChangeName, currentLevel: s.currentLevel })
+      drawSectorChangeOverlay(s.ctx, { width: s.logicalWidth, height: s.logicalHeight }, { sectorChangeTimer: s.sectorChangeTimer, SECTOR_CHANGE_DURATION: s.SECTOR_CHANGE_DURATION, sectorChangeName: s.sectorChangeName, currentLevel: s.currentLevel })
       s.sectorChangeTimer -= 16
     } else { s.showingSectorChange = false }
     if (s.isRestoring && s.restorationTimer > 0) {
-      drawRestorationOverlay(s.ctx, canvas, { restorationTimer: s.restorationTimer, RESTORATION_DURATION: s.RESTORATION_DURATION, lastThreatType: opts.lastThreatType })
+      drawRestorationOverlay(s.ctx, { width: s.logicalWidth, height: s.logicalHeight }, { restorationTimer: s.restorationTimer, RESTORATION_DURATION: s.RESTORATION_DURATION, lastThreatType: opts.lastThreatType })
       s.restorationTimer -= 16
     } else { s.isRestoring = false }
     if (s.showQuizCompletionMessage && s.quizCompletionTimer > 0) {
-      drawQuizCompletionMessage(s.ctx, canvas, { quizCompletionTimer: s.quizCompletionTimer, quizCompletionSuccess: s.quizCompletionSuccess, finalPoints: quiz.refs.pointsRef.current, passingScore: quiz.refs.currentQuizRef.current?.passingScore || 50, quizWrongItemId: s.quizWrongItemId, quizFailChallenge: s.quizFailChallenge })
+      drawQuizCompletionMessage(s.ctx, { width: s.logicalWidth, height: s.logicalHeight }, { quizCompletionTimer: s.quizCompletionTimer, quizCompletionSuccess: s.quizCompletionSuccess, finalPoints: quiz.refs.pointsRef.current, passingScore: quiz.refs.currentQuizRef.current?.passingScore || 50, quizWrongItemId: s.quizWrongItemId, quizFailChallenge: s.quizFailChallenge })
       s.quizCompletionTimer -= 16
     } else { s.showQuizCompletionMessage = false }
     if (s.showingPreQuizTeaching) {
@@ -185,7 +242,7 @@ export function createGameEngine(
         if (ql !== null) s.taughtQuizLevels.add(ql)
         if (auto && qc && !quiz.refs.activeRef.current) startInGameQuiz(s, qc, quizCb, doSpawnQuizItems)
       } else if (s.pendingQuizChallenge) {
-        drawPreQuizTeachingOverlay(s.ctx, canvas, { preQuizTeachingTimer: s.preQuizTeachingTimer, pendingQuizChallenge: s.pendingQuizChallenge, pendingQuizAutoStart: s.pendingQuizAutoStart })
+        drawPreQuizTeachingOverlay(s.ctx, { width: s.logicalWidth, height: s.logicalHeight }, { preQuizTeachingTimer: s.preQuizTeachingTimer, pendingQuizChallenge: s.pendingQuizChallenge, pendingQuizAutoStart: s.pendingQuizAutoStart })
         s.preQuizTeachingTimer -= 16
       } else { s.showingPreQuizTeaching = false }
     }
@@ -230,6 +287,8 @@ export function createGameEngine(
     cancelAnimationFrame(s.animationId)
     window.removeEventListener('keydown', handleKeyDown)
     window.removeEventListener('keyup', handleKeyUp)
+    document.removeEventListener('visibilitychange', handleVisibility)
+    window.removeEventListener('blur', handleVisibility)
     window.removeEventListener('resize', resizeCanvas)
     window.visualViewport?.removeEventListener('resize', resizeCanvas)
     window.visualViewport?.removeEventListener('scroll', resizeCanvas)

@@ -1,3 +1,4 @@
+import type { CanvasDims } from "../engine/GameState"
 import { getCurrentZone, isZoneTransition } from '@/lib/game/zones'
 
 interface SectorChangeParams {
@@ -9,7 +10,7 @@ interface SectorChangeParams {
 
 export function drawSectorChangeOverlay(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  canvas: CanvasDims,
   p: SectorChangeParams
 ): void {
   const zone = getCurrentZone(p.currentLevel)

@@ -1,3 +1,4 @@
+import type { CanvasDims } from "../engine/GameState"
 interface TurboBoostParams {
   turboBoostCelebrationTimer: number
   TURBO_BOOST_CELEBRATION_DURATION: number
@@ -6,7 +7,7 @@ interface TurboBoostParams {
 
 export function drawTurboBoostCelebration(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  canvas: CanvasDims,
   p: TurboBoostParams
 ): void {
   const progress = 1 - p.turboBoostCelebrationTimer / p.TURBO_BOOST_CELEBRATION_DURATION

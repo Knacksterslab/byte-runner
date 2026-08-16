@@ -4,6 +4,12 @@ import type { GameObject } from '../../../components/game/hooks/useGameLoopTypes
 
 export type { GameObject }
 
+/** Logical (CSS-pixel) dimensions passed to overlay renderers. */
+export interface CanvasDims {
+  width: number
+  height: number
+}
+
 export interface ConfettiParticle {
   x: number; y: number; vx: number; vy: number
   color: string; rotation: number; rotationSpeed: number
@@ -19,17 +25,32 @@ export interface MatrixColumn {
 }
 
 export interface GameImages extends Record<string, HTMLImageElement> {
-  virus: HTMLImageElement; firewall: HTMLImageElement; malware: HTMLImageElement
-  dataBreach: HTMLImageElement; spamWave: HTMLImageElement
-  dataPacket: HTMLImageElement; background: HTMLImageElement
+  background: HTMLImageElement
 }
 
 export interface GameState {
   canvas: HTMLCanvasElement
   ctx: CanvasRenderingContext2D
+  /** Logical (CSS-pixel) dimensions — ALL game math uses these. */
+  logicalWidth: number; logicalHeight: number
   images: GameImages
   EMOJI_FONT_STACK: string
   performanceMode: boolean
+  /** Gameplay paused (user or auto-pause on tab blur). Loop idles. */
+  paused: boolean
+  /** Multiplier on the current level's kit requirement (quiz pass ⇒ 0.7). */
+  kitDiscount: number
+  /** Session tally of threat hits (blocks + deaths) per threat category. */
+  hitsByCategory: Record<string, number>
+  /** Daily-incident modifiers, or null in a standard run. */
+  dailyModifiers: { boostedThreats: string[]; scarceKits: string[] } | null
+  /** Perf caches: pre-rendered background, cached gradients, glow sprites. */
+  bgCache: HTMLCanvasElement | null
+  vignetteCache: CanvasGradient | null
+  horizonCache: CanvasGradient | null
+  glowSprites: Map<string, HTMLCanvasElement>
+  /** Timestamp of the last rendered frame — caps the loop at ~60fps. */
+  lastRenderTs: number
 
   // Player
   playerX: number; playerY: number; playerSize: number; playerSpeed: number
@@ -49,6 +70,7 @@ export interface GameState {
   powerupsNeeded: number; powerupsCollected: number; totalKitsCollected: number
   isAdvancingLevel: boolean; gameTime: number; gameFrameCount: number
   lastGameFrameTs: number; frameScale: number; animationId: number
+  perfSamples: number[]
 
   // Inventory / Objects
   kitInventory: Record<string, number>

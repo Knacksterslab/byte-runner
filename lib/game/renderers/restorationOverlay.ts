@@ -1,3 +1,4 @@
+import type { CanvasDims } from "../engine/GameState"
 import { getProtectionKitForThreat } from '@/lib/game/protectionKits'
 import { getThreatName } from '@/lib/game/threatData'
 
@@ -26,7 +27,7 @@ function drawRoundRect(
 
 export function drawRestorationOverlay(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  canvas: CanvasDims,
   p: RestorationParams
 ): void {
   const protectionKit = p.lastThreatType ? getProtectionKitForThreat(p.lastThreatType) : null

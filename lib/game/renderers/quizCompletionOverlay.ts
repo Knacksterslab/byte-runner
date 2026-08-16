@@ -1,3 +1,4 @@
+import type { CanvasDims } from "../engine/GameState"
 import type { QuizChallenge } from '../inGameQuizzes'
 
 interface QuizCompletionParams {
@@ -11,7 +12,7 @@ interface QuizCompletionParams {
 
 function drawTeachingFailOverlay(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  canvas: CanvasDims,
   p: QuizCompletionParams
 ): void {
   const isMobile = canvas.width < 768
@@ -95,7 +96,7 @@ function drawTeachingFailOverlay(
 
 export function drawQuizCompletionMessage(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  canvas: CanvasDims,
   p: QuizCompletionParams
 ): void {
   if (!p.quizCompletionSuccess && p.quizWrongItemId && p.quizFailChallenge) {

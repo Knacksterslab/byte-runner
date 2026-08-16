@@ -22,7 +22,7 @@ export function updateAndRenderPlayer(
       advanceLevel()
       s.perfectPlayDurationMs = 0
       s.turboBoostCelebrationTimer = s.TURBO_BOOST_CELEBRATION_DURATION
-      spawnConfetti(s, s.canvas.width / 2, s.canvas.height / 2, 50)
+      spawnConfetti(s, s.logicalWidth / 2, s.logicalHeight / 2, 50)
     }
   } else {
     s.perfectPlayDurationMs = 0
@@ -37,7 +37,9 @@ export function updateAndRenderPlayer(
     else if (s.totalKitsCollected >= 10) glowColor = '#00ff00'
   }
 
-  ctx.shadowBlur = performanceMode ? 0 : (quizActive ? 40 : 20 + totalKits * 10 + s.totalKitsCollected * 2)
+  // PERF: capped — this used to grow unbounded with kit count (hundreds of
+  // pixels of shadowBlur late-game was a major CPU cost).
+  ctx.shadowBlur = performanceMode ? 0 : Math.min(quizActive ? 40 : 20 + totalKits * 10 + s.totalKitsCollected * 2, 32)
   ctx.shadowColor = glowColor
 
   if (s.totalKitsCollected > 10) {

@@ -1,3 +1,4 @@
+import type { CanvasDims } from "../engine/GameState"
 import { getPreQuizLesson } from '@/lib/game/data/preQuizLessons'
 import type { QuizChallenge } from '@/lib/game/inGameQuizzes'
 
@@ -9,7 +10,7 @@ interface PreQuizTeachingParams {
 
 export function drawPreQuizTeachingOverlay(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  canvas: CanvasDims,
   p: PreQuizTeachingParams
 ): void {
   const lesson = getPreQuizLesson(p.pendingQuizChallenge.type)

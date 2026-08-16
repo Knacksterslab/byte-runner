@@ -22,12 +22,6 @@ export function useAssetLoader(): AssetLoaderState {
     if (!isMounted) return
 
     const images = {
-      virus: new Image(),
-      firewall: new Image(),
-      malware: new Image(),
-      dataBreach: new Image(),
-      spamWave: new Image(),
-      dataPacket: new Image(),
       background: new Image(),
     }
 
@@ -52,13 +46,7 @@ export function useAssetLoader(): AssetLoaderState {
       img.onerror = handleImageLoad
     })
 
-    images.virus.src = '/assets/sprites/virus.png'
-    images.firewall.src = '/assets/sprites/firewall.png'
-    images.malware.src = '/assets/sprites/malware.png'
-    images.dataBreach.src = '/assets/sprites/data-breach.png'
-    images.spamWave.src = '/assets/sprites/spam-wave.png'
-    images.dataPacket.src = '/assets/sprites/data-packet.png'
-    images.background.src = '/space-background-final.png'
+    images.background.src = '/space-background-final.webp'
 
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)

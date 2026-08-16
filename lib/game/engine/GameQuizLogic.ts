@@ -49,9 +49,10 @@ export function endInGameQuiz(
   s.obstacles.forEach(obs => returnObstacleToPool(obs))
   s.obstacles.length = 0
   if (success) {
+    s.kitDiscount = 0.7
     s.localScore += 500
     s.showQuizCompletionMessage = true; s.quizCompletionSuccess = true; s.quizCompletionTimer = 2000
-    spawnConfetti(s, s.canvas.width / 2, s.canvas.height / 2, s.canvas.width < 768 ? 40 : 80)
+    spawnConfetti(s, s.logicalWidth / 2, s.logicalHeight / 2, s.logicalWidth < 768 ? 40 : 80)
     s.isVictoryDancing = true; s.victoryDanceTimer = s.VICTORY_DANCE_DURATION
   } else {
     s.showQuizCompletionMessage = true; s.quizCompletionSuccess = false; s.quizCompletionTimer = 2000
@@ -86,13 +87,13 @@ export function endInGameQuizWrongAnswer(
 
 export function spawnQuizItems(s: GameState, quizChallenge: QuizChallenge): void {
   s.powerups.length = 0
-  const isMobile = s.canvas.width < 768
+  const isMobile = s.logicalWidth < 768
   const itemWidth = isMobile ? 130 : 180; const itemHeight = isMobile ? 130 : 180
   const hSpacing = isMobile ? 230 : 320; const vSpacing = isMobile ? 260 : 300
   const positions = [
-    { x: s.canvas.width / 2 - hSpacing / 2, y: isMobile ? 300 : 280 },
-    { x: s.canvas.width / 2 + hSpacing / 2, y: isMobile ? 300 : 280 },
-    { x: s.canvas.width / 2, y: isMobile ? 300 + vSpacing : 280 + vSpacing }
+    { x: s.logicalWidth / 2 - hSpacing / 2, y: isMobile ? 300 : 280 },
+    { x: s.logicalWidth / 2 + hSpacing / 2, y: isMobile ? 300 : 280 },
+    { x: s.logicalWidth / 2, y: isMobile ? 300 + vSpacing : 280 + vSpacing }
   ]
   quizChallenge.items.slice(0, 3).forEach((item, idx) => {
     const pos = positions[idx]
@@ -103,8 +104,8 @@ export function spawnQuizItems(s: GameState, quizChallenge: QuizChallenge): void
       category: quizChallenge.type
     })
   })
-  s.playerX = s.canvas.width / 2
-  s.playerY = isMobile ? 220 : s.canvas.height / 2 - 50
+  s.playerX = s.logicalWidth / 2
+  s.playerY = isMobile ? 220 : s.logicalHeight / 2 - 50
 }
 
 export function checkQuizCompletion(
@@ -128,12 +129,13 @@ export function advanceLevel(
   if (s.isAdvancingLevel) return
   s.isAdvancingLevel = true
   s.currentLevel++
+  s.kitDiscount = 1 // quiz discount applies per level only
   cb.setLevel(s.currentLevel)
   audioManager.play('level-up')
   trackLevelUp(s.currentLevel)
   if (s.currentLevel % 5 === 0) cgHappyTime()
-  s.playerX = 200 + Math.random() * (s.canvas.width - 400)
-  s.playerY = 200 + Math.random() * (s.canvas.height - 400)
+  s.playerX = 200 + Math.random() * (s.logicalWidth - 400)
+  s.playerY = 200 + Math.random() * (s.logicalHeight - 400)
   const diff = getDifficultyForLevel(s.currentLevel)
   s.obstacleSpeed = diff.obstacleSpeed; s.spawnFrequency = diff.spawnInterval; s.threatSpeedFactor = diff.threatFactor
   const posInCycle = ((s.currentLevel - 1) % 4) + 1

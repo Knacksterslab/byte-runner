@@ -1,3 +1,4 @@
+import type { CanvasDims } from "../engine/GameState"
 interface LevelUpParams {
   levelUpTimer: number
   LEVEL_UP_DURATION: number
@@ -14,7 +15,7 @@ function getRankLabel(kits: number): string {
 
 export function drawLevelUpOverlay(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  canvas: CanvasDims,
   p: LevelUpParams
 ): void {
   const pulse = Math.sin(Date.now() / 100) * 0.2 + 0.8

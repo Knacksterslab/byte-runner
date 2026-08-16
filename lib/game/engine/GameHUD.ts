@@ -19,9 +19,9 @@ export function drawHUD(
   if (shouldHide) return
 
   const hudX = 18
-  const hudY = 18 + (canvas.width < 768 ? safeTopInset : 0)
-  const hudWidth = canvas.width < 768 ? 238 : 270
-  const hudHeight = canvas.width < 768 ? 40 : 44
+  const hudY = 18 + (s.logicalWidth < 768 ? safeTopInset : 0)
+  const hudWidth = s.logicalWidth < 768 ? 238 : 270
+  const hudHeight = s.logicalWidth < 768 ? 40 : 44
 
   ctx.fillStyle = 'rgba(3, 10, 20, 0.86)'
   ctx.beginPath(); ctx.roundRect(hudX, hudY, hudWidth, hudHeight, 10); ctx.fill()
@@ -30,19 +30,19 @@ export function drawHUD(
   ctx.font = `20px ${EMOJI_FONT_STACK}`; ctx.fillStyle = '#ffb648'; ctx.textAlign = 'left'
   ctx.fillText('🧰', hudX + 10, hudY + 28)
 
-  ctx.font = canvas.width < 768 ? 'bold 19px monospace' : 'bold 22px monospace'
+  ctx.font = s.logicalWidth < 768 ? 'bold 19px monospace' : 'bold 22px monospace'
   ctx.fillStyle = '#d8f8ff'
-  ctx.fillText(`L${currentLevel} • SCORE:`, hudX + 42, hudY + (canvas.width < 768 ? 26 : 29))
+  ctx.fillText(`L${currentLevel} • SCORE:`, hudX + 42, hudY + (s.logicalWidth < 768 ? 26 : 29))
 
-  ctx.font = canvas.width < 768 ? 'bold 21px monospace' : 'bold 24px monospace'
+  ctx.font = s.logicalWidth < 768 ? 'bold 21px monospace' : 'bold 24px monospace'
   ctx.fillStyle = '#6ee7ff'; ctx.textAlign = 'right'
-  ctx.fillText(`${localScore}`, hudX + hudWidth - 16, hudY + (canvas.width < 768 ? 27 : 30))
+  ctx.fillText(`${localScore}`, hudX + hudWidth - 16, hudY + (s.logicalWidth < 768 ? 27 : 30))
   ctx.textAlign = 'left'
 }
 
 export function drawThreatPanel(s: GameState, shouldHide: boolean): void {
   const { ctx, canvas, EMOJI_FONT_STACK, obstacles, playerX, playerY } = s
-  if (canvas.width < 768 || obstacles.length === 0 || shouldHide) return
+  if (s.logicalWidth < 768 || obstacles.length === 0 || shouldHide) return
 
   const activeThreats = obstacles.filter(o => o.active && o.sentBy)
   if (activeThreats.length === 0) return
@@ -61,7 +61,7 @@ export function drawThreatPanel(s: GameState, shouldHide: boolean): void {
   const threatIcons = [closestThreat.sentBy?.emoji || '🕵️', '⚠️', categoryEmojis[leadCategory] || '🔐']
 
   const panelWidth = 258; const panelHeight = 128
-  const panelX = canvas.width - panelWidth - 20; const panelY = 16
+  const panelX = s.logicalWidth - panelWidth - 20; const panelY = 16
 
   ctx.fillStyle = 'rgba(10, 7, 8, 0.88)'
   ctx.beginPath(); ctx.roundRect(panelX, panelY, panelWidth, panelHeight, 12); ctx.fill()

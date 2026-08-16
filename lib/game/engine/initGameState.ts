@@ -20,19 +20,14 @@ function createObstaclePool(size = 50): GameObject[] {
 export function initGameState(canvas: HTMLCanvasElement, opts: UseGameLoopOptions): GameState {
   const { savedGameState, bonusKitType } = opts
   const ctx = canvas.getContext('2d')!
-  const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent)
-  const performanceMode = isChrome
+  // Full quality for everyone; adaptiveQuality.ts downgrades at runtime if
+  // measured frame times can't hold the budget.
+  const performanceMode = false
 
   ctx.imageSmoothingEnabled = false
 
   const images: GameImages = {
-    virus: Object.assign(new Image(), { src: '/assets/sprites/virus.png' }),
-    firewall: Object.assign(new Image(), { src: '/assets/sprites/firewall.png' }),
-    malware: Object.assign(new Image(), { src: '/assets/sprites/malware.png' }),
-    dataBreach: Object.assign(new Image(), { src: '/assets/sprites/data-breach.png' }),
-    spamWave: Object.assign(new Image(), { src: '/assets/sprites/spam-wave.png' }),
-    dataPacket: Object.assign(new Image(), { src: '/assets/sprites/data-packet.png' }),
-    background: Object.assign(new Image(), { src: '/space-background-final.png' })
+    background: Object.assign(new Image(), { src: '/space-background-final.webp' })
   }
 
   const currentLevel = savedGameState ? savedGameState.level : 1
@@ -66,6 +61,7 @@ export function initGameState(canvas: HTMLCanvasElement, opts: UseGameLoopOption
     powerupsNeeded: 0, powerupsCollected: 0, totalKitsCollected: 0,
     isAdvancingLevel: false, gameTime: 0, gameFrameCount: 0,
     lastGameFrameTs: 0, frameScale: 1, animationId: 0,
+    perfSamples: [],
 
     kitInventory, obstacles: [], powerups: [],
     obstaclePool: createObstaclePool(), keys: {}, lastHitThreatId: null,
@@ -83,6 +79,11 @@ export function initGameState(canvas: HTMLCanvasElement, opts: UseGameLoopOption
     celebrationTimer: 0, isVictoryDancing: false, victoryDanceTimer: 0,
 
     bgOffset: 0, safeTopInset: 0,
+    logicalWidth: canvas.width, logicalHeight: canvas.height,
+    paused: false, kitDiscount: 1, hitsByCategory: {},
+    dailyModifiers: opts.dailyModifiers ?? null,
+    bgCache: null, vignetteCache: null, horizonCache: null,
+    glowSprites: new Map(), lastRenderTs: 0,
     particles: Array.from({ length: particleCount }, () => ({
       x: Math.random() * canvas.width, y: Math.random() * canvas.height,
       size: Math.random() * 2 + 1, speed: Math.random() * 1 + 0.5

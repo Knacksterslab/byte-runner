@@ -6,6 +6,7 @@ export interface GameObject {
   x: number; y: number; width: number; height: number
   vx: number; vy: number; type: string; color: string
   threatId: string; sentBy: GhostPlayer; category: string
+  damage?: 'instant' | 'minor'
   spawnTime?: number; active?: boolean
 }
 
@@ -47,4 +48,9 @@ export interface UseGameLoopOptions {
   resetGame: () => void
   addLeaderboardEntry: AnyFn
   setLeaderboard: AnyFn
+  /** Pause plumbing: engine reads the ref; React mirrors via callback. */
+  pausedRef: React.MutableRefObject<boolean>
+  onPauseChange: (paused: boolean) => void
+  /** Daily-incident modifiers (boosted threat categories / scarce kits). */
+  dailyModifiers: { boostedThreats: string[]; scarceKits: string[] } | null
 }

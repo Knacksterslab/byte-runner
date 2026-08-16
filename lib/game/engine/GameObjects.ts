@@ -1,9 +1,8 @@
-import { getSpriteForThreat } from '../spriteMap'
-import type { ThreatCategory } from '../threatData'
 import type { GameState } from './GameState'
 import type { GameObject } from './GameState'
 import { hexToRgb } from './GameState'
-import { getKitIcon } from '../gameConstants'
+import { drawThreatEntity, drawKitBadge } from '../renderers/entityRenderer'
+import { getKitBadge } from '../visuals'
 import { calculateKitsNeededForNextLevel } from '../difficulty'
 import { calculateTotalKits, isColliding } from '../utils'
 import { cgGameplayStop } from '@/lib/crazygames'
@@ -31,11 +30,23 @@ interface ObjectCallbacks {
   endQuizWrongAnswer: (wrongItemId: string) => void
 }
 
+/** Merge the session's hit tally into the persistent weakness profile. */
+function persistWeaknessProfile(s: GameState): void {
+  try {
+    const key = 'byterunner:weakness'
+    const prev: Record<string, number> = JSON.parse(localStorage.getItem(key) || '{}')
+    for (const [cat, n] of Object.entries(s.hitsByCategory)) prev[cat] = (prev[cat] || 0) + n
+    localStorage.setItem(key, JSON.stringify(prev))
+  } catch {
+    // storage unavailable — profile is best-effort
+  }
+}
+
 export function updateObstacles(
   s: GameState, frameMs: number, slowMo: number, isPlayerInvincible: boolean,
   cb: ObjectCallbacks
 ): void {
-  const { ctx, canvas, EMOJI_FONT_STACK, performanceMode } = s
+  const { ctx, canvas, performanceMode } = s
   const isQuiz = s.obstacles.length > 0 && cb.isQuizActive()
 
   for (let i = s.obstacles.length - 1; i >= 0; i--) {
@@ -45,16 +56,18 @@ export function updateObstacles(
       obstacle.y += obstacle.vy * slowMo * s.frameScale
       obstacle.x += obstacle.vx * slowMo * s.frameScale
     }
-    const isVisible = obstacle.y > -100 && obstacle.y < canvas.height + 100
+    const isVisible = obstacle.y > -100 && obstacle.y < s.logicalHeight + 100
     if (isVisible && !isQuiz) {
       ctx.shadowBlur = 0
-      const sprite = getSpriteForThreat(obstacle.threatId, obstacle.category as ThreatCategory, s.images)
-      if (sprite && sprite.complete) {
-        ctx.drawImage(sprite, Math.floor(obstacle.x - obstacle.width / 2), Math.floor(obstacle.y - obstacle.height / 2), obstacle.width, obstacle.height)
-      } else {
-        ctx.fillStyle = obstacle.color
-        ctx.fillRect(obstacle.x - obstacle.width / 2, obstacle.y - obstacle.height / 2, obstacle.width, obstacle.height)
-      }
+      drawThreatEntity(ctx, {
+        x: Math.floor(obstacle.x),
+        y: Math.floor(obstacle.y),
+        size: obstacle.width,
+        color: obstacle.color,
+        category: obstacle.category,
+        damage: obstacle.damage,
+        glow: !performanceMode,
+      })
       ctx.shadowBlur = 0
 
       const timeSinceSpawn = s.gameTime - (obstacle.spawnTime || 0)
@@ -62,15 +75,12 @@ export function updateObstacles(
         const opacity = 1 - timeSinceSpawn / 2000
         const nameColor = obstacle.sentBy.level >= 100 ? '#ff0000' : obstacle.sentBy.level >= 71 ? '#ffff00' : obstacle.sentBy.level >= 31 ? '#00ffff' : '#aaaaaa'
         const fontSize = obstacle.sentBy.level >= 100 ? 13 : obstacle.sentBy.level >= 31 ? 12 : 11
-        const prefix = obstacle.sentBy.level >= 100 ? '⭐' : obstacle.sentBy.level >= 71 ? '◆' : ''
+        const prefix = obstacle.sentBy.level >= 100 ? '★' : obstacle.sentBy.level >= 71 ? '◆' : ''
         const rgb = hexToRgb(s, nameColor)
-        ctx.font = `bold ${fontSize}px ${EMOJI_FONT_STACK}`
+        ctx.font = `bold ${fontSize}px monospace`
         ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${opacity})`
         ctx.textAlign = 'center'; ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'
-        const displayName = obstacle.sentBy.emoji
-          ? `${obstacle.sentBy.emoji} ${prefix}${obstacle.sentBy.name} [${obstacle.sentBy.level}]`
-          : `${prefix}${obstacle.sentBy.name} [${obstacle.sentBy.level}]`
-        ctx.fillText(displayName, obstacle.x, obstacle.y - obstacle.height / 2 - 10)
+        ctx.fillText(`${prefix}${obstacle.sentBy.name} [${obstacle.sentBy.level}]`, obstacle.x, obstacle.y - obstacle.height / 2 - 10)
         ctx.shadowBlur = 0; ctx.textAlign = 'left'
       }
     }
@@ -82,6 +92,7 @@ export function updateObstacles(
         const reqKit = cb.getRequiredKit(obstacle.threatId)
         if (reqKit && s.kitInventory[reqKit] !== undefined && s.kitInventory[reqKit] > 0) {
           s.kitInventory[reqKit]--; s.perfectPlayDurationMs = 0
+          s.hitsByCategory[obstacle.category] = (s.hitsByCategory[obstacle.category] || 0) + 1
           s.totalKitsCollected = Math.max(0, s.totalKitsCollected - 1)
           s.lastHitThreatId = obstacle.threatId
           cb.setLastAttacker(obstacle.sentBy, obstacle.threatId)
@@ -91,6 +102,7 @@ export function updateObstacles(
         }
         if (s.kitInventory['backup-system'] !== undefined && s.kitInventory['backup-system'] > 0) {
           s.kitInventory['backup-system']--; s.perfectPlayDurationMs = 0
+          s.hitsByCategory[obstacle.category] = (s.hitsByCategory[obstacle.category] || 0) + 1
           s.totalKitsCollected = Math.max(0, s.totalKitsCollected - 1)
           s.isRestoring = false; s.restorationTimer = 0
           s.lastHitThreatId = obstacle.threatId
@@ -103,6 +115,8 @@ export function updateObstacles(
         }
         cb.setScore(s.localScore)
         cb.setSavedGameState({ level: s.currentLevel, kits: { ...s.kitInventory }, score: s.localScore })
+        s.hitsByCategory[obstacle.category] = (s.hitsByCategory[obstacle.category] || 0) + 2
+        persistWeaknessProfile(s)
         s.lastHitThreatId = obstacle.threatId
         cb.setLastAttacker(obstacle.sentBy, obstacle.threatId)
         cb.trackGameOver(s.currentLevel, s.localScore, obstacle.threatId)
@@ -114,13 +128,13 @@ export function updateObstacles(
         return
       }
     }
-    const off = obstacle.y > canvas.height + 100 || obstacle.y < -100 || obstacle.x > canvas.width + 100 || obstacle.x < -100
+    const off = obstacle.y > s.logicalHeight + 100 || obstacle.y < -100 || obstacle.x > s.logicalWidth + 100 || obstacle.x < -100
     if (off) { cb.returnObstacleToPool(obstacle); s.obstacles.splice(i, 1) }
   }
 }
 
 export function updateKits(s: GameState, cb: ObjectCallbacks): void {
-  const { ctx, canvas, EMOJI_FONT_STACK, performanceMode } = s
+  const { ctx, canvas, performanceMode } = s
   const isQuiz = cb.isQuizActive()
 
   for (let i = s.powerups.length - 1; i >= 0; i--) {
@@ -129,18 +143,20 @@ export function updateKits(s: GameState, cb: ObjectCallbacks): void {
     if (isQuiz && !isQuizItem) continue
 
     const pulse = Math.sin(Date.now() * 0.005) * 0.3 + 0.7
-    const isMobile = canvas.width < 768
+    const isMobile = s.logicalWidth < 768
     const size = isQuizItem ? (isMobile ? 130 : 180) : 35 * pulse
 
     if (!isQuizItem) {
-      ctx.shadowBlur = performanceMode ? 0 : 30 * pulse; ctx.shadowColor = kit.color
-      const icon = kit.type.startsWith('kit-') ? getKitIcon(kit.type.replace('kit-', '')) : '🔐'
-      ctx.fillStyle = kit.color + '88'
-      ctx.fillRect(kit.x - size / 2, kit.y - size / 2, size, size)
-      ctx.strokeStyle = kit.color; ctx.lineWidth = 3
-      ctx.strokeRect(kit.x - size / 2, kit.y - size / 2, size, size)
-      ctx.font = `bold 24px ${EMOJI_FONT_STACK}`; ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'
-      ctx.fillText(icon, kit.x, kit.y + 8); ctx.textAlign = 'left'; ctx.shadowBlur = 0
+      const badge = getKitBadge(kit.type.replace('kit-', ''))
+      drawKitBadge(ctx, {
+        x: kit.x,
+        y: kit.y,
+        size,
+        color: kit.color,
+        monogram: badge.monogram,
+        glow: !performanceMode,
+        pulse,
+      })
     }
 
     if (s.isHealing) continue
@@ -154,7 +170,7 @@ export function updateKits(s: GameState, cb: ObjectCallbacks): void {
           audioManager.play('quiz-correct')
           cb.quizCollectItem(kit.threatId, true)
           s.localScore += 100
-          ctx.fillStyle = 'rgba(0, 200, 255, 0.2)'; ctx.fillRect(0, 0, canvas.width, canvas.height)
+          ctx.fillStyle = 'rgba(0, 200, 255, 0.2)'; ctx.fillRect(0, 0, s.logicalWidth, s.logicalHeight)
         } else {
           audioManager.play('quiz-wrong')
           cb.endQuizWrongAnswer(kit.threatId)
@@ -167,7 +183,8 @@ export function updateKits(s: GameState, cb: ObjectCallbacks): void {
         audioManager.play('kit-collect')
         cb.trackKitCollected(kitType, s.totalKitsCollected)
         s.celebrationTimer = s.CELEBRATION_DURATION
-        const kitsForNext = calculateKitsNeededForNextLevel(s.currentLevel)
+        // Quiz passes discount the current level's requirement (learning = speed).
+        const kitsForNext = Math.ceil(calculateKitsNeededForNextLevel(s.currentLevel) * s.kitDiscount)
         if (s.totalKitsCollected >= kitsForNext) cb.advanceLevel()
         ctx.font = 'bold 20px monospace'; ctx.fillStyle = '#00ff00'; ctx.textAlign = 'center'
         ctx.fillText(`+1 ${kitType.toUpperCase()} KIT!`, kit.x, kit.y - 40)
