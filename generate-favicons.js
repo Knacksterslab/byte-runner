@@ -22,7 +22,7 @@ try {
   process.exit(1);
 }
 
-const LOGO_PATH = path.join(__dirname, 'public', 'logo-game.png');
+const LOGO_PATH = path.join(__dirname, 'public', 'logo.png');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // Favicon sizes to generate

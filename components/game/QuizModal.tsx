@@ -111,7 +111,7 @@ export default function QuizModal({ kitType, level, onPass, onFail }: QuizModalP
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: "url('/space-background-final.png')",
+            backgroundImage: "url('/space-background-final.webp')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             opacity: 0.84,

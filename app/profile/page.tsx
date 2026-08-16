@@ -113,7 +113,7 @@ export default function ProfilePage() {
         </div>
         <style jsx>{`
           .space-background {
-            background-image: url('/space-background.png');
+            background-image: url('/space-background.webp');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -202,7 +202,7 @@ export default function ProfilePage() {
 
       <style jsx>{`
         .space-background {
-          background-image: url('/space-background.png');
+          background-image: url('/space-background.webp');
           background-size: cover;
           background-position: center;
           background-attachment: fixed;

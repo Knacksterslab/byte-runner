@@ -100,7 +100,7 @@ export default function ContestDetailPage({ params }: { params: { idOrSlug: stri
 
   const SPACE_BG = (
     <style jsx>{`
-      .space-background { background-image: url('/space-background.png'); background-size: cover; background-position: center; background-attachment: fixed; background-color: #05070d; }
+      .space-background { background-image: url('/space-background.webp'); background-size: cover; background-position: center; background-attachment: fixed; background-color: #05070d; }
       .vignette { background: radial-gradient(circle at 50% 40%, transparent 0%, rgba(2, 4, 10, 0.85) 70%); }
     `}</style>
   )

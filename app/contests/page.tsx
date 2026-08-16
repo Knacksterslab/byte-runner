@@ -183,7 +183,7 @@ export default function ContestsPage() {
 
       <style jsx>{`
         .space-background {
-          background-image: url('/space-background.png');
+          background-image: url('/space-background.webp');
           background-size: cover;
           background-position: center;
           background-attachment: fixed;
