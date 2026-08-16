@@ -17,6 +17,7 @@ import { useGameHandlers } from './hooks/useGameHandlers'
 import { useGuestSavePrompt } from './hooks/useGuestSavePrompt'
 import type { RecoveryOverlayState } from './hooks/useGameLoopTypes'
 import { getDailyChallenge, type DailyChallenge } from '@/lib/api/daily'
+import { recordQuizMiss } from '@/lib/game/weaknessProfile'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { StartScreenView } from './ui/StartScreenView'
 import { RecoveryOverlaySheet } from './ui/RecoveryOverlaySheet'
@@ -349,7 +350,11 @@ export default function SimpleGame() {
           kitType={getProtectionKitForThreat(lastThreatType)?.id || 'password-manager'}
           level={level}
           onPass={handleQuizPass}
-          onFail={handleQuizFail}
+          onFail={() => {
+            const kit = getProtectionKitForThreat(lastThreatType)
+            if (kit) recordQuizMiss(kit.protectsAgainst)
+            handleQuizFail()
+          }}
         />
       )}
     </div>

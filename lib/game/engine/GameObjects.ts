@@ -3,6 +3,7 @@ import type { GameObject } from './GameState'
 import { hexToRgb } from './GameState'
 import { drawThreatEntity, drawKitBadge } from '../renderers/entityRenderer'
 import { getKitBadge } from '../visuals'
+import { mergeRunProfile } from '../weaknessProfile'
 import { calculateKitsNeededForNextLevel } from '../difficulty'
 import { calculateTotalKits, isColliding } from '../utils'
 import { cgGameplayStop } from '@/lib/crazygames'
@@ -30,16 +31,9 @@ interface ObjectCallbacks {
   endQuizWrongAnswer: (wrongItemId: string) => void
 }
 
-/** Merge the session's hit tally into the persistent weakness profile. */
+/** Merge the session's tallies into the persistent weakness profile. */
 function persistWeaknessProfile(s: GameState): void {
-  try {
-    const key = 'byterunner:weakness'
-    const prev: Record<string, number> = JSON.parse(localStorage.getItem(key) || '{}')
-    for (const [cat, n] of Object.entries(s.hitsByCategory)) prev[cat] = (prev[cat] || 0) + n
-    localStorage.setItem(key, JSON.stringify(prev))
-  } catch {
-    // storage unavailable — profile is best-effort
-  }
+  mergeRunProfile(s.quizMissesByCategory, s.hitsByCategory)
 }
 
 export function updateObstacles(
@@ -92,7 +86,6 @@ export function updateObstacles(
         const reqKit = cb.getRequiredKit(obstacle.threatId)
         if (reqKit && s.kitInventory[reqKit] !== undefined && s.kitInventory[reqKit] > 0) {
           s.kitInventory[reqKit]--; s.perfectPlayDurationMs = 0
-          s.hitsByCategory[obstacle.category] = (s.hitsByCategory[obstacle.category] || 0) + 1
           s.totalKitsCollected = Math.max(0, s.totalKitsCollected - 1)
           s.lastHitThreatId = obstacle.threatId
           cb.setLastAttacker(obstacle.sentBy, obstacle.threatId)
@@ -102,7 +95,6 @@ export function updateObstacles(
         }
         if (s.kitInventory['backup-system'] !== undefined && s.kitInventory['backup-system'] > 0) {
           s.kitInventory['backup-system']--; s.perfectPlayDurationMs = 0
-          s.hitsByCategory[obstacle.category] = (s.hitsByCategory[obstacle.category] || 0) + 1
           s.totalKitsCollected = Math.max(0, s.totalKitsCollected - 1)
           s.isRestoring = false; s.restorationTimer = 0
           s.lastHitThreatId = obstacle.threatId
@@ -115,7 +107,7 @@ export function updateObstacles(
         }
         cb.setScore(s.localScore)
         cb.setSavedGameState({ level: s.currentLevel, kits: { ...s.kitInventory }, score: s.localScore })
-        s.hitsByCategory[obstacle.category] = (s.hitsByCategory[obstacle.category] || 0) + 2
+        s.hitsByCategory[obstacle.category] = (s.hitsByCategory[obstacle.category] || 0) + 1
         persistWeaknessProfile(s)
         s.lastHitThreatId = obstacle.threatId
         cb.setLastAttacker(obstacle.sentBy, obstacle.threatId)

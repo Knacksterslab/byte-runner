@@ -106,7 +106,7 @@ export function PostIncidentReport({ lastThreatId }: { lastThreatId: string | nu
       {weaknesses.length > 0 && (
         <div className="mt-3 border-t border-white/10 pt-3">
           <p className="font-mono text-[10px] tracking-widest text-amber-300/80 uppercase">
-            Your weak sectors
+            🧠 Knowledge gaps (quiz misses &amp; incidents)
           </p>
           <div className="mt-2 space-y-1.5">
             {weaknesses.map((w) => {

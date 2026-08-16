@@ -6,6 +6,7 @@ import { cgHappyTime } from '@/lib/crazygames'
 import { audioManager } from '@/lib/audio'
 import { spawnConfetti } from './GameBackground'
 import { returnObstacleToPool } from './GameSpawn'
+import { recordQuizMiss, quizTypeToCategory } from '../weaknessProfile'
 import type { GameState } from './GameState'
 
 interface QuizCallbacks {
@@ -32,6 +33,7 @@ export function startInGameQuiz(
   cb: QuizCallbacks,
   spawnQuizItemsFn: (quiz: QuizChallenge) => void
 ): void {
+  s.lastQuizType = quiz.type
   cb.quizStartQuiz(s.currentLevel)
   s.obstacles.forEach(obs => returnObstacleToPool(obs))
   s.obstacles.length = 0
@@ -55,6 +57,9 @@ export function endInGameQuiz(
     spawnConfetti(s, s.logicalWidth / 2, s.logicalHeight / 2, s.logicalWidth < 768 ? 40 : 80)
     s.isVictoryDancing = true; s.victoryDanceTimer = s.VICTORY_DANCE_DURATION
   } else {
+    recordQuizMiss(quizTypeToCategory(s.lastQuizType))
+    s.quizMissesByCategory[quizTypeToCategory(s.lastQuizType)] =
+      (s.quizMissesByCategory[quizTypeToCategory(s.lastQuizType)] || 0) + 1
     s.showQuizCompletionMessage = true; s.quizCompletionSuccess = false; s.quizCompletionTimer = 2000
   }
   s.powerups = s.powerups.filter(p => p.type !== 'quiz-item')
@@ -69,6 +74,9 @@ export function endInGameQuizWrongAnswer(
   failChallenge: QuizChallenge | null,
   cb: QuizCallbacks
 ): void {
+  const missCategory = quizTypeToCategory(failChallenge?.type ?? s.lastQuizType)
+  recordQuizMiss(missCategory)
+  s.quizMissesByCategory[missCategory] = (s.quizMissesByCategory[missCategory] || 0) + 1
   s.quizWrongItemId = wrongItemId
   s.quizFailChallenge = failChallenge
   cb.quizMarkCompleted()
@@ -130,6 +138,12 @@ export function advanceLevel(
   s.isAdvancingLevel = true
   s.currentLevel++
   s.kitDiscount = 1 // quiz discount applies per level only
+  // Level transition: fresh stage — clear threats and grant grace so the
+  // level-up/sector overlays can never kill the player (or teleport them
+  // into a hazard).
+  s.obstacles.forEach(obs => returnObstacleToPool(obs))
+  s.obstacles.length = 0
+  s.levelGraceUntil = s.gameTime + 3000
   cb.setLevel(s.currentLevel)
   audioManager.play('level-up')
   trackLevelUp(s.currentLevel)

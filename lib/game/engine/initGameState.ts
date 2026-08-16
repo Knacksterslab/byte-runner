@@ -81,6 +81,7 @@ export function initGameState(canvas: HTMLCanvasElement, opts: UseGameLoopOption
     bgOffset: 0, safeTopInset: 0,
     logicalWidth: canvas.width, logicalHeight: canvas.height,
     paused: false, kitDiscount: 1, hitsByCategory: {},
+    quizMissesByCategory: {}, lastQuizType: null, levelGraceUntil: 0,
     dailyModifiers: opts.dailyModifiers ?? null,
     bgCache: null, vignetteCache: null, horizonCache: null,
     glowSprites: new Map(), lastRenderTs: 0,

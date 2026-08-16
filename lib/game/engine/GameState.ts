@@ -40,8 +40,14 @@ export interface GameState {
   paused: boolean
   /** Multiplier on the current level's kit requirement (quiz pass ⇒ 0.7). */
   kitDiscount: number
-  /** Session tally of threat hits (blocks + deaths) per threat category. */
+  /** Session tally of threat hits (deaths only) per threat category. */
   hitsByCategory: Record<string, number>
+  /** Session tally of quiz misses per category — the primary weakness signal. */
+  quizMissesByCategory: Record<string, number>
+  /** Type of the most recently started quiz challenge (for miss attribution). */
+  lastQuizType: string | null
+  /** Hazards can't harm the player until gameTime passes this timestamp. */
+  levelGraceUntil: number
   /** Daily-incident modifiers, or null in a standard run. */
   dailyModifiers: { boostedThreats: string[]; scarceKits: string[] } | null
   /** Perf caches: pre-rendered background, cached gradients, glow sprites. */

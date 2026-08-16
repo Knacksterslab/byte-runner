@@ -263,7 +263,7 @@ export function createGameEngine(
       )
     }
     drawThreatPanel(s, hideHud)
-    const isInvincible = quiz.refs.activeRef.current || s.isHealing || s.isRestoring || s.showingPreQuizTeaching || s.levelUpTimer > 0 || s.turboBoostCelebrationTimer > 0 || isUiPaused
+    const isInvincible = quiz.refs.activeRef.current || s.isHealing || s.isRestoring || s.showingPreQuizTeaching || s.levelUpTimer > 0 || s.sectorChangeTimer > 0 || s.turboBoostCelebrationTimer > 0 || s.gameTime < s.levelGraceUntil || isUiPaused
     if (!s.isHealing && !s.showingPreQuizTeaching && !isUiPaused) {
       updateObstacles(s, frameMs, slowMo, isInvincible, objectCb)
       updateKits(s, objectCb)

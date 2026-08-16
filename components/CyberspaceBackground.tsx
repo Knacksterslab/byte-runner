@@ -62,6 +62,12 @@ export default function CyberspaceBackground() {
         return
       }
       const now = performance.now()
+      // PERF: cap at ~30fps — a menu background doesn't need display-Hz
+      // refresh, and an uncapped full-screen redraw pegs CPUs on 120Hz.
+      if (lastBgFrameTs && now - lastBgFrameTs < 33) {
+        animationId = requestAnimationFrame(animate)
+        return
+      }
       const bgDelta = lastBgFrameTs ? now - lastBgFrameTs : 0
       lastBgFrameTs = now
       // Update center and radius on each frame for responsiveness
