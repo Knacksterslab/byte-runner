@@ -8,6 +8,7 @@ import { audioManager } from '@/lib/audio'
 import { recordShare } from '@/lib/api/backend'
 import type { GhostPlayer } from '@/lib/game/ghostPlayers'
 import type { BackendUser } from '@/lib/api/backend'
+import { PostIncidentReport } from './PostIncidentReport'
 
 interface GameOverScreenProps {
   lastAttacker: GhostPlayer | null
@@ -69,7 +70,7 @@ export function GameOverScreen({
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: "url('/space-background-final.png')",
+            backgroundImage: "url('/space-background-final.webp')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             opacity: 0.84,
@@ -125,6 +126,8 @@ export function GameOverScreen({
             Restart from scratch
           </button>
         </div>
+
+        <PostIncidentReport lastThreatId={lastThreatType} />
 
         <div className="mt-5 text-white font-mono text-[1.2rem] sm:text-[1.4rem]">
           {!isCrazyGames() && (

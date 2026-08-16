@@ -15,6 +15,7 @@ import styles from './StartScreen.module.css'
 import { HowToPlayPanel } from './HowToPlayPanel'
 import { TopRunsPanel } from './TopRunsPanel'
 import { HourlyChallengeBanner } from './HourlyChallengeBanner'
+import { DailyChallengeCard } from './DailyChallengeCard'
 import { ActiveContestsPanel } from './ActiveContestsPanel'
 
 export interface StartScreenNewProps {
@@ -26,6 +27,7 @@ export interface StartScreenNewProps {
   username?: string | null
   isAuthenticated?: boolean
   onRequestSetUsername?: () => void
+  dailyChallenge?: import('@/lib/api/daily').DailyChallenge | null
 }
 
 export function StartScreenNew({
@@ -37,6 +39,7 @@ export function StartScreenNew({
   username = null,
   isAuthenticated = false,
   onRequestSetUsername,
+  dailyChallenge = null,
 }: StartScreenNewProps) {
   const muted = useSyncExternalStore(
     (cb) => audioManager.subscribe(cb),
@@ -177,6 +180,8 @@ export function StartScreenNew({
             eligibilityLoading={eligibilityLoading}
           />
         )}
+
+        {dailyChallenge && <DailyChallengeCard challenge={dailyChallenge} />}
 
         <div className="w-full grid md:grid-cols-2 gap-4 md:gap-8 mt-0">
           <HowToPlayPanel />

@@ -16,6 +16,7 @@ import { useGameLoop } from './hooks/useGameLoop'
 import { useGameHandlers } from './hooks/useGameHandlers'
 import { useGuestSavePrompt } from './hooks/useGuestSavePrompt'
 import type { RecoveryOverlayState } from './hooks/useGameLoopTypes'
+import { getDailyChallenge, type DailyChallenge } from '@/lib/api/daily'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { StartScreenView } from './ui/StartScreenView'
 import { RecoveryOverlaySheet } from './ui/RecoveryOverlaySheet'
@@ -32,10 +33,19 @@ export default function SimpleGame() {
   const [level, setLevel] = useState(1)
   const [bonusKitType, setBonusKitType] = useState<string | null>(null)
   const [showQuiz, setShowQuiz] = useState(false)
-  const [savedGameState, setSavedGameState] = useState<{ level: number; kits: Record<string, number>; score: number } | null>(null)
+  const [savedGameState, setSavedGameState] = useState<{ level: number; kits: Record<string, number>; score: number } | null>(() => {
+    // Cross-session resume: restore the banked run (if any).
+    try {
+      const raw = localStorage.getItem('byterunner:savedRun')
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  })
   const [isFirstDeath, setIsFirstDeath] = useState(true)
   const [activeContests, setActiveContests] = useState<Contest[]>([])
+  const [daily, setDaily] = useState<DailyChallenge | null>(null)
+  const [isPaused, setIsPaused] = useState(false)
   const [recoveryOverlay, setRecoveryOverlay] = useState<RecoveryOverlayState | null>(null)
+  const pausedRef = useRef(false)
   const showQuizOverlayRef = useRef(false)
   const guestSavePromptActiveRef = useRef(false)
   const authFlowActiveRef = useRef(false)
@@ -117,8 +127,24 @@ export default function SimpleGame() {
   useEffect(() => {
     let active = true
     getActiveContests().then((c) => { if (active) setActiveContests(c) }).catch(() => {})
+    getDailyChallenge().then((d) => { if (active) setDaily(d) }).catch(() => {})
     return () => { active = false }
   }, [])
+
+  // Banked-run persistence: write-through to localStorage.
+  useEffect(() => {
+    try {
+      if (savedGameState) localStorage.setItem('byterunner:savedRun', JSON.stringify(savedGameState))
+      else localStorage.removeItem('byterunner:savedRun')
+    } catch { /* storage unavailable */ }
+  }, [savedGameState])
+
+  // Checkpoint on level-up so quitting mid-session still resumes at level.
+  useEffect(() => {
+    if (gameStarted && !isGameOver && level > 1) {
+      setSavedGameState((prev) => prev && prev.level === level ? prev : { level, score: liveScoreRef.current, kits: {} })
+    }
+  }, [level, gameStarted, isGameOver, liveScoreRef])
 
   useEffect(() => {
     if (bonusKitType) {
@@ -144,6 +170,8 @@ export default function SimpleGame() {
     setLevel, setSavedGameState, setIsFirstDeath, isGameOver, lastThreatType, isFirstDeath,
     lastAttacker, setScore, setDistance, setGameOver, setRunning, setLastAttacker, resetGame,
     addLeaderboardEntry, setLeaderboard,
+    pausedRef, onPauseChange: setIsPaused,
+    dailyModifiers: daily ? daily.modifiers : null,
   })
 
   if (!isMounted) return null
@@ -159,6 +187,7 @@ export default function SimpleGame() {
         onSignIn={isCrazyGames() ? undefined : (authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true))}
         signInLabel={isCrazyGames() ? undefined : (authStatus === 'authed' ? `Signed in as ${currentUser?.username || 'Player'} • Sign out` : 'Guest • Sign in')}
         activeContests={activeContests}
+        dailyChallenge={daily}
         username={currentUser?.username ?? undefined}
         isAuthenticated={authStatus === 'authed'}
         onRequestSetUsername={() => { setUsernameInput(''); setShowUsernameModal(true) }}
@@ -201,6 +230,31 @@ export default function SimpleGame() {
         />
       )}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0" tabIndex={0} />
+      {!isGameOver && !showQuiz && !isPaused && (
+        <button
+          onClick={() => { pausedRef.current = true }}
+          aria-label="Pause game"
+          className="fixed z-30 flex h-[48px] w-[48px] sm:h-[54px] sm:w-[54px] items-center justify-center rounded-[10px] border border-cyan-300/60 bg-[#0a1a24]/80 text-lg sm:text-xl text-cyan-200 shadow-[0_0_22px_rgba(0,255,255,0.45)] transition hover:scale-105 touch-manipulation"
+          style={{ right: 'max(16px, calc(env(safe-area-inset-right) + 76px))', top: 'max(12px, calc(env(safe-area-inset-top) + 8px))' }}
+        >
+          ⏸
+        </button>
+      )}
+      {isPaused && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/75 backdrop-blur-sm">
+          <p className="font-mono text-3xl sm:text-4xl font-black tracking-[0.3em] text-cyan-200">
+            PAUSED
+          </p>
+          <p className="mt-2 font-mono text-[11px] text-slate-400">Progress is safe — threats are frozen</p>
+          <button
+            onClick={() => { pausedRef.current = false }}
+            className="mt-6 rounded-full border border-cyan-100/55 bg-gradient-to-r from-cyan-400 via-sky-500 to-indigo-600 px-8 py-3 font-black font-mono tracking-[0.12em] text-white shadow-[0_0_26px_rgba(80,200,255,0.55)] transition hover:scale-105"
+          >
+            ▶ RESUME
+          </button>
+          <p className="mt-3 font-mono text-[10px] text-slate-500">or press P / Esc</p>
+        </div>
+      )}
       <button
         onClick={() => audioManager.toggleMute()}
         aria-label={muted ? 'Unmute' : 'Mute'}
