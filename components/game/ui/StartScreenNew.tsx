@@ -60,6 +60,13 @@ export function StartScreenNew({
   useEffect(() => {
     let isActive = true
     ensureLeaderboardSeeded()
+    // Hourly challenge disabled by default — the Daily Incident is the single
+    // time-boxed anchor. Re-enable with NEXT_PUBLIC_HOURLY_CHALLENGES_ENABLED=true.
+    if (process.env.NEXT_PUBLIC_HOURLY_CHALLENGES_ENABLED !== 'true') {
+      return () => {
+        isActive = false
+      }
+    }
     getCurrentHourlyChallenge()
       .then((res) => {
         if (!isActive) return
