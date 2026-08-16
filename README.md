@@ -4,12 +4,15 @@ A cybersecurity educational game where you learn real defense tools through game
 
 ## Features
 
-- 🏃 **Endless Runner** - WASD/touch controls, smooth 60 FPS
-- 🛡️ **8 Protection Kits** - Real cybersecurity tools (Password Manager, MFA, VPN, etc.)
-- 🦠 **15 Threat Types** - Phishing, malware, data breaches, and more
-- 🧠 **Slow-Motion Quizzes** - Learn while playing, test your knowledge
-- 📈 **4 Progressive Zones** - Increasing difficulty with zone transitions
-- 🎮 **Mobile-Optimized** - Touch controls, responsive design
+- 🏃 **Endless Runner** - WASD/touch controls, adaptive-quality 60 FPS canvas
+- 🛡️ **23 Protection Kits** - Real cybersecurity tools (Password Manager, MFA, VPN, etc.)
+- 🦠 **60 Threat Types** - Phishing, malware, data breaches, and more
+- 🧠 **Quiz Every Level (3+)** - Procedurally drawn from question banks; passing discounts your next level's kit requirement
+- 📈 **5 Progressive Zones** - Increasing difficulty with zone transitions
+- ⏸️ **Pause & Resume** - Button, P/Esc, auto-pause on tab blur; cross-session run banking
+- 🚨 **Daily Incident** - Seeded daily challenge with threat/kit modifiers and streaks
+- 📋 **Post-Incident Report** - Death analysis, weak-sector tracking, shareable
+- 📱 **PWA** - Installable, offline asset caching, retina-sharp canvas
 - 📊 **Analytics** - Track progress and learning outcomes
 
 ## Tech Stack
@@ -78,47 +81,37 @@ npm start
 byte-runner/
 ├── app/                    # Next.js app router
 │   ├── page.tsx           # Home/landing page
-│   ├── layout.tsx         # Root layout
-│   ├── faq/               # FAQ page
-│   ├── privacy/           # Privacy policy
-│   └── terms/             # Terms of service
+│   ├── layout.tsx         # Root layout (PWA metadata, SW registration)
+│   ├── admin/             # Admin panel
+│   ├── contests/          # Contests pages
+│   ├── profile/           # Player profile
+│   ├── faq/ privacy/ terms/
 ├── components/
-│   ├── game/              # Game components
+│   ├── game/
 │   │   ├── SimpleGame.tsx # Main game orchestrator
 │   │   ├── QuizModal.tsx  # Quiz modal
-│   │   ├── hooks/         # Custom hooks
-│   │   │   ├── useQuizState.ts
-│   │   │   ├── useTutorialState.ts
-│   │   │   └── useUIState.ts
-│   │   └── ui/            # UI components
-│   │       ├── LoadingScreen.tsx
-│   │       ├── StartScreen.tsx
-│   │       └── TutorialOverlay.tsx
-│   ├── Footer.tsx         # Site footer
+│   │   ├── hooks/         # useGameLoop, useQuizState, useAssetLoader, ...
+│   │   └── ui/            # StartScreen, GameOverScreen, DailyChallengeCard,
+│   │                     # PostIncidentReport, HourlyChallengeBanner, ...
+│   ├── Footer.tsx
 │   └── CyberspaceBackground.tsx
 ├── lib/
-│   ├── game/              # Game logic modules
-│   │   ├── gameConstants.ts    # Configuration
-│   │   ├── utils.ts            # Utilities
-│   │   ├── objectPool.ts       # Object pooling
-│   │   ├── gameInput.ts        # Input handling
-│   │   ├── collisionDetection.ts
-│   │   ├── quizSystem.ts       # Quiz mechanics
-│   │   ├── backgroundRenderer.ts
-│   │   ├── hudRenderer.ts
-│   │   ├── playerRenderer.ts
-│   │   ├── objectRenderer.ts
-│   │   ├── objectGeneration.ts
-│   │   ├── threatData.ts       # 15 threat types
-│   │   ├── protectionKits.ts   # 8 protection kits
-│   │   ├── zones.ts            # 4 game zones
-│   │   ├── inGameQuizzes.ts    # Quiz challenges
-│   │   └── ghostPlayers.ts     # Attacker personas
+│   ├── game/
+│   │   ├── engine/        # Game loop: createGameEngine, GameState, spawn,
+│   │   │                  # quiz logic, adaptive quality, backgrounds
+│   │   ├── renderers/     # Overlay renderers + procedural entity renderer
+│   │   ├── visuals.ts     # SINGLE SOURCE OF TRUTH for entity visuals
+│   │   ├── data/          # Threats (60), kits (23), quiz banks (62 Qs)
+│   │   ├── threatData.ts protectionKits.ts zones.ts inGameQuizzes.ts
+│   │   └── gameConstants.ts difficulty.ts ghostPlayers.ts
+│   ├── api/               # Typed API client + endpoint modules (daily, ...)
 │   ├── store/             # Zustand state
-│   │   └── gameStore.ts
 │   └── analytics.ts       # GA4 tracking
-└── public/                # Static assets
-    └── assets/sprites/    # Game sprites
+├── public/
+│   ├── sw.js              # Service worker (PWA)
+│   ├── manifest.json      # PWA manifest
+│   └── assets/audio/      # Sound effects + music (WebP images in /)
+└── generate-favicons.js   # Favicon generator (uses logo.png)
 ```
 
 ## Architecture
@@ -161,7 +154,7 @@ byte-runner/
 
 ### Testing
 
-See `TESTING.md` for complete testing checklist.
+A fresh launch QA checklist is maintained in the workspace `ROADMAP.md` ship steps.
 
 **Quick Test:**
 ```bash

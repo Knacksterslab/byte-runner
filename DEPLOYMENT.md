@@ -37,34 +37,27 @@ vercel --prod
 
 ## Environment Variables
 
-### Required for Production
+**Important:** `.env` is **not tracked in git** (untracked for safety). Local
+development uses the local `.env` file; production builds get their values from
+the Vercel dashboard — a fresh clone will NOT build correctly without them.
 
-Create `.env.local` file (already in .gitignore):
+### Required in production (Vercel → Settings → Environment Variables)
 
-```bash
-# Copy from example
-cp .env.local.example .env.local
 ```
+# Backend API origin (the NestJS backend's public URL)
+NEXT_PUBLIC_API_DOMAIN=https://your-backend-url
 
-Edit `.env.local`:
-```
-# Analytics (Optional)
+# Analytics
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 
-# Sentry (Optional)
-SENTRY_AUTH_TOKEN=your_sentry_token
-
-# Game Configuration (Optional)
-NEXT_PUBLIC_GAME_VERSION=1.0.0
+# Sentry
+NEXT_PUBLIC_SENTRY_DSN=https://...@....ingest.sentry.io/...
+NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
+SENTRY_AUTH_TOKEN=your_sentry_token   # only if uploading source maps
 ```
 
-### Add to Vercel
-
-In Vercel dashboard:
-1. Go to Project Settings
-2. Click "Environment Variables"
-3. Add each variable
-4. Redeploy
+After adding/rediting variables: **redeploy** (build-time `NEXT_PUBLIC_*` values
+are inlined at build).
 
 ## Post-Deployment
 
