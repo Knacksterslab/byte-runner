@@ -101,19 +101,36 @@ export function StartScreenNew({
       <div className={`fixed inset-0 ${styles.vignette}`} style={{ zIndex: 1 }} />
 
       {isAuthenticated ? (
-        <Link href="/profile">
-          <div
-            className="fixed left-4 sm:left-6 z-20 flex items-center gap-2 sm:gap-3 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation cursor-pointer group"
-            style={{ top: 'max(12px, calc(env(safe-area-inset-top) + 8px))' }}
-          >
-            <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-cyan-500/20 border border-cyan-400/50 group-hover:bg-cyan-500/30 transition">
-              <svg className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-300" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-              </svg>
+        username ? (
+          <Link href="/profile">
+            <div
+              className="fixed left-4 sm:left-6 z-20 flex items-center gap-2 sm:gap-3 rounded-full border border-cyan-400/50 bg-[#08131c]/80 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-cyan-100 shadow-[0_0_12px_rgba(0,255,255,0.3)] transition hover:border-cyan-300 hover:text-white touch-manipulation cursor-pointer group"
+              style={{ top: 'max(12px, calc(env(safe-area-inset-top) + 8px))' }}
+            >
+              <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-cyan-500/20 border border-cyan-400/50 group-hover:bg-cyan-500/30 transition">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-300" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <span className="hidden sm:inline">{username}</span>
             </div>
-            <span className="hidden sm:inline">{username || 'Player'}</span>
-          </div>
-        </Link>
+          </Link>
+        ) : (
+          onRequestSetUsername && (
+            <button
+              onClick={onRequestSetUsername}
+              className="fixed left-4 sm:left-6 z-20 flex items-center gap-2 sm:gap-3 rounded-full border border-amber-400/50 bg-[#08131c]/80 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-mono font-bold tracking-wide text-amber-100 shadow-[0_0_12px_rgba(251,191,36,0.3)] transition hover:border-amber-300 hover:text-white touch-manipulation cursor-pointer group"
+              style={{ top: 'max(12px, calc(env(safe-area-inset-top) + 8px))' }}
+            >
+              <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-amber-500/20 border border-amber-400/50 group-hover:bg-amber-500/30 transition">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-amber-300" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+              </div>
+              <span className="hidden sm:inline">Set username</span>
+            </button>
+          )
+        )
       ) : (
         onSignIn && (
           <button
