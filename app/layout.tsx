@@ -1,22 +1,24 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { AnalyticsPageView } from "@/components/AnalyticsPageView";
+import { PWARegister } from "@/components/PWARegister";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://byte-runner.vercel.app'
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#000011',
+}
 
 export const metadata: Metadata = {
   title: "Byte Runner - A Cybersecurity Survival Game for Everyone",
   description: "Endless runner game that teaches real security tools. Die to ransomware, learn about backups. Free to play.",
   metadataBase: new URL(BASE_URL),
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover',
-  },
-  themeColor: '#000011',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -126,6 +128,7 @@ export default function RootLayout({
           </>
         )}
         <AnalyticsPageView />
+        <PWARegister />
         {children}
       </body>
     </html>
