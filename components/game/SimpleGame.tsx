@@ -20,6 +20,7 @@ import { getDailyChallenge, type DailyChallenge } from '@/lib/api/daily'
 import { getMyBalance } from '@/lib/api/balance'
 import { setActiveDailyModifiers } from '@/lib/game/inGameQuizzes'
 import { recordQuizMiss } from '@/lib/game/weaknessProfile'
+import { PhishKitGame } from './phishkit/PhishKitGame'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { StartScreenView } from './ui/StartScreenView'
 import { RecoveryOverlaySheet } from './ui/RecoveryOverlaySheet'
@@ -48,6 +49,7 @@ export default function SimpleGame() {
   const [daily, setDaily] = useState<DailyChallenge | null>(null)
   const [pointBalance, setPointBalance] = useState<number | null>(null)
   const [showIncidentIntro, setShowIncidentIntro] = useState(false)
+  const [phishKitOpen, setPhishKitOpen] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [recoveryOverlay, setRecoveryOverlay] = useState<RecoveryOverlayState | null>(null)
   const pausedRef = useRef(false)
@@ -188,6 +190,10 @@ export default function SimpleGame() {
   useEffect(() => {
     if (!isMounted || isLoading || gameStarted) return
     const params = new URLSearchParams(window.location.search)
+    if (params.get('phishkit') === '1') {
+      setPhishKitOpen(true)
+      router.replace('/')
+    }
     if (params.get('play') === 'true') {
       const tid = setTimeout(() => { handleStart(); router.replace('/') }, 100)
       return () => clearTimeout(tid)
@@ -208,8 +214,26 @@ export default function SimpleGame() {
   if (!isMounted) return null
   if (isLoading) return <LoadingScreen progress={loadProgress} />
 
+  const phishKitOverlay = phishKitOpen && daily ? (
+    <PhishKitGame
+      dateKey={daily.date}
+      incidentName={daily.name}
+      incidentDescription={daily.description}
+      onExit={() => setPhishKitOpen(false)}
+      onSubmitted={() => {
+        getDailyChallenge().then((d) => {
+          setDaily(d)
+          setActiveDailyModifiers(d ? d.modifiers : null)
+        }).catch(() => {})
+        getMyBalance().then((b) => setPointBalance(b.balanceCents)).catch(() => {})
+      }}
+    />
+  ) : null
+
   if (!gameStarted) {
     return (
+      <>
+      {phishKitOverlay}
       <StartScreenView
         tutorialShowing={tutorial.state.showing}
         onCloseTutorial={tutorial.actions.close}
@@ -244,12 +268,15 @@ export default function SimpleGame() {
         onUsernameChange={setUsernameInput}
         onSubmitUsername={handleUsernameSubmit}
         onCloseUsernameModal={() => setShowUsernameModal(false)}
+        onPlayDailyIncident={daily?.mechanic === 'phishkit' ? () => setPhishKitOpen(true) : undefined}
       />
+      </>
     )
   }
 
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden pt-[env(safe-area-inset-top)]">
+      {phishKitOverlay}
       {showAuthModal && (
         <AuthModal
           mode={authMode} email={authEmail} password={authPassword}

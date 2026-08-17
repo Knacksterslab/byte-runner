@@ -5,6 +5,8 @@ export async function submitRun(payload: {
   distance: number
   durationMs: number
   clientVersion?: string
+  mechanic?: string
+  parts?: string[]
 }) {
   const startRes = await fetchWithSession('/runs/start', { method: 'POST' })
   if (!startRes.ok) throw new Error('Failed to start run.')
@@ -18,6 +20,8 @@ export async function submitRun(payload: {
       distance: payload.distance,
       durationMs: payload.durationMs,
       clientVersion: payload.clientVersion,
+      mechanic: payload.mechanic,
+      parts: payload.parts,
     }),
   })
 

@@ -38,6 +38,7 @@ interface StartScreenViewProps {
   onCloseUsernameModal: () => void
   dailyChallenge?: import('@/lib/api/daily').DailyChallenge | null
   pointBalance?: number | null
+  onPlayDailyIncident?: () => void
 }
 
 export function StartScreenView(props: StartScreenViewProps) {
@@ -62,6 +63,7 @@ export function StartScreenView(props: StartScreenViewProps) {
           onRequestSetUsername={props.onRequestSetUsername}
           dailyChallenge={props.dailyChallenge}
           pointBalance={props.pointBalance}
+          onPlayDailyIncident={props.onPlayDailyIncident}
         />
         {props.showAuthModal && (
           <AuthModal

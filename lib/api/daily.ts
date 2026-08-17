@@ -10,6 +10,7 @@ export interface DailyChallenge {
   date: string
   name: string
   description: string
+  mechanic?: string
   modifiers: {
     name: string
     boostedThreats: string[]
