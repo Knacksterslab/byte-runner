@@ -17,6 +17,8 @@ import { useGameHandlers } from './hooks/useGameHandlers'
 import { useGuestSavePrompt } from './hooks/useGuestSavePrompt'
 import type { RecoveryOverlayState } from './hooks/useGameLoopTypes'
 import { getDailyChallenge, type DailyChallenge } from '@/lib/api/daily'
+import { getMyBalance } from '@/lib/api/balance'
+import { setActiveDailyModifiers } from '@/lib/game/inGameQuizzes'
 import { recordQuizMiss } from '@/lib/game/weaknessProfile'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { StartScreenView } from './ui/StartScreenView'
@@ -44,6 +46,8 @@ export default function SimpleGame() {
   const [isFirstDeath, setIsFirstDeath] = useState(true)
   const [activeContests, setActiveContests] = useState<Contest[]>([])
   const [daily, setDaily] = useState<DailyChallenge | null>(null)
+  const [pointBalance, setPointBalance] = useState<number | null>(null)
+  const [showIncidentIntro, setShowIncidentIntro] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [recoveryOverlay, setRecoveryOverlay] = useState<RecoveryOverlayState | null>(null)
   const pausedRef = useRef(false)
@@ -128,9 +132,35 @@ export default function SimpleGame() {
   useEffect(() => {
     let active = true
     getActiveContests().then((c) => { if (active) setActiveContests(c) }).catch(() => {})
-    getDailyChallenge().then((d) => { if (active) setDaily(d) }).catch(() => {})
+    getDailyChallenge().then((d) => {
+      if (!active) return
+      setDaily(d)
+      // Generated quizzes skew toward today's incident topic.
+      setActiveDailyModifiers(d ? d.modifiers : null)
+    }).catch(() => {})
     return () => { active = false }
   }, [])
+
+  // Points balance (1 pt = 1¢) for signed-in players.
+  useEffect(() => {
+    if (authStatus !== 'authed') { setPointBalance(null); return }
+    let active = true
+    getMyBalance()
+      .then((b) => { if (active) setPointBalance(b.balanceCents) })
+      .catch(() => { if (active) setPointBalance(null) })
+    return () => { active = false }
+  }, [authStatus, currentUser])
+
+  // Incident intro banner: show once per session when a run starts on an
+  // incident day, auto-dismiss.
+  useEffect(() => {
+    if (gameStarted && daily) {
+      setShowIncidentIntro(true)
+      const tid = setTimeout(() => setShowIncidentIntro(false), 5500)
+      timeoutRefs.current.push(tid)
+      return () => clearTimeout(tid)
+    }
+  }, [gameStarted, daily])
 
   // Banked-run persistence: write-through to localStorage.
   useEffect(() => {
@@ -188,6 +218,7 @@ export default function SimpleGame() {
         onSignIn={isCrazyGames() ? undefined : (authStatus === 'authed' ? handleSignOut : () => setShowAuthModal(true))}
         signInLabel={isCrazyGames() ? undefined : (authStatus === 'authed' ? `Signed in as ${currentUser?.username || 'Player'} • Sign out` : 'Guest • Sign in')}
         activeContests={activeContests}
+        pointBalance={pointBalance}
         dailyChallenge={daily}
         username={currentUser?.username ?? undefined}
         isAuthenticated={authStatus === 'authed'}
@@ -231,6 +262,30 @@ export default function SimpleGame() {
         />
       )}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0" tabIndex={0} />
+      {showIncidentIntro && daily && !isGameOver && (
+        <button
+          onClick={() => setShowIncidentIntro(false)}
+          className="absolute left-1/2 top-[18%] z-40 w-[min(92vw,480px)] -translate-x-1/2 rounded-xl border border-amber-400/60 bg-[#1a1205]/95 px-4 py-3 text-center shadow-[0_0_28px_rgba(251,191,36,0.35)]"
+        >
+          <p className="font-mono text-[11px] tracking-[0.25em] text-amber-300 uppercase">
+            ⚡ {daily.name} in effect
+          </p>
+          <p className="mt-1 text-xs text-slate-300">{daily.description}</p>
+          <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+            {daily.modifiers.boostedThreats.slice(0, 2).map((t) => (
+              <span key={t} className="rounded-full border border-rose-400/40 bg-rose-500/10 px-2 py-0.5 font-mono text-[10px] text-rose-300">
+                ▲ {t.replace(/-/g, ' ')}
+              </span>
+            ))}
+            {daily.modifiers.scarceKits.slice(0, 1).map((k) => (
+              <span key={k} className="rounded-full border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] text-sky-300">
+                ▼ {k.replace(/-/g, ' ')}
+              </span>
+            ))}
+          </div>
+          <p className="mt-1.5 font-mono text-[9px] text-slate-500">tap to dismiss — runs today count toward the daily leaderboard</p>
+        </button>
+      )}
       {!isGameOver && !showQuiz && !isPaused && (
         <button
           onClick={() => { pausedRef.current = true }}

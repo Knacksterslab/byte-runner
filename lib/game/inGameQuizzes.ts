@@ -64,6 +64,7 @@ export function getRandomQuizChallenge(): QuizChallenge {
 }
 
 // ── Procedural quizzes: MC question banks → collect-the-answer challenges ──
+import { getProtectionKitById } from './protectionKits'
 import { quizQuestionsA } from './data/quizQuestionsA'
 import { quizQuestionsB } from './data/quizQuestionsB'
 import { quizQuestionsC } from './data/quizQuestionsC'
@@ -115,11 +116,37 @@ function shuffled<T>(arr: T[], rng: () => number): T[] {
   return out
 }
 
+/**
+ * Active daily-incident modifiers. Set by the UI when today's challenge
+ * loads; generated quizzes prefer questions whose topic matches the
+ * incident so the day's TEACHING matches the day's DANGERS.
+ */
+let activeDailyModifiers: { name: string; boostedThreats: string[]; scarceKits: string[] } | null = null
+
+export function setActiveDailyModifiers(
+  m: { name: string; boostedThreats: string[]; scarceKits: string[] } | null,
+): void {
+  activeDailyModifiers = m
+}
+
 /** Builds a quiz from the MC banks; seeded by level + day-of-year. */
 export function generateQuizChallenge(level: number): QuizChallenge {
   const dayOfYear = Math.floor(Date.now() / 86_400_000)
   const rng = mulberry32(level * 2654435761 + dayOfYear)
-  const q = bankQuestions[Math.floor(rng() * bankQuestions.length)]!
+
+  let pool = bankQuestions
+  const boosted = activeDailyModifiers?.boostedThreats
+  if (boosted && boosted.length > 0) {
+    // On-topic = the question's kit counters one of today's boosted threats.
+    const onTopic = bankQuestions.filter((q) => {
+      const kit = getProtectionKitById(q.kitType)
+      return kit ? boosted.includes(kit.protectsAgainst) : false
+    })
+    // 80% of quizzes on incident days teach the incident's topic.
+    if (onTopic.length >= 5 && rng() < 0.8) pool = onTopic
+  }
+
+  const q = pool[Math.floor(rng() * pool.length)]!
   const correct = q.options[q.correctAnswer]!
   const wrongs = shuffled(
     q.options.filter((_, i) => i !== q.correctAnswer),

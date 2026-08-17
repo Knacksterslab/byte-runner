@@ -49,7 +49,7 @@ export interface GameState {
   /** Hazards can't harm the player until gameTime passes this timestamp. */
   levelGraceUntil: number
   /** Daily-incident modifiers, or null in a standard run. */
-  dailyModifiers: { boostedThreats: string[]; scarceKits: string[] } | null
+  dailyModifiers: { name: string; boostedThreats: string[]; scarceKits: string[] } | null
   /** Perf caches: pre-rendered background, cached gradients, glow sprites. */
   bgCache: HTMLCanvasElement | null
   vignetteCache: CanvasGradient | null

@@ -34,6 +34,10 @@ export function DailyChallengeCard({ challenge }: { challenge: DailyChallenge })
       </div>
       <p className="mt-1 text-xs text-slate-300">{challenge.description}</p>
 
+      <p className="mt-1.5 font-mono text-[10px] text-amber-200/80">
+        🏆 100 pts · 🥈 50 · 🥉 25 — winner crowned at reset · cash out at 500 pts
+      </p>
+
       <div className="mt-2 flex flex-wrap gap-1.5">
         {challenge.modifiers.boostedThreats.slice(0, 3).map((t) => (
           <span key={t} className="rounded-full border border-rose-400/40 bg-rose-500/10 px-2 py-0.5 font-mono text-[10px] text-rose-300">

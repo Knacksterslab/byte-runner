@@ -38,6 +38,16 @@ export function drawHUD(
   ctx.fillStyle = '#6ee7ff'; ctx.textAlign = 'right'
   ctx.fillText(`${localScore}`, hudX + hudWidth - 16, hudY + (s.logicalWidth < 768 ? 27 : 30))
   ctx.textAlign = 'left'
+
+  // Daily-incident badge: makes the themed day visible in-run.
+  if (s.dailyModifiers?.name) {
+    const badgeY = hudY + hudHeight + 8
+    ctx.font = 'bold 11px monospace'
+    ctx.textAlign = 'center'
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.9)'
+    ctx.fillText(`⚡ ${s.dailyModifiers.name}`, hudX + hudWidth / 2, badgeY)
+    ctx.textAlign = 'left'
+  }
 }
 
 export function drawThreatPanel(s: GameState, shouldHide: boolean): void {

@@ -52,5 +52,5 @@ export interface UseGameLoopOptions {
   pausedRef: React.MutableRefObject<boolean>
   onPauseChange: (paused: boolean) => void
   /** Daily-incident modifiers (boosted threat categories / scarce kits). */
-  dailyModifiers: { boostedThreats: string[]; scarceKits: string[] } | null
+  dailyModifiers: { name: string; boostedThreats: string[]; scarceKits: string[] } | null
 }

@@ -37,6 +37,7 @@ interface StartScreenViewProps {
   onSubmitUsername: (event: React.FormEvent<HTMLFormElement>) => void
   onCloseUsernameModal: () => void
   dailyChallenge?: import('@/lib/api/daily').DailyChallenge | null
+  pointBalance?: number | null
 }
 
 export function StartScreenView(props: StartScreenViewProps) {
@@ -60,6 +61,7 @@ export function StartScreenView(props: StartScreenViewProps) {
           isAuthenticated={props.isAuthenticated}
           onRequestSetUsername={props.onRequestSetUsername}
           dailyChallenge={props.dailyChallenge}
+          pointBalance={props.pointBalance}
         />
         {props.showAuthModal && (
           <AuthModal

@@ -28,6 +28,7 @@ export interface StartScreenNewProps {
   isAuthenticated?: boolean
   onRequestSetUsername?: () => void
   dailyChallenge?: import('@/lib/api/daily').DailyChallenge | null
+  pointBalance?: number | null
 }
 
 export function StartScreenNew({
@@ -40,6 +41,7 @@ export function StartScreenNew({
   isAuthenticated = false,
   onRequestSetUsername,
   dailyChallenge = null,
+  pointBalance = null,
 }: StartScreenNewProps) {
   const muted = useSyncExternalStore(
     (cb) => audioManager.subscribe(cb),
@@ -120,6 +122,11 @@ export function StartScreenNew({
                 </svg>
               </div>
               <span className="hidden sm:inline">{username}</span>
+              {pointBalance !== null && pointBalance > 0 && (
+                <span className="ml-1 rounded-full bg-amber-400/15 border border-amber-400/40 px-1.5 py-0.5 text-[9px] text-amber-300">
+                  {pointBalance} pts
+                </span>
+              )}
             </div>
           </Link>
         ) : (

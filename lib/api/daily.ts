@@ -11,6 +11,7 @@ export interface DailyChallenge {
   name: string
   description: string
   modifiers: {
+    name: string
     boostedThreats: string[]
     scarceKits: string[]
   }
@@ -38,6 +39,7 @@ export async function getDailyChallenge(timeoutMs = 3500): Promise<DailyChalleng
       name: c.name,
       description: c.description,
       modifiers: {
+        name: c.name ?? 'Daily Incident',
         boostedThreats: Array.isArray(c.modifiers.boostedThreats) ? c.modifiers.boostedThreats : [],
         scarceKits: Array.isArray(c.modifiers.scarceKits) ? c.modifiers.scarceKits : [],
       },
