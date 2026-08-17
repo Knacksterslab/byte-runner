@@ -75,10 +75,8 @@ export function useAuth(callbacks: UseAuthCallbacks): AuthState {
         if (user) {
           setCurrentUser(user)
           setAuthStatus('authed')
-          if (!user.username) {
-            setUsernameInput('')
-            setShowUsernameModal(true)
-          }
+          // No username yet? The amber chip nudges passively; the modal only
+          // asks when a run is submitted and a name actually matters.
         } else {
           setCurrentUser(null)
           setAuthStatus('guest')
@@ -141,10 +139,9 @@ export function useAuth(callbacks: UseAuthCallbacks): AuthState {
       if (authMode === 'signup') trackSignUp()
       else trackSignIn()
 
-      if (user && !user.username) {
-        setUsernameInput('')
-        setShowUsernameModal(true)
-      } else if (user) {
+      if (user) {
+        // Username (if missing) is requested at first leaderboard save,
+        // not as an interruption right after auth.
         await callbacksRef.current.onSignedIn(user)
       }
     } catch (error) {

@@ -37,11 +37,7 @@ export function useGameHandlers(opts: GameHandlerOptions): GameHandlers {
 
   const handleStart = () => {
     const o = optsRef.current
-    if (o.authStatus === 'authed' && !o.currentUser?.username) {
-      o.setUsernameInput('')
-      o.setShowUsernameModal(true)
-      return
-    }
+    // Missing username never blocks play — it's requested at run submission.
     trackGameStart()
     cgGameplayStart()
     audioManager.play('game-start')
