@@ -73,7 +73,11 @@ export function mergeRunProfile(
 // backend mastery ledger. Fire-and-forget — gameplay never blocks or breaks.
 import { endDrillSession } from '@/lib/api/drills'
 
-export function reportQuizResult(topic: string, passed: boolean, questionId?: string): void {
-  if (!passed) recordQuizMiss(topic)
-  void endDrillSession({ topic, passed, format: 'quiz', questionId })
+export function reportQuizResult(
+  topic: string,
+  passed: boolean,
+  opts?: { format?: string; questionId?: string; skipLocalMiss?: boolean },
+): void {
+  if (!passed && !opts?.skipLocalMiss) recordQuizMiss(topic)
+  void endDrillSession({ topic, passed, format: opts?.format ?? 'quiz', questionId: opts?.questionId })
 }

@@ -21,6 +21,7 @@ import { getMyBalance } from '@/lib/api/balance'
 import { setActiveDailyModifiers } from '@/lib/game/inGameQuizzes'
 import { reportQuizResult } from '@/lib/game/weaknessProfile'
 import { beginDrillSession } from '@/lib/api/drills'
+import { TypingDrill } from './drills/TypingDrill'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { StartScreenView } from './ui/StartScreenView'
 import { RecoveryOverlaySheet } from './ui/RecoveryOverlaySheet'
@@ -49,6 +50,7 @@ export default function SimpleGame() {
   const [daily, setDaily] = useState<DailyChallenge | null>(null)
   const [pointBalance, setPointBalance] = useState<number | null>(null)
   const [showIncidentIntro, setShowIncidentIntro] = useState(false)
+  const [typingDrillTopic, setTypingDrillTopic] = useState<'password' | 'authentication' | null>(null)
   const [isPaused, setIsPaused] = useState(false)
   const [recoveryOverlay, setRecoveryOverlay] = useState<RecoveryOverlayState | null>(null)
   const pausedRef = useRef(false)
@@ -190,6 +192,10 @@ export default function SimpleGame() {
   useEffect(() => {
     if (!isMounted || isLoading || gameStarted) return
     const params = new URLSearchParams(window.location.search)
+    if (params.get('drill') === 'typing') {
+      setTypingDrillTopic('password')
+      router.replace('/')
+    }
     if (params.get('play') === 'true') {
       const tid = setTimeout(() => { handleStart(); router.replace('/') }, 100)
       return () => clearTimeout(tid)
@@ -267,6 +273,20 @@ export default function SimpleGame() {
         />
       )}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0" tabIndex={0} />
+      {typingDrillTopic && (
+        <TypingDrill
+          topic={typingDrillTopic}
+          onComplete={(passed, score) => {
+            const topic = typingDrillTopic
+            setTypingDrillTopic(null)
+            setShowQuiz(false)
+            reportQuizResult(topic, passed, { format: 'typing', skipLocalMiss: true })
+            void score
+            if (passed) handleQuizPass()
+            else handleQuizFail()
+          }}
+        />
+      )}
       {showIncidentIntro && daily && !isGameOver && (
         <button
           onClick={() => setShowIncidentIntro(false)}
@@ -416,7 +436,13 @@ export default function SimpleGame() {
           }}
           onFail={() => {
             const kit = getProtectionKitForThreat(lastThreatType)
-            if (kit) reportQuizResult(kit.protectsAgainst, false)
+            const topic = kit?.protectsAgainst
+            if (topic === 'password' || topic === 'authentication') {
+              // Remediation: the typing drill is the second chance that teaches
+              setTypingDrillTopic(topic)
+              return
+            }
+            if (kit && topic) reportQuizResult(topic, false)
             handleQuizFail()
           }}
         />
