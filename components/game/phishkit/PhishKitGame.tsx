@@ -6,7 +6,7 @@ import type { LurePart, LureSlot } from '@/lib/game/phishKit/catalog'
 import { recordQuizMiss } from '@/lib/game/weaknessProfile'
 import { submitRun } from '@/lib/api/runs'
 
-type Phase = 'brief' | 'workbench' | 'office' | 'aftermath' | 'reveal' | 'selftest' | 'results'
+type Phase = 'brief' | 'step' | 'preview' | 'office' | 'aftermath' | 'reveal' | 'selftest' | 'results'
 
 const SLOTS: { slot: LureSlot; title: string }[] = [
   { slot: 'sender', title: 'WHO is it from?' },
@@ -30,6 +30,7 @@ interface PhishKitGameProps {
 export function PhishKitGame({ dateKey, incidentName, incidentDescription, onExit, onSubmitted }: PhishKitGameProps) {
   const pool = useMemo(() => poolForDate(dateKey), [dateKey])
   const [phase, setPhase] = useState<Phase>('brief')
+  const [stepIdx, setStepIdx] = useState(0)
   const [selected, setSelected] = useState<Partial<Record<LureSlot, LurePart>>>({})
   const [resolution, setResolution] = useState<Resolution | null>(null)
   const [personaIdx, setPersonaIdx] = useState(0)
@@ -104,7 +105,7 @@ export function PhishKitGame({ dateKey, incidentName, incidentDescription, onExi
 
   // ─────────────────────────────── render ───────────────────────────────
   return (
-    <div className="absolute inset-0 z-50 overflow-y-auto bg-[#05070d]/97 px-4 py-6">
+    <div className="absolute inset-0 z-[60] overflow-y-auto bg-[#05070d] px-4 py-6">
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-4 flex items-center justify-between">
           <p className="font-mono text-[10px] tracking-[0.3em] text-rose-400 uppercase">
@@ -116,60 +117,101 @@ export function PhishKitGame({ dateKey, incidentName, incidentDescription, onExi
         </div>
 
         {phase === 'brief' && (
-          <div className="rounded-xl border border-rose-400/40 bg-[#160a0e]/80 p-5">
-            <h2 className="font-mono text-lg font-black tracking-wide text-rose-200">
-              Today&apos;s hunt: {incidentName}
+          <div className="mt-16 rounded-2xl border border-rose-400/40 bg-[#160a0e] p-6 text-center">
+            <p className="text-4xl">🎣</p>
+            <h2 className="mt-3 font-mono text-xl font-black tracking-wide text-rose-200">
+              Build the lure. Fool the office.
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-300">{incidentDescription}</p>
-            <p className="mt-3 text-sm text-slate-400">
-              You&apos;re the attacker. Build one lure from the parts on the bench, release it on the
-              office, and watch who bites. The catch: every part you use carries the tell that could
-              hang you.
+            <p className="mt-2 text-sm text-slate-400">
+              Four choices. One phish. Who falls is up to you.
             </p>
             <button
-              onClick={() => setPhase('workbench')}
-              className="mt-4 w-full rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-4 py-3 font-mono text-sm font-black tracking-widest text-white shadow-[0_0_24px_rgba(244,63,94,0.4)] transition hover:scale-[1.01]"
+              onClick={() => { setStepIdx(0); setPhase('step') }}
+              className="mt-5 w-full rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-4 py-3 font-mono text-sm font-black tracking-widest text-white shadow-[0_0_24px_rgba(244,63,94,0.4)] transition hover:scale-[1.01]"
             >
-              OPEN THE WORKBENCH
+              START BUILDING →
             </button>
           </div>
         )}
 
-        {phase === 'workbench' && (
-          <div className="space-y-4">
-            {SLOTS.map(({ slot, title }) => (
-              <div key={slot}>
-                <p className="mb-2 font-mono text-[10px] tracking-[0.25em] text-slate-500 uppercase">{title}</p>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {pool[slot].map((part) => {
-                    const active = selected[slot]?.id === part.id
-                    return (
-                      <button
-                        key={part.id}
-                        onClick={() => setSelected((s) => ({ ...s, [slot]: part }))}
-                        className={`rounded-lg border px-3 py-2 text-left font-mono text-[11px] leading-snug transition ${
-                          active
-                            ? 'border-rose-400 bg-rose-500/15 text-rose-100'
-                            : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-rose-400/40'
-                        }`}
-                      >
-                        <span className="block text-[10px] text-slate-500">{part.label}</span>
-                        <span className="mt-0.5 block">{part.rendered}</span>
-                        <span className="mt-1 block text-[9px] text-amber-300/60">
-                          {'▲'.repeat(part.subtlety)} subtlety {part.subtlety}
-                        </span>
-                      </button>
-                    )
-                  })}
+        {phase === 'step' && (() => {
+          const { slot, title } = SLOTS[stepIdx]!
+          return (
+            <div>
+              <div className="mb-4 flex items-center justify-between">
+                <p className="font-mono text-[10px] tracking-[0.3em] text-slate-500 uppercase">
+                  {stepIdx + 1} of 4 · {title}
+                </p>
+                <div className="flex gap-1.5">
+                  {SLOTS.map((_, i) => (
+                    <span
+                      key={i}
+                      className={`h-1.5 w-5 rounded-full ${i < stepIdx ? 'bg-rose-400' : i === stepIdx ? 'bg-rose-400/60' : 'bg-white/10'}`}
+                    />
+                  ))}
                 </div>
               </div>
-            ))}
+              <div className="space-y-2">
+                {pool[slot].map((part) => (
+                  <button
+                    key={part.id}
+                    onClick={() => {
+                      setSelected((sel) => ({ ...sel, [slot]: part }))
+                      if (stepIdx < 3) {
+                        setStepIdx(stepIdx + 1)
+                      } else {
+                        setPhase('preview')
+                      }
+                    }}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-left transition hover:border-rose-400/60 hover:bg-rose-500/5"
+                  >
+                    <span className="block font-mono text-sm leading-snug text-slate-200">
+                      {part.rendered}
+                    </span>
+                    <span className="mt-1.5 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-500">{part.label}</span>
+                      <span className="text-[10px] text-amber-300/70">{'★'.repeat(part.subtlety)}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {stepIdx > 0 && (
+                <button
+                  onClick={() => setStepIdx(stepIdx - 1)}
+                  className="mt-4 w-full rounded-full border border-white/10 px-4 py-2 font-mono text-[11px] text-slate-500 hover:text-slate-300"
+                >
+                  ← back
+                </button>
+              )}
+            </div>
+          )
+        })()}
+
+        {phase === 'preview' && (
+          <div>
+            <p className="mb-3 font-mono text-[10px] tracking-[0.3em] text-slate-500 uppercase">
+              Your finished lure
+            </p>
+            <div className="rounded-2xl border border-white/15 bg-[#0b0f18] p-4">
+              <p className="border-b border-white/10 pb-2 font-mono text-xs text-slate-400">
+                <span className="text-slate-500">From:</span> {selected.sender?.rendered}
+              </p>
+              <p className="border-b border-white/10 py-2 font-mono text-xs text-slate-300">
+                {selected.pretext?.rendered} {selected.pressure?.rendered}
+              </p>
+              <p className="pt-2 font-mono text-xs text-amber-200/80">{selected.payload?.rendered}</p>
+            </div>
             <button
-              disabled={!complete}
               onClick={release}
-              className="w-full rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-4 py-3 font-mono text-sm font-black tracking-widest text-white shadow-[0_0_24px_rgba(244,63,94,0.4)] transition enabled:hover:scale-[1.01] disabled:opacity-30"
+              className="mt-5 w-full rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-4 py-3 font-mono text-sm font-black tracking-widest text-white shadow-[0_0_24px_rgba(244,63,94,0.4)] transition hover:scale-[1.01]"
             >
-              {complete ? 'RELEASE THE LURE →' : 'PICK ALL FOUR PARTS'}
+              🎣 RELEASE THE LURE
+            </button>
+            <button
+              onClick={() => { setStepIdx(3); setPhase('step') }}
+              className="mt-2 w-full rounded-full border border-white/10 px-4 py-2 font-mono text-[11px] text-slate-500 hover:text-slate-300"
+            >
+              ← change parts
             </button>
           </div>
         )}
