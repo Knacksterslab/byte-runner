@@ -29,7 +29,6 @@ export interface StartScreenNewProps {
   onRequestSetUsername?: () => void
   dailyChallenge?: import('@/lib/api/daily').DailyChallenge | null
   pointBalance?: number | null
-  onPlayDailyIncident?: () => void
 }
 
 export function StartScreenNew({
@@ -43,7 +42,6 @@ export function StartScreenNew({
   onRequestSetUsername,
   dailyChallenge = null,
   pointBalance = null,
-  onPlayDailyIncident,
 }: StartScreenNewProps) {
   const muted = useSyncExternalStore(
     (cb) => audioManager.subscribe(cb),
@@ -215,14 +213,6 @@ export function StartScreenNew({
         )}
 
         {dailyChallenge && <DailyChallengeCard challenge={dailyChallenge} />}
-        {dailyChallenge?.mechanic === 'phishkit' && onPlayDailyIncident && (
-          <button
-            onClick={onPlayDailyIncident}
-            className="mb-4 w-full max-w-2xl rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-4 py-3 font-mono text-sm font-black tracking-widest text-white shadow-[0_0_24px_rgba(244,63,94,0.4)] transition hover:scale-[1.01]"
-          >
-            🎣 PLAY TODAY&apos;S INCIDENT — PHISH KIT
-          </button>
-        )}
 
         <div className="w-full grid md:grid-cols-2 gap-4 md:gap-8 mt-0">
           <HowToPlayPanel />
