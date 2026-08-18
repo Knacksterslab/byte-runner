@@ -6,7 +6,8 @@ import { cgHappyTime } from '@/lib/crazygames'
 import { audioManager } from '@/lib/audio'
 import { spawnConfetti } from './GameBackground'
 import { returnObstacleToPool } from './GameSpawn'
-import { recordQuizMiss, quizTypeToCategory } from '../weaknessProfile'
+import { quizTypeToCategory, reportQuizResult } from '../weaknessProfile'
+import { beginDrillSession } from '@/lib/api/drills'
 import type { GameState } from './GameState'
 
 interface QuizCallbacks {
@@ -34,6 +35,7 @@ export function startInGameQuiz(
   spawnQuizItemsFn: (quiz: QuizChallenge) => void
 ): void {
   s.lastQuizType = quiz.type
+  void beginDrillSession()
   cb.quizStartQuiz(s.currentLevel)
   s.obstacles.forEach(obs => returnObstacleToPool(obs))
   s.obstacles.length = 0
@@ -51,15 +53,16 @@ export function endInGameQuiz(
   s.obstacles.forEach(obs => returnObstacleToPool(obs))
   s.obstacles.length = 0
   if (success) {
+    reportQuizResult(quizTypeToCategory(s.lastQuizType), true)
     s.kitDiscount = 0.7
     s.localScore += 500
     s.showQuizCompletionMessage = true; s.quizCompletionSuccess = true; s.quizCompletionTimer = 2000
     spawnConfetti(s, s.logicalWidth / 2, s.logicalHeight / 2, s.logicalWidth < 768 ? 40 : 80)
     s.isVictoryDancing = true; s.victoryDanceTimer = s.VICTORY_DANCE_DURATION
   } else {
-    recordQuizMiss(quizTypeToCategory(s.lastQuizType))
-    s.quizMissesByCategory[quizTypeToCategory(s.lastQuizType)] =
-      (s.quizMissesByCategory[quizTypeToCategory(s.lastQuizType)] || 0) + 1
+    const failTopic = quizTypeToCategory(s.lastQuizType)
+    reportQuizResult(failTopic, false)
+    s.quizMissesByCategory[failTopic] = (s.quizMissesByCategory[failTopic] || 0) + 1
     s.showQuizCompletionMessage = true; s.quizCompletionSuccess = false; s.quizCompletionTimer = 2000
   }
   s.powerups = s.powerups.filter(p => p.type !== 'quiz-item')
@@ -75,7 +78,7 @@ export function endInGameQuizWrongAnswer(
   cb: QuizCallbacks
 ): void {
   const missCategory = quizTypeToCategory(failChallenge?.type ?? s.lastQuizType)
-  recordQuizMiss(missCategory)
+  reportQuizResult(missCategory, false)
   s.quizMissesByCategory[missCategory] = (s.quizMissesByCategory[missCategory] || 0) + 1
   s.quizWrongItemId = wrongItemId
   s.quizFailChallenge = failChallenge

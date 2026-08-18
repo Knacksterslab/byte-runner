@@ -67,3 +67,13 @@ export function mergeRunProfile(
   }
   write(profile)
 }
+
+// ── Server-verified reporting (phase 1 of the curriculum engine) ──────────
+// One call per quiz outcome: updates the local profile AND reports to the
+// backend mastery ledger. Fire-and-forget — gameplay never blocks or breaks.
+import { endDrillSession } from '@/lib/api/drills'
+
+export function reportQuizResult(topic: string, passed: boolean, questionId?: string): void {
+  if (!passed) recordQuizMiss(topic)
+  void endDrillSession({ topic, passed, format: 'quiz', questionId })
+}

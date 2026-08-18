@@ -19,7 +19,8 @@ import type { RecoveryOverlayState } from './hooks/useGameLoopTypes'
 import { getDailyChallenge, type DailyChallenge } from '@/lib/api/daily'
 import { getMyBalance } from '@/lib/api/balance'
 import { setActiveDailyModifiers } from '@/lib/game/inGameQuizzes'
-import { recordQuizMiss } from '@/lib/game/weaknessProfile'
+import { reportQuizResult } from '@/lib/game/weaknessProfile'
+import { beginDrillSession } from '@/lib/api/drills'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { StartScreenView } from './ui/StartScreenView'
 import { RecoveryOverlaySheet } from './ui/RecoveryOverlaySheet'
@@ -124,6 +125,7 @@ export default function SimpleGame() {
   })
 
   useEffect(() => { showQuizOverlayRef.current = showQuiz }, [showQuiz])
+  useEffect(() => { if (showQuiz) void beginDrillSession() }, [showQuiz])
   useEffect(() => { guestSavePromptActiveRef.current = showGuestSavePrompt }, [showGuestSavePrompt])
   useEffect(() => {
     authFlowActiveRef.current = showAuthModal || showUsernameModal
@@ -407,10 +409,14 @@ export default function SimpleGame() {
         <QuizModal
           kitType={getProtectionKitForThreat(lastThreatType)?.id || 'password-manager'}
           level={level}
-          onPass={handleQuizPass}
+          onPass={() => {
+            const kit = getProtectionKitForThreat(lastThreatType)
+            if (kit) reportQuizResult(kit.protectsAgainst, true)
+            handleQuizPass()
+          }}
           onFail={() => {
             const kit = getProtectionKitForThreat(lastThreatType)
-            if (kit) recordQuizMiss(kit.protectsAgainst)
+            if (kit) reportQuizResult(kit.protectsAgainst, false)
             handleQuizFail()
           }}
         />
