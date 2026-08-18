@@ -6,11 +6,18 @@
  */
 import { API_DOMAIN } from './client'
 
+export interface DailyStagePlan {
+  targetLevel: number
+  focusTopics: string[]
+  stages: { kind: string; label: string; minutes: number }[]
+}
+
 export interface DailyChallenge {
   date: string
   name: string
   description: string
   mechanic?: string
+  stages?: DailyStagePlan | null
   modifiers: {
     name: string
     boostedThreats: string[]
@@ -20,6 +27,7 @@ export interface DailyChallenge {
   leaderboard: { username: string; score: number }[]
   myBest: number | null
   myStreak: number
+  myCurriculum: { levelToday: number; targetLevel: number; complete: boolean } | null
 }
 
 export async function getDailyChallenge(timeoutMs = 3500): Promise<DailyChallenge | null> {
@@ -45,6 +53,7 @@ export async function getDailyChallenge(timeoutMs = 3500): Promise<DailyChalleng
         scarceKits: Array.isArray(c.modifiers.scarceKits) ? c.modifiers.scarceKits : [],
       },
       endsAt: c.endsAt,
+      stages: c.stages ?? null,
       leaderboard: Array.isArray(body.leaderboard)
         ? body.leaderboard.map((e: { username?: string; score?: number }) => ({
             username: e.username || 'Anonymous',
@@ -53,6 +62,7 @@ export async function getDailyChallenge(timeoutMs = 3500): Promise<DailyChalleng
         : [],
       myBest: typeof body.myBest === 'number' ? body.myBest : null,
       myStreak: typeof body.myStreak === 'number' ? body.myStreak : 0,
+      myCurriculum: body.myCurriculum ?? null,
     }
   } catch {
     return null

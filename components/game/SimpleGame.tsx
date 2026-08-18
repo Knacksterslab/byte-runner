@@ -100,7 +100,7 @@ export default function SimpleGame() {
     handleSaveToLeaderboard, resetSaveState, startNewRun,
   } = useLeaderboard({
     authStatus, currentUser, gameStarted, isGameOver, showQuiz,
-    score, distance, addLeaderboardEntry, setLeaderboard,
+    score, distance, level, addLeaderboardEntry, setLeaderboard,
     onNeedAuth: () => setShowAuthModal(true),
     onNeedUsername: () => { setUsernameInput(''); setShowUsernameModal(true) },
   })

@@ -37,6 +37,32 @@ export function DailyChallengeCard({ challenge }: { challenge: DailyChallenge })
       <p className="mt-1.5 font-mono text-[10px] text-amber-200/80">
         🏆 100 pts · 🥈 50 · 🥉 25 — winner crowned at reset · cash out at 500 pts
       </p>
+      {challenge.stages && (
+        <div className="mt-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 px-2.5 py-2">
+          <div className="flex items-center justify-between font-mono text-[10px]">
+            <span className="text-cyan-200">
+              📚 Today&apos;s path — reach level {challenge.stages.targetLevel}
+            </span>
+            {challenge.myCurriculum && (
+              <span className={challenge.myCurriculum.complete ? 'text-emerald-300' : 'text-slate-400'}>
+                {challenge.myCurriculum.complete
+                  ? '✓ complete'
+                  : `you're at ${challenge.myCurriculum.levelToday}`}
+              </span>
+            )}
+          </div>
+          {challenge.myCurriculum && !challenge.myCurriculum.complete && (
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500"
+                style={{
+                  width: `${Math.min(100, Math.round((challenge.myCurriculum.levelToday / challenge.myCurriculum.targetLevel) * 100))}%`,
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-2 flex flex-wrap gap-1.5">
         {challenge.modifiers.boostedThreats.slice(0, 3).map((t) => (

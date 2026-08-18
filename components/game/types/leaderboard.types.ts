@@ -9,6 +9,8 @@ export interface LeaderboardHookOptions {
   showQuiz: boolean
   score: number
   distance: number
+  /** Level reached this run — feeds the daily curriculum tracker. */
+  level: number
   addLeaderboardEntry: (entry: {
     name: string
     score: number

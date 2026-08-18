@@ -178,6 +178,7 @@ export function useLeaderboard(options: LeaderboardHookOptions): LeaderboardStat
         distance: distanceToSave,
         durationMs,
         clientVersion: 'web',
+        level: optionsRef.current.level,
       })
       addLeaderboardEntry({
         name: userForSave.username,
