@@ -4,7 +4,7 @@ import { checkBadges, getAllBadges, getMyBadges } from '@/lib/api/badges'
 import { type LeaderboardEntry } from '@/lib/store/gameStore'
 import { trackRunSaved } from '@/lib/analytics'
 import { audioManager } from '@/lib/audio'
-import type { LeaderboardHookOptions, LeaderboardState, SaveStatus } from '../types/leaderboard.types'
+import type { EarnReward, LeaderboardHookOptions, LeaderboardState, SaveStatus } from '../types/leaderboard.types'
 
 export type { LeaderboardHookOptions, LeaderboardState, SaveStatus }
 
@@ -12,7 +12,7 @@ const CHECKPOINT_INTERVAL_MS = 90_000
 const CHECKPOINT_MIN_GAP_MS = 30_000
 const CHECKPOINT_SCORE_DELTA = 1000
 
-export function useLeaderboard(options: LeaderboardHookOptions): LeaderboardState {
+export function useLeaderboard(options: LeaderboardHookOptions): LeaderboardState & { earnReward: EarnReward | null; clearEarnReward: () => void } {
   const [runStartedAt, setRunStartedAt] = useState<number | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
@@ -30,6 +30,9 @@ export function useLeaderboard(options: LeaderboardHookOptions): LeaderboardStat
   const badgeNameByIdRef = useRef<Record<string, string>>({})
   const knownBadgeIdsRef = useRef<Set<string>>(new Set())
   const badgeToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const [earnReward, setEarnReward] = useState<EarnReward | null>(null)
+  const clearEarnReward = () => setEarnReward(null)
 
   // Keep options in a ref so closures always read the latest values.
   const optionsRef = useRef(options)
@@ -180,6 +183,9 @@ export function useLeaderboard(options: LeaderboardHookOptions): LeaderboardStat
         clientVersion: 'web',
         level: optionsRef.current.level,
       })
+      if (result?.curriculumReward?.credited) {
+        setEarnReward({ points: result.curriculumReward.points, at: Date.now() })
+      }
       addLeaderboardEntry({
         name: userForSave.username,
         score: scoreToSave,
@@ -344,5 +350,7 @@ export function useLeaderboard(options: LeaderboardHookOptions): LeaderboardStat
     handleSaveToLeaderboard,
     startNewRun,
     resetSaveState,
+    earnReward,
+    clearEarnReward,
   }
 }

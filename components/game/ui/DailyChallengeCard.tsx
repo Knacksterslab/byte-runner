@@ -46,7 +46,9 @@ export function DailyChallengeCard({ challenge }: { challenge: DailyChallenge })
             {challenge.myCurriculum && (
               <span className={challenge.myCurriculum.complete ? 'text-emerald-300' : 'text-slate-400'}>
                 {challenge.myCurriculum.complete
-                  ? '✓ complete'
+                  ? challenge.myCurriculum.rewardCredited
+                    ? '✓ complete · +20 pts earned'
+                    : '✓ complete'
                   : `you're at ${challenge.myCurriculum.levelToday}`}
               </span>
             )}

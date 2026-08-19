@@ -98,6 +98,7 @@ export default function SimpleGame() {
     activeBadgeToast, setActiveBadgeToast,
     liveScoreRef, liveDistanceRef,
     handleSaveToLeaderboard, resetSaveState, startNewRun,
+    earnReward, clearEarnReward,
   } = useLeaderboard({
     authStatus, currentUser, gameStarted, isGameOver, showQuiz,
     score, distance, level, addLeaderboardEntry, setLeaderboard,
@@ -144,6 +145,14 @@ export default function SimpleGame() {
     }).catch(() => {})
     return () => { active = false }
   }, [])
+
+  // Learn-to-earn toast: +N pts when today's curriculum completes.
+  useEffect(() => {
+    if (!earnReward) return
+    getMyBalance().then((b) => setPointBalance(b.balanceCents)).catch(() => {})
+    const tid = setTimeout(clearEarnReward, 6000)
+    return () => clearTimeout(tid)
+  }, [earnReward, clearEarnReward])
 
   // Points balance (1 pt = 1¢) for signed-in players.
   useEffect(() => {
@@ -353,6 +362,15 @@ export default function SimpleGame() {
           }}
           onLater={() => setShowGuestSavePrompt(false)}
         />
+      )}
+      {earnReward && (
+        <div className="absolute left-1/2 top-20 z-40 -translate-x-1/2">
+          <div className="rounded-xl border border-emerald-300/60 bg-[#05150f]/95 px-5 py-3 text-center shadow-[0_0_24px_rgba(16,185,129,0.4)]">
+            <p className="font-mono text-[10px] tracking-[0.25em] text-emerald-200/80 uppercase">🎓 today&apos;s path complete</p>
+            <p className="mt-0.5 font-mono text-lg font-black text-emerald-300">+{earnReward.points} pts earned</p>
+            <p className="mt-0.5 font-mono text-[9px] text-slate-500">learn-to-earn · capped at 20/day · cash out at 500</p>
+          </div>
+        </div>
       )}
       {activeBadgeToast && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,520px)]">

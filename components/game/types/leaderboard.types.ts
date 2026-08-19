@@ -1,6 +1,11 @@
 import type { BackendUser } from '@/lib/api/backend'
 import type { LeaderboardEntry } from '@/lib/store/gameStore'
 
+export interface EarnReward {
+  points: number
+  at: number
+}
+
 export interface LeaderboardHookOptions {
   authStatus: 'checking' | 'guest' | 'authed'
   currentUser: BackendUser | null

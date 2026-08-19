@@ -27,7 +27,7 @@ export interface DailyChallenge {
   leaderboard: { username: string; score: number }[]
   myBest: number | null
   myStreak: number
-  myCurriculum: { levelToday: number; targetLevel: number; complete: boolean } | null
+  myCurriculum: { levelToday: number; targetLevel: number; complete: boolean; rewardCredited?: boolean } | null
 }
 
 export async function getDailyChallenge(timeoutMs = 3500): Promise<DailyChallenge | null> {
